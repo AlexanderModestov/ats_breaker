@@ -22,5 +22,5 @@ RUN uv sync --frozen --no-dev
 # Expose port
 EXPOSE 8000
 
-# Run API
-CMD ["uv", "run", "uvicorn", "hr_breaker.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run API - use PORT env var for Railway compatibility
+CMD ["sh", "-c", "uv run uvicorn hr_breaker.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
