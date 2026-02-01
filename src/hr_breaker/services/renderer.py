@@ -63,7 +63,7 @@ class HTMLRenderer(BaseRenderer):
         )
         from weasyprint.text.fonts import FontConfiguration
         self.font_config = FontConfiguration()
-        self._wrapper_html = (TEMPLATE_DIR / "resume_wrapper.html").read_text()
+        self._wrapper_html = (TEMPLATE_DIR / "resume_wrapper.html").read_text(encoding="utf-8")
 
     @classmethod
     def _ensure_weasyprint(cls):
@@ -79,14 +79,32 @@ class HTMLRenderer(BaseRenderer):
             import weasyprint  # noqa: F401
             cls._weasyprint_imported = True
         except OSError as e:
-            if "libgobject" in str(e) or "libpango" in str(e):
-                raise RenderError(
-                    "WeasyPrint libraries not found. On macOS, run:\n"
-                    "  brew install pango gdk-pixbuf libffi\n"
-                    "Then either:\n"
-                    "  1. Add to ~/.zshrc: export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib\n"
-                    "  2. Or run with: DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib uv run hr-breaker ..."
-                ) from e
+            error_str = str(e).lower()
+            if "libgobject" in error_str or "libpango" in error_str or "gobject" in error_str or "cannot load library" in error_str:
+                if sys.platform == "win32":
+                    raise RenderError(
+                        "WeasyPrint libraries not found. On Windows, install GTK3:\n"
+                        "  1. Download GTK3 runtime from: https://github.com/nickvergessen/weasyprint-windows/releases\n"
+                        "  2. Extract and add the 'bin' folder to your PATH\n"
+                        "  Or install via MSYS2:\n"
+                        "  1. Install MSYS2 from https://www.msys2.org/\n"
+                        "  2. Run: pacman -S mingw-w64-x86_64-pango mingw-w64-x86_64-gdk-pixbuf2\n"
+                        "  3. Add C:\\msys64\\mingw64\\bin to your PATH"
+                    ) from e
+                elif sys.platform == "darwin":
+                    raise RenderError(
+                        "WeasyPrint libraries not found. On macOS, run:\n"
+                        "  brew install pango gdk-pixbuf libffi\n"
+                        "Then either:\n"
+                        "  1. Add to ~/.zshrc: export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib\n"
+                        "  2. Or run with: DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib uv run hr-breaker ..."
+                    ) from e
+                else:
+                    raise RenderError(
+                        "WeasyPrint libraries not found. Install the required packages:\n"
+                        "  Debian/Ubuntu: sudo apt install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0\n"
+                        "  Fedora: sudo dnf install pango gdk-pixbuf2"
+                    ) from e
             raise
 
     def render(self, html_body: str) -> RenderResult:

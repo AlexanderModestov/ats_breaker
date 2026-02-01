@@ -13,7 +13,8 @@ Resume optimization tool that transforms any resume into a job-specific, ATS-fri
 - **No fabrication** - Hallucination detection prevents made-up claims
 - **Opinionated formatting** - Follows proven resume guidelines (one page, no fluff, etc.)
 - **Multi-filter validation** - ATS simulation, keyword matching, structure checks
-- **Web UI + CLI** - Streamlit dashboard or command-line
+- **Modern Web UI** - Next.js frontend with Supabase authentication
+- **CLI support** - Command-line interface for power users
 - **Debug mode** - Inspect optimization iterations
 
 ## How It Works
@@ -27,28 +28,58 @@ Resume optimization tool that transforms any resume into a job-specific, ATS-fri
 
 ## Quick Start
 
+### Prerequisites
+
+- Python 3.10+
+- Node.js 18+ (for frontend)
+- [uv](https://github.com/astral-sh/uv) package manager
+- Supabase project (for web UI)
+- Google Gemini API key
+
+### Installation
+
 ```bash
-# Install
+# Clone the repository
+git clone https://github.com/btseytlin/hr-breaker.git
+cd hr-breaker
+
+# Install Python dependencies
 uv sync
 
-# Configure
-cp .env.example .env
-# Edit .env and add your GOOGLE_API_KEY
+# Install frontend dependencies
+cd frontend && npm install && cd ..
 
-# Run web UI
-uv run streamlit run src/hr_breaker/main.py
+# Configure environment
+cp .env.example .env
+cp frontend/.env.example frontend/.env.local
+# Edit both files with your API keys and Supabase credentials
 ```
+
+### Running the Application
+
+**API Server:**
+```bash
+./scripts/run-api.sh
+# Or manually: uv run uvicorn hr_breaker.api.main:app --reload
+```
+
+**Frontend:**
+```bash
+./scripts/run-frontend.sh
+# Or manually: cd frontend && npm run dev
+```
+
+The frontend runs at http://localhost:3000 and the API at http://localhost:8000.
 
 ## Usage
 
 ### Web UI
 
-Launch with `uv run streamlit run src/hr_breaker/main.py`
-
-1. Paste or upload resume
-2. Enter job URL or description
-3. Click optimize
-4. Download PDF
+1. Sign in with Google
+2. Upload your resume (PDF, TXT, TEX, MD)
+3. Enter job posting URL or paste description
+4. Click "Start Optimization"
+5. Download your optimized PDF
 
 ### CLI
 
@@ -60,7 +91,7 @@ uv run hr-breaker optimize resume.txt https://example.com/job
 uv run hr-breaker optimize resume.txt job.txt
 
 # Debug mode (saves iterations)
-uv run hr-breaker optimize resume.txt job.txt -d
+uv run hr-breaker optimize resume.txt -d
 
 # List generated PDFs
 uv run hr-breaker list
@@ -74,17 +105,35 @@ uv run hr-breaker list
 
 ## Configuration
 
-Copy `.env.example` to `.env` and set your API key. All other settings have sensible defaults.
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GOOGLE_API_KEY` | Yes | Google Gemini API key |
-| `GEMINI_PRO_MODEL` | No | Model for complex tasks (default: `gemini-3-pro-preview`) |
-| `GEMINI_FLASH_MODEL` | No | Model for simple tasks (default: `gemini-3-flash-preview`) |
-| `GEMINI_THINKING_BUDGET` | No | Thinking tokens budget (default: 8192) |
-| `MAX_ITERATIONS` | No | Optimization loop limit (default: 5) |
+| `SUPABASE_URL` | Yes (web) | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Yes (web) | Supabase anonymous key |
+| `SUPABASE_SERVICE_KEY` | Yes (web) | Supabase service role key |
+| `SUPABASE_JWT_SECRET` | Yes (web) | Supabase JWT secret |
+| `API_CORS_ORIGINS` | No | Allowed CORS origins (default: http://localhost:3000) |
+
+For the frontend, copy `frontend/.env.example` to `frontend/.env.local`:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
+| `NEXT_PUBLIC_API_URL` | No | API URL (default: http://localhost:8000/api) |
 
 See `.env.example` for all available options (filter thresholds, scraper settings, etc.)
+
+### Supabase Setup
+
+1. Create a new Supabase project
+2. Run the migrations in `supabase/migrations/` in order
+3. Enable Google OAuth in Authentication → Providers
+4. Create storage buckets: `cvs` and `results`
 
 ---
 
@@ -92,14 +141,25 @@ See `.env.example` for all available options (filter thresholds, scraper setting
 
 ```
 src/hr_breaker/
+├── api/             # FastAPI backend
+│   ├── routes/      # API endpoints (cvs, optimize, users)
+│   ├── auth.py      # JWT verification
+│   ├── deps.py      # Dependency injection
+│   └── schemas.py   # Request/response models
 ├── agents/          # Pydantic-AI agents (optimizer, reviewer, etc.)
 ├── filters/         # Validation plugins (ATS, keywords, hallucination)
-├── services/        # Rendering, scraping, caching
+├── services/        # Rendering, scraping, caching, Supabase
 │   └── scrapers/    # Job scraper implementations
 ├── models/          # Pydantic data models
 ├── orchestration.py # Core optimization loop
-├── main.py          # Streamlit UI
 └── cli.py           # Click CLI
+
+frontend/src/
+├── app/             # Next.js App Router pages
+├── components/      # React components
+├── hooks/           # Custom React hooks
+├── lib/             # Utilities (Supabase, API client)
+└── types/           # TypeScript types
 ```
 
 **Agents**: job_parser, optimizer, combined_reviewer, name_extractor, hallucination_detector, ai_generated_detector
@@ -121,4 +181,14 @@ uv run pytest tests/
 
 # Install dev dependencies
 uv sync --group dev
+
+# Run API in dev mode
+uv run uvicorn hr_breaker.api.main:app --reload
+
+# Run frontend in dev mode
+cd frontend && npm run dev
 ```
+
+## License
+
+MIT

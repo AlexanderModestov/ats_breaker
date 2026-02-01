@@ -19,7 +19,7 @@ class ResumeCache:
         path = self._path(checksum)
         if path.exists():
             try:
-                data = json.loads(path.read_text())
+                data = json.loads(path.read_text(encoding="utf-8"))
                 return ResumeSource(**data)
             except (json.JSONDecodeError, KeyError, TypeError, ValueError):
                 return None
@@ -27,7 +27,7 @@ class ResumeCache:
 
     def put(self, resume: ResumeSource) -> None:
         path = self._path(resume.checksum)
-        path.write_text(resume.model_dump_json())
+        path.write_text(resume.model_dump_json(), encoding="utf-8")
 
     def exists(self, checksum: str) -> bool:
         return self._path(checksum).exists()
@@ -36,7 +36,7 @@ class ResumeCache:
         resumes = []
         for path in self.cache_dir.glob("*.json"):
             try:
-                data = json.loads(path.read_text())
+                data = json.loads(path.read_text(encoding="utf-8"))
                 resumes.append(ResumeSource(**data))
             except Exception:
                 continue

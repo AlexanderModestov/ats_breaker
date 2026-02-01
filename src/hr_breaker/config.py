@@ -41,6 +41,13 @@ class Settings(BaseModel):
     pass_threshold: float = 0.7
     fast_mode: bool = True
 
+    # Supabase settings
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_key: str = ""
+    supabase_jwt_secret: str = ""
+    api_cors_origins: list[str] = ["http://localhost:3000"]
+
     # Scraper settings
     scraper_httpx_timeout: float = 15.0
     scraper_wayback_timeout: float = 10.0
@@ -71,6 +78,13 @@ class Settings(BaseModel):
 
     # Agent limits
     agent_name_extractor_chars: int = 2000
+
+
+def _parse_cors_origins(value: str) -> list[str]:
+    """Parse CORS origins from comma-separated string."""
+    if not value:
+        return ["http://localhost:3000"]
+    return [origin.strip() for origin in value.split(",") if origin.strip()]
 
 
 @lru_cache
@@ -110,6 +124,12 @@ def get_settings() -> Settings:
         sentence_transformer_model=os.getenv("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2"),
         # Agent limits
         agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS", "2000")),
+        # Supabase settings
+        supabase_url=os.getenv("SUPABASE_URL", ""),
+        supabase_anon_key=os.getenv("SUPABASE_ANON_KEY", ""),
+        supabase_service_key=os.getenv("SUPABASE_SERVICE_KEY", ""),
+        supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET", ""),
+        api_cors_origins=_parse_cors_origins(os.getenv("API_CORS_ORIGINS", "")),
     )
 
 
