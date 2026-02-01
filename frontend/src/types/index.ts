@@ -83,3 +83,23 @@ export interface OptimizationStartResponse {
 
 // Theme type
 export type Theme = "minimal" | "professional" | "bold";
+
+// Subscription types
+export interface SubscriptionStatus {
+  status: "trial" | "active" | "cancelled" | "expired";
+  remaining_requests: number | null;
+  is_unlimited: boolean;
+  is_trial: boolean;
+  can_subscribe: boolean;
+  can_buy_addon: boolean;
+  renewal_date: string | null;
+}
+
+export interface CheckoutRequest {
+  success_url: string;
+  cancel_url: string;
+}
+
+export interface CheckoutResponse {
+  checkout_url: string;
+}

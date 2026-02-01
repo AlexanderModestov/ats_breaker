@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, Upload } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle, Plus, Upload } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,10 +17,26 @@ import { useCVs, useUploadCV, useDeleteCV } from "@/hooks/useCVs";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { data: cvs, isLoading, error } = useCVs();
+
+  useEffect(() => {
+    const success = searchParams.get("success");
+    if (success === "subscription") {
+      setSuccessMessage("Subscription activated! You now have 50 requests per month.");
+    } else if (success === "addon") {
+      setSuccessMessage("Add-on pack purchased! 10 requests have been added to your account.");
+    }
+
+    // Clear the URL parameter
+    if (success) {
+      window.history.replaceState({}, "", "/dashboard");
+    }
+  }, [searchParams]);
   const uploadCV = useUploadCV();
   const deleteCV = useDeleteCV();
 
@@ -57,6 +74,13 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {successMessage && (
+        <Alert className="mb-4 border-green-500/50 text-green-700 dark:text-green-400">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>

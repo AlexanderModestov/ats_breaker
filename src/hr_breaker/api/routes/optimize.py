@@ -6,7 +6,8 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import Response
 
-from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
+from hr_breaker.api.deps import CurrentUser, CurrentUserWithEmail, SupabaseServiceDep
+from hr_breaker.services.access_control import check_access
 from hr_breaker.api.schemas import (
     OptimizationStartResponse,
     OptimizationStatus,
@@ -155,11 +156,33 @@ async def _run_optimization(
 @router.post("", response_model=OptimizationStartResponse)
 async def start_optimization(
     request: OptimizeRequest,
-    user_id: CurrentUser,
+    user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
     background_tasks: BackgroundTasks,
 ) -> OptimizationStartResponse:
     """Start a new optimization run."""
+    user_id, user_email = user
+
+    # Check access before starting
+    profile = supabase.get_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    access = check_access(user_email or "", profile)
+    if not access.allowed:
+        if access.reason == "trial_exhausted":
+            raise HTTPException(
+                status_code=402,
+                detail="Trial exhausted. Please subscribe to continue."
+            )
+        elif access.reason == "quota_exhausted":
+            raise HTTPException(
+                status_code=402,
+                detail="Monthly quota exhausted. Purchase an add-on pack or wait for renewal."
+            )
+        else:
+            raise HTTPException(status_code=402, detail="Access denied")
+
     # Verify CV exists and belongs to user
     cv = supabase.get_cv(request.cv_id, user_id)
     if not cv:
@@ -176,6 +199,18 @@ async def start_optimization(
             cv_id=request.cv_id,
             job_input=request.job_input,
         )
+
+        # Consume a request atomically (skip for unlimited users)
+        if not access.unlimited:
+            is_subscriber = profile.get("subscription_status") == "active"
+            settings = get_settings()
+            consumed = supabase.consume_request_atomic(
+                user_id=user_id,
+                is_subscriber=is_subscriber,
+                subscription_limit=settings.subscription_request_limit,
+            )
+            if not consumed:
+                raise HTTPException(status_code=402, detail="Failed to consume request")
 
         # Start background task
         background_tasks.add_task(

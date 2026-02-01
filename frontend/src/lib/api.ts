@@ -7,6 +7,8 @@ import type {
   OptimizeRequest,
   UserProfile,
   UserProfileUpdate,
+  SubscriptionStatus,
+  CheckoutResponse,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
@@ -127,4 +129,29 @@ export async function downloadOptimizationPDF(runId: string): Promise<Blob> {
   }
 
   return response.blob();
+}
+
+// Subscription API
+export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
+  return fetchWithAuth<SubscriptionStatus>("/subscription");
+}
+
+export async function createSubscriptionCheckout(
+  successUrl: string,
+  cancelUrl: string
+): Promise<CheckoutResponse> {
+  return fetchWithAuth<CheckoutResponse>("/subscription/checkout/subscription", {
+    method: "POST",
+    body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
+  });
+}
+
+export async function createAddonCheckout(
+  successUrl: string,
+  cancelUrl: string
+): Promise<CheckoutResponse> {
+  return fetchWithAuth<CheckoutResponse>("/subscription/checkout/addon", {
+    method: "POST",
+    body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
+  });
 }

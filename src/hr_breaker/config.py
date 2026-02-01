@@ -48,6 +48,18 @@ class Settings(BaseModel):
     supabase_jwt_secret: str = ""
     api_cors_origins: list[str] = ["http://localhost:3000"]
 
+    # Stripe settings
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id_subscription: str = ""
+    stripe_price_id_addon: str = ""
+
+    # Paywall settings
+    unlimited_users: list[str] = []
+    trial_request_limit: int = 3
+    subscription_request_limit: int = 50
+    addon_request_count: int = 10
+
     # Scraper settings
     scraper_httpx_timeout: float = 15.0
     scraper_wayback_timeout: float = 10.0
@@ -85,6 +97,13 @@ def _parse_cors_origins(value: str) -> list[str]:
     if not value:
         return ["http://localhost:3000"]
     return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+
+def _parse_unlimited_users(value: str) -> list[str]:
+    """Parse unlimited users from comma-separated string."""
+    if not value:
+        return []
+    return [email.strip().lower() for email in value.split(",") if email.strip()]
 
 
 @lru_cache
@@ -130,6 +149,16 @@ def get_settings() -> Settings:
         supabase_service_key=os.getenv("SUPABASE_SERVICE_KEY", ""),
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET", ""),
         api_cors_origins=_parse_cors_origins(os.getenv("API_CORS_ORIGINS", "")),
+        # Stripe settings
+        stripe_secret_key=os.getenv("STRIPE_SECRET_KEY", ""),
+        stripe_webhook_secret=os.getenv("STRIPE_WEBHOOK_SECRET", ""),
+        stripe_price_id_subscription=os.getenv("STRIPE_PRICE_ID_SUBSCRIPTION", ""),
+        stripe_price_id_addon=os.getenv("STRIPE_PRICE_ID_ADDON", ""),
+        # Paywall settings
+        unlimited_users=_parse_unlimited_users(os.getenv("UNLIMITED_USERS", "")),
+        trial_request_limit=int(os.getenv("TRIAL_REQUEST_LIMIT", "3")),
+        subscription_request_limit=int(os.getenv("SUBSCRIPTION_REQUEST_LIMIT", "50")),
+        addon_request_count=int(os.getenv("ADDON_REQUEST_COUNT", "10")),
     )
 
 
