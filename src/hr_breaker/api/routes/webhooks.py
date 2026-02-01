@@ -64,14 +64,8 @@ async def handle_stripe_webhook(
                 logger.info(f"Activated subscription for user {user_id}")
 
             elif session.metadata.get("type") == "addon":
-                # Add-on purchase completed
-                profile = supabase.get_profile(user_id)
-                current_credits = profile.get("addon_credits", 0) if profile else 0
-                new_credits = current_credits + settings.addon_request_count
-
-                supabase.update_profile(user_id, {
-                    "addon_credits": new_credits,
-                })
+                # Add-on purchase completed - use atomic function
+                supabase.add_addon_credits_atomic(user_id, settings.addon_request_count)
                 logger.info(f"Added {settings.addon_request_count} addon credits for user {user_id}")
 
         elif event.type == "invoice.paid":
@@ -133,7 +127,7 @@ async def handle_stripe_webhook(
 
     except SupabaseError as e:
         logger.error(f"Failed to update profile from webhook: {e}")
-        # Don't raise - we want to return 200 to Stripe even if DB update fails
-        return {"status": "error", "message": str(e)}
+        # Return 500 so Stripe will retry the webhook
+        raise HTTPException(status_code=500, detail=f"Database error: {e}") from e
 
     return {"status": "ok"}

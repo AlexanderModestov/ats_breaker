@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import Response
 
 from hr_breaker.api.deps import CurrentUser, CurrentUserWithEmail, SupabaseServiceDep
-from hr_breaker.services.access_control import check_access, consume_request
+from hr_breaker.services.access_control import check_access
 from hr_breaker.api.schemas import (
     OptimizationStartResponse,
     OptimizationStatus,
@@ -200,10 +200,16 @@ async def start_optimization(
             job_input=request.job_input,
         )
 
-        # Consume a request
-        updates = consume_request(user_email or "", profile)
-        if updates:
-            supabase.update_profile(user_id, updates)
+        # Consume a request atomically
+        is_subscriber = profile.get("subscription_status") == "active"
+        settings = get_settings()
+        consumed = supabase.consume_request_atomic(
+            user_id=user_id,
+            is_subscriber=is_subscriber,
+            subscription_limit=settings.subscription_request_limit,
+        )
+        if not consumed:
+            raise HTTPException(status_code=402, detail="Failed to consume request")
 
         # Start background task
         background_tasks.add_task(

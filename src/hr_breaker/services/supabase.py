@@ -281,6 +281,66 @@ class SupabaseService:
             logger.error(f"Failed to download result PDF: {e}")
             raise SupabaseError(f"Failed to download result PDF: {e}") from e
 
+    # Subscription operations
+    def consume_request_atomic(
+        self,
+        user_id: str,
+        is_subscriber: bool,
+        subscription_limit: int = 50,
+    ) -> bool:
+        """
+        Atomically consume a request from user's quota.
+
+        Uses PostgreSQL function for atomic update to prevent race conditions.
+
+        Args:
+            user_id: The user's ID
+            is_subscriber: Whether user has active subscription
+            subscription_limit: Max requests per subscription period
+
+        Returns:
+            True if request was consumed, False if no quota available
+        """
+        try:
+            result = self._client.rpc(
+                "consume_request",
+                {
+                    "p_user_id": user_id,
+                    "p_is_subscriber": is_subscriber,
+                    "p_subscription_limit": subscription_limit,
+                }
+            ).execute()
+
+            return result.data is True
+        except Exception as e:
+            logger.error(f"Failed to consume request: {e}")
+            raise SupabaseError(f"Failed to consume request: {e}") from e
+
+    def add_addon_credits_atomic(self, user_id: str, credits_to_add: int) -> bool:
+        """
+        Atomically add addon credits to user's account.
+
+        Args:
+            user_id: The user's ID
+            credits_to_add: Number of credits to add
+
+        Returns:
+            True if credits were added successfully
+        """
+        try:
+            result = self._client.rpc(
+                "add_addon_credits",
+                {
+                    "p_user_id": user_id,
+                    "p_credits": credits_to_add,
+                }
+            ).execute()
+
+            return result.data is True
+        except Exception as e:
+            logger.error(f"Failed to add addon credits: {e}")
+            raise SupabaseError(f"Failed to add addon credits: {e}") from e
+
     @staticmethod
     def _get_content_type(ext: str) -> str:
         """Get content type for file extension."""
