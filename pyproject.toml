@@ -38,6 +38,7 @@ dependencies = [
     "python-multipart>=0.0.16",
     "supabase>=2.10.0",
     "python-jose[cryptography]>=3.4.0",
+    "stripe>=14.3.0",
 ]
 
 [project.scripts]
