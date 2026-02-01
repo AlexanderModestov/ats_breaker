@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState, Suspense } from "react";
+import { useCallback, useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Rocket } from "lucide-react";
+import { Rocket, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +15,8 @@ import { CVDropdown } from "@/components/CVDropdown";
 import { JobInput } from "@/components/JobInput";
 import { useCVs } from "@/hooks/useCVs";
 import { useStartOptimization } from "@/hooks/useOptimization";
+import { useSubscription } from "@/hooks/useSubscription";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { CV } from "@/types";
 
 function OptimizeContent() {
@@ -24,6 +26,7 @@ function OptimizeContent() {
 
   const { data: cvs, isLoading: loadingCVs } = useCVs();
   const startOptimization = useStartOptimization();
+  const { data: subscription, isLoading: loadingSubscription } = useSubscription();
 
   const [selectedCV, setSelectedCV] = useState<CV | null>(null);
   const [jobInput, setJobInput] = useState("");
@@ -35,6 +38,17 @@ function OptimizeContent() {
       setSelectedCV(cv);
     }
   }
+
+  // Check access and redirect if blocked
+  useEffect(() => {
+    if (!loadingSubscription && subscription) {
+      const remaining = subscription.remaining_requests;
+      if (remaining !== null && remaining <= 0 && !subscription.is_unlimited) {
+        const reason = subscription.can_buy_addon ? "quota_exhausted" : "trial_exhausted";
+        router.push(`/blocked?reason=${reason}`);
+      }
+    }
+  }, [subscription, loadingSubscription, router]);
 
   const handleOptimize = useCallback(async () => {
     if (!selectedCV || !jobInput.trim()) return;
@@ -103,6 +117,16 @@ function OptimizeContent() {
           />
         </CardContent>
       </Card>
+
+      {subscription && !subscription.is_unlimited && subscription.remaining_requests !== null && subscription.remaining_requests <= 3 && subscription.remaining_requests > 0 && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You have {subscription.remaining_requests} request{subscription.remaining_requests === 1 ? "" : "s"} left
+            {subscription.is_trial ? " in your trial" : " this month"}.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Button
         size="lg"
