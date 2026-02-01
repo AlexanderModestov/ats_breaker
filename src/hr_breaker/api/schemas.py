@@ -93,6 +93,22 @@ class OptimizationStartResponse(BaseModel):
     status: str
 
 
+class OptimizationSummary(BaseModel):
+    """Summary of an optimization run for listing."""
+
+    id: str
+    status: str
+    job_title: str | None = None
+    job_company: str | None = None
+    created_at: datetime
+
+
+class OptimizationListResponse(BaseModel):
+    """List of optimization runs."""
+
+    runs: list[OptimizationSummary]
+
+
 # Filter result schemas
 class FilterResultResponse(BaseModel):
     """Single filter result."""

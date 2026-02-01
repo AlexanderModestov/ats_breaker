@@ -9,8 +9,10 @@ from fastapi.responses import Response
 from hr_breaker.api.deps import CurrentUser, CurrentUserWithEmail, SupabaseServiceDep
 from hr_breaker.services.access_control import check_access
 from hr_breaker.api.schemas import (
+    OptimizationListResponse,
     OptimizationStartResponse,
     OptimizationStatus,
+    OptimizationSummary,
     OptimizeRequest,
 )
 from hr_breaker.config import get_settings, logger
@@ -151,6 +153,30 @@ async def _run_optimization(
             "current_step": None,
             "error": str(e),
         })
+
+
+@router.get("", response_model=OptimizationListResponse)
+async def list_optimization_runs(
+    user_id: CurrentUser,
+    supabase: SupabaseServiceDep,
+) -> OptimizationListResponse:
+    """List all optimization runs for the current user."""
+    runs = supabase.list_optimization_runs(user_id)
+
+    summaries = []
+    for run in runs:
+        job_parsed = run.get("job_parsed") or {}
+        summaries.append(
+            OptimizationSummary(
+                id=run["id"],
+                status=run["status"],
+                job_title=job_parsed.get("title"),
+                job_company=job_parsed.get("company"),
+                created_at=run["created_at"],
+            )
+        )
+
+    return OptimizationListResponse(runs=summaries)
 
 
 @router.post("", response_model=OptimizationStartResponse)

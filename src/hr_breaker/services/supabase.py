@@ -244,6 +244,21 @@ class SupabaseService:
             logger.warning(f"Failed to get optimization run: {e}")
             return None
 
+    def list_optimization_runs(self, user_id: str) -> list[dict[str, Any]]:
+        """List all optimization runs for a user."""
+        try:
+            result = (
+                self._client.table("optimization_runs")
+                .select("id, status, job_parsed, created_at")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            return result.data
+        except Exception as e:
+            logger.error(f"Failed to list optimization runs: {e}")
+            raise SupabaseError(f"Failed to list optimization runs: {e}") from e
+
     def update_optimization_run(self, run_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
         """Update an optimization run."""
         try:
