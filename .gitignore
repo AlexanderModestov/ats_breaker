@@ -5,6 +5,8 @@ frontend/.next/
 frontend/.env
 tests
 .worktrees/
+__pycache__/
+*.pyc
 
 # Virtual environments
 .venv/
