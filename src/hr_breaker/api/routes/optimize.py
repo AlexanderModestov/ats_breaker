@@ -200,16 +200,17 @@ async def start_optimization(
             job_input=request.job_input,
         )
 
-        # Consume a request atomically
-        is_subscriber = profile.get("subscription_status") == "active"
-        settings = get_settings()
-        consumed = supabase.consume_request_atomic(
-            user_id=user_id,
-            is_subscriber=is_subscriber,
-            subscription_limit=settings.subscription_request_limit,
-        )
-        if not consumed:
-            raise HTTPException(status_code=402, detail="Failed to consume request")
+        # Consume a request atomically (skip for unlimited users)
+        if not access.unlimited:
+            is_subscriber = profile.get("subscription_status") == "active"
+            settings = get_settings()
+            consumed = supabase.consume_request_atomic(
+                user_id=user_id,
+                is_subscriber=is_subscriber,
+                subscription_limit=settings.subscription_request_limit,
+            )
+            if not consumed:
+                raise HTTPException(status_code=402, detail="Failed to consume request")
 
         # Start background task
         background_tasks.add_task(
