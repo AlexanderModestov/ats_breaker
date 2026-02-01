@@ -6,7 +6,9 @@ class JobPosting(BaseModel):
 
     title: str
     company: str
+    location: str = ""
     requirements: list[str] = Field(default_factory=list)
+    responsibilities: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
     description: str = ""
     raw_text: str = ""

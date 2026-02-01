@@ -10,7 +10,9 @@ SYSTEM_PROMPT = """You are a job posting parser. Extract structured information 
 Extract:
 - title: The job title
 - company: Company name
+- location: Job location (city, state, country, or "Remote")
 - requirements: List of specific requirements (skills, experience, education)
+- responsibilities: List of job responsibilities and duties
 - keywords: Technical keywords, tools, technologies mentioned
 - description: Brief summary of the role
 
