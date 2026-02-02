@@ -53,9 +53,6 @@ async def get_subscription_status(
 
     access = check_access(user_email or "", profile)
 
-    # DEBUG: Log access check
-    logger.warning(f"DEBUG: user_email={user_email}, unlimited_users={get_settings().unlimited_users}, is_unlimited={access.unlimited}")
-
     return SubscriptionStatusResponse(
         status=profile.get("subscription_status", "trial"),
         remaining_requests=access.remaining,
