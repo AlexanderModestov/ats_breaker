@@ -35,8 +35,9 @@ def check_access(user_email: str, profile: dict[str, Any]) -> AccessResult:
     settings = get_settings()
 
     # 1. Admin override - unlimited access
+    logger.info(f"Checking access for email='{user_email}', unlimited_users={settings.unlimited_users}")
     if user_email.lower() in settings.unlimited_users:
-        logger.debug(f"User {user_email} has unlimited access")
+        logger.info(f"User {user_email} has unlimited access")
         return AccessResult(allowed=True, unlimited=True)
 
     subscription_status = profile.get("subscription_status", "trial")

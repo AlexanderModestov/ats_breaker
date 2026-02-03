@@ -144,4 +144,6 @@ def get_email_from_token(token: str) -> str | None:
         The user email or None
     """
     payload = verify_jwt(token)
-    return payload.get("email")
+    email = payload.get("email")
+    logger.info(f"Extracted email from token: {email}")
+    return email
