@@ -47,10 +47,12 @@ export function useAuth() {
 
   const signInWithGoogle = useCallback(async () => {
     const supabase = getSupabaseClient();
+    const redirectBase =
+      process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL || window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${redirectBase}/dashboard`,
       },
     });
     if (error) throw error;

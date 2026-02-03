@@ -1,4 +1,6 @@
+import logging
 import random
+import ssl
 import time
 
 import httpx
@@ -6,6 +8,8 @@ import httpx
 from hr_breaker.config import get_settings
 
 from .base import BaseScraper, CloudflareBlockedError, ScrapingError
+
+logger = logging.getLogger(__name__)
 
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -31,7 +35,7 @@ class HttpxScraper(BaseScraper):
 
         for attempt in range(self.max_retries):
             try:
-                return self._fetch_and_parse(url)
+                return self._fetch_and_parse(url, verify_ssl=True)
             except CloudflareBlockedError:
                 raise
             except httpx.HTTPStatusError as e:
@@ -40,8 +44,15 @@ class HttpxScraper(BaseScraper):
                     self._backoff(attempt)
                     continue
                 raise ScrapingError(f"HTTP {e.response.status_code}: {e}")
-            except httpx.RequestError as e:
+            except (httpx.RequestError, ssl.SSLError) as e:
                 last_error = e
+                # On SSL errors, try without verification on last attempt
+                if attempt == self.max_retries - 1:
+                    try:
+                        logger.warning(f"Retrying {url} with SSL verification disabled")
+                        return self._fetch_and_parse(url, verify_ssl=False)
+                    except Exception as e2:
+                        last_error = e2
                 self._backoff(attempt)
                 continue
 
@@ -49,19 +60,24 @@ class HttpxScraper(BaseScraper):
             f"Failed to scrape {url} after {self.max_retries} attempts: {last_error}"
         )
 
-    def _fetch_and_parse(self, url: str) -> str:
+    def _fetch_and_parse(self, url: str, verify_ssl: bool = True) -> str:
         """Fetch URL and extract job posting text."""
         headers = {
             "User-Agent": random.choice(USER_AGENTS),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Language": "en-US,en;q=0.9,ru;q=0.8",
             "DNT": "1",
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
         }
 
+        # Use longer connect timeout for slow sites
+        timeout = httpx.Timeout(self.timeout, connect=30.0)
+
         with httpx.Client(
-            follow_redirects=True, timeout=self.timeout
+            follow_redirects=True,
+            timeout=timeout,
+            verify=verify_ssl,
         ) as client:
             response = client.get(url, headers=headers)
             html = response.text

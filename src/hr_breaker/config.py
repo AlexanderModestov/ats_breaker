@@ -61,9 +61,9 @@ class Settings(BaseModel):
     addon_request_count: int = 10
 
     # Scraper settings
-    scraper_httpx_timeout: float = 15.0
-    scraper_wayback_timeout: float = 10.0
-    scraper_playwright_timeout: int = 30000
+    scraper_httpx_timeout: float = 30.0
+    scraper_wayback_timeout: float = 15.0
+    scraper_playwright_timeout: int = 60000
     scraper_httpx_max_retries: int = 3
     scraper_wayback_max_age_days: int = 30
     scraper_min_text_length: int = 200
@@ -119,9 +119,9 @@ def get_settings() -> Settings:
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
         # Scraper settings
-        scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT", "15")),
-        scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT", "10")),
-        scraper_playwright_timeout=int(os.getenv("SCRAPER_PLAYWRIGHT_TIMEOUT", "30000")),
+        scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT", "30")),
+        scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT", "15")),
+        scraper_playwright_timeout=int(os.getenv("SCRAPER_PLAYWRIGHT_TIMEOUT", "60000")),
         scraper_httpx_max_retries=int(os.getenv("SCRAPER_HTTPX_MAX_RETRIES", "3")),
         scraper_wayback_max_age_days=int(os.getenv("SCRAPER_WAYBACK_MAX_AGE_DAYS", "30")),
         scraper_min_text_length=int(os.getenv("SCRAPER_MIN_TEXT_LENGTH", "200")),

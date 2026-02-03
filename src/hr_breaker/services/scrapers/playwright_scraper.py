@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from .base import BaseScraper, CloudflareBlockedError, ScrapingError
@@ -5,12 +6,12 @@ from .base import BaseScraper, CloudflareBlockedError, ScrapingError
 logger = logging.getLogger(__name__)
 
 try:
-    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+    from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
-    sync_playwright = None
+    async_playwright = None
     PlaywrightTimeout = None
 
 
@@ -22,8 +23,8 @@ class PlaywrightScraper(BaseScraper):
     def __init__(self, timeout: float = 60000):  # ms for playwright
         self.timeout = timeout
 
-    def scrape(self, url: str) -> str:
-        """Scrape job posting using headless browser."""
+    async def scrape_async(self, url: str) -> str:
+        """Scrape job posting using headless browser (async)."""
         if not PLAYWRIGHT_AVAILABLE:
             raise ScrapingError(
                 "Playwright not installed. Install with: "
@@ -31,18 +32,30 @@ class PlaywrightScraper(BaseScraper):
             )
 
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
                 try:
-                    context = browser.new_context(
-                        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    context = await browser.new_context(
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/120.0.0.0 Safari/537.36"
+                        "Chrome/120.0.0.0 Safari/537.36",
+                        locale="ru-RU",
+                        extra_http_headers={
+                            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+                        },
                     )
-                    page = context.new_page()
+                    page = await context.new_page()
 
-                    page.goto(url, wait_until="networkidle", timeout=self.timeout)
-                    html = page.content()
+                    # Try domcontentloaded first (faster), fallback to load
+                    try:
+                        await page.goto(url, wait_until="domcontentloaded", timeout=self.timeout)
+                        # Wait a bit for JS to render
+                        await page.wait_for_timeout(2000)
+                    except PlaywrightTimeout:
+                        logger.warning(f"Timeout on domcontentloaded, trying with load event")
+                        await page.goto(url, wait_until="load", timeout=self.timeout)
+
+                    html = await page.content()
 
                     if self.is_cloudflare_blocked(html):
                         raise CloudflareBlockedError(
@@ -51,10 +64,27 @@ class PlaywrightScraper(BaseScraper):
 
                     return self.extract_job_text(html)
                 finally:
-                    browser.close()
+                    await browser.close()
         except PlaywrightTimeout:
             raise ScrapingError(f"Playwright timeout loading {url}")
         except Exception as e:
             if isinstance(e, (ScrapingError, CloudflareBlockedError)):
                 raise
             raise ScrapingError(f"Playwright error: {e}")
+
+    def scrape(self, url: str) -> str:
+        """Scrape job posting using headless browser (sync wrapper)."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is not None:
+            # Already in async context - run in thread pool to avoid blocking
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, self.scrape_async(url))
+                return future.result()
+        else:
+            # No async loop - run directly
+            return asyncio.run(self.scrape_async(url))
