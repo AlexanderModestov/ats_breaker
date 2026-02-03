@@ -36,6 +36,7 @@ async def _run_optimization(
 ) -> None:
     """Background task to run the optimization."""
     settings = get_settings()
+    logger.info(f"[{run_id}] Starting optimization background task")
 
     try:
         # Step 1: Parse job posting
@@ -65,7 +66,9 @@ async def _run_optimization(
                 return
 
         # Parse job posting
+        logger.info(f"[{run_id}] Parsing job posting...")
         job = await parse_job_posting(job_text)
+        logger.info(f"[{run_id}] Job parsed: {job.title} at {job.company}")
         job_parsed = {
             "title": job.title,
             "company": job.company,
@@ -82,7 +85,9 @@ async def _run_optimization(
         })
 
         # Step 2: Extract name from CV and create ResumeSource
+        logger.info(f"[{run_id}] Extracting name from CV...")
         first_name, last_name = await extract_name(cv_content)
+        logger.info(f"[{run_id}] Name extracted: {first_name} {last_name}")
         source = ResumeSource(
             content=cv_content,
             first_name=first_name,
@@ -120,6 +125,7 @@ async def _run_optimization(
             })
 
         # Step 3-5: Run optimization loop
+        logger.info(f"[{run_id}] Starting optimization loop (max {max_iterations} iterations)...")
         optimized, validation, _ = await optimize_for_job(
             source=source,
             job=job,
@@ -129,6 +135,7 @@ async def _run_optimization(
         )
 
         # Step 6: Save result
+        logger.info(f"[{run_id}] Optimization loop completed. Passed: {validation.passed}")
         result_html = optimized.html if optimized else None
         result_pdf_path = None
 
@@ -138,6 +145,7 @@ async def _run_optimization(
             except SupabaseError as e:
                 logger.error(f"Failed to upload result PDF: {e}")
 
+        logger.info(f"[{run_id}] Saving results to database...")
         supabase.update_optimization_run(run_id, {
             "status": "complete",
             "current_step": None,
@@ -145,6 +153,7 @@ async def _run_optimization(
             "result_pdf_path": result_pdf_path,
             "feedback": all_feedback,
         })
+        logger.info(f"[{run_id}] Optimization complete!")
 
     except Exception as e:
         logger.exception(f"Optimization failed: {e}")

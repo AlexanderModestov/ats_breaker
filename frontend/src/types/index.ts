@@ -81,6 +81,18 @@ export interface OptimizationStartResponse {
   status: string;
 }
 
+export interface OptimizationSummary {
+  id: string;
+  status: string;
+  job_title: string | null;
+  job_company: string | null;
+  created_at: string;
+}
+
+export interface OptimizationListResponse {
+  runs: OptimizationSummary[];
+}
+
 // Theme type
 export type Theme = "minimal" | "professional" | "bold";
 

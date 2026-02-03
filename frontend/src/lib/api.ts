@@ -2,8 +2,10 @@ import { getSupabaseClient } from "./supabase";
 import type {
   CV,
   CVListResponse,
+  OptimizationListResponse,
   OptimizationStartResponse,
   OptimizationStatus,
+  OptimizationSummary,
   OptimizeRequest,
   UserProfile,
   UserProfileUpdate,
@@ -103,6 +105,11 @@ export async function deleteCV(cvId: string): Promise<void> {
 }
 
 // Optimization API
+export async function listOptimizations(): Promise<OptimizationSummary[]> {
+  const response = await fetchWithAuth<OptimizationListResponse>("/optimize");
+  return response.runs;
+}
+
 export async function startOptimization(
   request: OptimizeRequest
 ): Promise<OptimizationStartResponse> {

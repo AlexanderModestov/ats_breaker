@@ -1,15 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   downloadOptimizationPDF,
   getOptimizationStatus,
+  listOptimizations,
   startOptimization,
 } from "@/lib/api";
-import type { OptimizationStatus, OptimizeRequest } from "@/types";
+import type { OptimizationStatus, OptimizationSummary, OptimizeRequest } from "@/types";
 
 const POLL_INTERVAL = 2000; // 2 seconds
+
+export function useOptimizations() {
+  return useQuery<OptimizationSummary[], Error>({
+    queryKey: ["optimizations"],
+    queryFn: listOptimizations,
+  });
+}
 
 export function useStartOptimization() {
   return useMutation({
