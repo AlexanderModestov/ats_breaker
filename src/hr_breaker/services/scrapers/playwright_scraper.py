@@ -33,18 +33,43 @@ class PlaywrightScraper(BaseScraper):
 
         try:
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
+                # Launch with stealth settings to avoid detection
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-dev-shm-usage",
+                        "--no-sandbox",
+                    ],
+                )
                 try:
                     context = await browser.new_context(
                         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/120.0.0.0 Safari/537.36",
-                        locale="ru-RU",
+                        locale="en-US",
+                        timezone_id="America/New_York",
+                        viewport={"width": 1920, "height": 1080},
                         extra_http_headers={
-                            "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+                            "Accept-Language": "en-US,en;q=0.9",
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                            "Accept-Encoding": "gzip, deflate, br",
+                            "Connection": "keep-alive",
+                            "Upgrade-Insecure-Requests": "1",
+                            "Sec-Fetch-Dest": "document",
+                            "Sec-Fetch-Mode": "navigate",
+                            "Sec-Fetch-Site": "none",
+                            "Sec-Fetch-User": "?1",
                         },
                     )
                     page = await context.new_page()
+
+                    # Remove webdriver property to avoid detection
+                    await page.add_init_script("""
+                        Object.defineProperty(navigator, 'webdriver', {
+                            get: () => undefined
+                        });
+                    """)
 
                     # Try domcontentloaded first (faster), fallback to load
                     try:
