@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TabsContextValue {
   value: string;
@@ -19,14 +20,14 @@ function useTabsContext() {
 }
 
 interface TabsProps {
-  defaultValue: string;
+  defaultValue?: string;
   value?: string;
   onValueChange?: (value: string) => void;
   children: React.ReactNode;
   className?: string;
 }
 
-function Tabs({ defaultValue, value, onValueChange, children, className }: TabsProps) {
+function Tabs({ defaultValue = "", value, onValueChange, children, className }: TabsProps) {
   const [internalValue, setInternalValue] = React.useState(defaultValue);
   const currentValue = value ?? internalValue;
 
@@ -54,7 +55,7 @@ function TabsList({ children, className }: TabsListProps) {
   return (
     <div
       className={cn(
-        "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+        "inline-flex h-11 items-center justify-center rounded-xl bg-secondary/50 p-1 text-muted-foreground",
         className
       )}
     >
@@ -78,12 +79,23 @@ function TabsTrigger({ value, children, className }: TabsTriggerProps) {
       type="button"
       onClick={() => onValueChange(value)}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        isActive && "bg-background text-foreground shadow-sm",
+        "relative inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        isActive ? "text-foreground" : "hover:text-foreground/80",
         className
       )}
     >
-      {children}
+      {isActive && (
+        <motion.div
+          layoutId="tab-indicator"
+          className="absolute inset-0 rounded-lg bg-background shadow-sm"
+          transition={{
+            type: "spring",
+            stiffness: 500,
+            damping: 40,
+          }}
+        />
+      )}
+      <span className="relative z-10">{children}</span>
     </button>
   );
 }
@@ -97,19 +109,24 @@ interface TabsContentProps {
 function TabsContent({ value, children, className }: TabsContentProps) {
   const { value: selectedValue } = useTabsContext();
 
-  if (selectedValue !== value) {
-    return null;
-  }
-
   return (
-    <div
-      className={cn(
-        "mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        className
+    <AnimatePresence mode="wait">
+      {selectedValue === value && (
+        <motion.div
+          key={value}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+          className={cn(
+            "mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            className
+          )}
+        >
+          {children}
+        </motion.div>
       )}
-    >
-      {children}
-    </div>
+    </AnimatePresence>
   );
 }
 

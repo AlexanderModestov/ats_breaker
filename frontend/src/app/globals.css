@@ -1,86 +1,183 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Theme: Minimal (default) */
+/* Minimalist Modern Theme */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 3.9%;
+  /* Warm off-white base */
+  --background: 40 20% 98%;
+  --foreground: 220 20% 10%;
+
+  /* Cards with subtle warmth */
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 3.9%;
+  --card-foreground: 220 20% 10%;
+
+  /* Popover */
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 3.9%;
-  --primary: 0 0% 9%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 0 0% 96.1%;
-  --secondary-foreground: 0 0% 9%;
-  --muted: 0 0% 96.1%;
-  --muted-foreground: 0 0% 45.1%;
-  --accent: 0 0% 96.1%;
-  --accent-foreground: 0 0% 9%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 89.8%;
-  --input: 0 0% 89.8%;
-  --ring: 0 0% 3.9%;
-  --radius: 0.5rem;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --popover-foreground: 220 20% 10%;
+
+  /* Primary - Deep charcoal */
+  --primary: 220 20% 12%;
+  --primary-foreground: 40 20% 98%;
+
+  /* Secondary - Warm gray */
+  --secondary: 40 10% 94%;
+  --secondary-foreground: 220 20% 20%;
+
+  /* Muted */
+  --muted: 40 10% 94%;
+  --muted-foreground: 220 10% 45%;
+
+  /* Accent - Refined teal */
+  --accent: 172 50% 45%;
+  --accent-foreground: 0 0% 100%;
+
+  /* Destructive */
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Success */
+  --success: 152 60% 42%;
+  --success-foreground: 0 0% 100%;
+
+  /* Warning */
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+
+  /* Borders - Very subtle */
+  --border: 40 10% 90%;
+  --input: 40 10% 90%;
+  --ring: 172 50% 45%;
+
+  --radius: 0.75rem;
 }
 
-/* Theme: Professional */
-[data-theme="professional"] {
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222 47% 11%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
-  --font-sans: "Source Sans Pro", system-ui, sans-serif;
-}
+/* Dark mode - Refined dark */
+[data-theme="dark"] {
+  --background: 220 20% 8%;
+  --foreground: 40 10% 92%;
 
-/* Theme: Bold (dark mode) */
-[data-theme="bold"] {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --card: 224 71% 4%;
-  --card-foreground: 213 31% 91%;
-  --popover: 224 71% 4%;
-  --popover-foreground: 213 31% 91%;
-  --primary: 180 100% 50%;
-  --primary-foreground: 224 71% 4%;
-  --secondary: 215 28% 17%;
-  --secondary-foreground: 213 31% 91%;
-  --muted: 215 28% 17%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 330 100% 71%;
-  --accent-foreground: 224 71% 4%;
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 213 31% 91%;
-  --border: 215 28% 17%;
-  --input: 215 28% 17%;
-  --ring: 180 100% 50%;
-  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --card: 220 20% 11%;
+  --card-foreground: 40 10% 92%;
+
+  --popover: 220 20% 11%;
+  --popover-foreground: 40 10% 92%;
+
+  --primary: 40 10% 92%;
+  --primary-foreground: 220 20% 8%;
+
+  --secondary: 220 15% 16%;
+  --secondary-foreground: 40 10% 85%;
+
+  --muted: 220 15% 16%;
+  --muted-foreground: 220 10% 55%;
+
+  --accent: 172 50% 50%;
+  --accent-foreground: 220 20% 8%;
+
+  --destructive: 0 72% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 15% 18%;
+  --input: 220 15% 18%;
+  --ring: 172 50% 50%;
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-sans);
+
+  html {
+    scroll-behavior: smooth;
   }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Satoshi', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'ss01' on, 'cv01' on;
+  }
+
+  /* Smooth focus states */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    transition: box-shadow 0.2s ease;
+  }
+}
+
+@layer components {
+  /* Refined glass effect for cards */
+  .glass {
+    @apply bg-card/80 backdrop-blur-xl;
+  }
+
+  /* Subtle text gradient */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--muted-foreground)) 100%);
+  }
+
+  /* Accent gradient */
+  .accent-gradient {
+    background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(172 60% 35%) 100%);
+  }
+
+  /* Shimmer loading effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--secondary)) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Subtle hover lift */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px -12px hsl(var(--foreground) / 0.15);
+  }
+
+  /* Page container */
+  .page-container {
+    @apply mx-auto max-w-5xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
+@layer utilities {
+  /* Smooth enter animations */
+  .animate-in {
+    animation: animateIn 0.4s ease-out forwards;
+  }
+
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Stagger delays */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
 }
