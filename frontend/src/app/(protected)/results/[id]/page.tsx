@@ -2,10 +2,9 @@
 
 import { use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Building2, Briefcase, MapPin } from "lucide-react";
+import { ArrowLeft, Download, Building2, MapPin, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProgressStepper } from "@/components/ProgressStepper";
 import { ResumePreview } from "@/components/ResumePreview";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import {
@@ -48,11 +47,11 @@ export default function ResultsPage({
       >
         <Button
           variant="ghost"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/optimize")}
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
+          Back
         </Button>
         <Card className="border-destructive/50">
           <CardContent className="pt-6">
@@ -74,11 +73,11 @@ export default function ResultsPage({
       >
         <Button
           variant="ghost"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/optimize")}
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
+          Back
         </Button>
         <Card>
           <CardContent className="pt-6">
@@ -104,11 +103,11 @@ export default function ResultsPage({
         <motion.div whileHover={{ x: -2 }} whileTap={{ scale: 0.98 }}>
           <Button
             variant="ghost"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push("/optimize")}
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="hidden sm:inline">Back</span>
           </Button>
         </motion.div>
 
@@ -177,17 +176,45 @@ export default function ResultsPage({
         </div>
       </SlideUp>
 
-      {/* Progress */}
-      <SlideUp delay={0.2}>
-        <Card className="border-border/50 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ProgressStepper status={status} />
-          </CardContent>
-        </Card>
-      </SlideUp>
+      {/* Job URL */}
+      {status.job_url && (
+        <SlideUp delay={0.2}>
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Job Posting</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <a
+                href={status.job_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ExternalLink className="h-4 w-4 shrink-0" />
+                <span className="truncate group-hover:underline">{status.job_url}</span>
+              </a>
+            </CardContent>
+          </Card>
+        </SlideUp>
+      )}
+
+      {/* Processing indicator */}
+      <AnimatePresence>
+        {!isComplete && !isFailed && (
+          <SlideUp delay={0.2}>
+            <Card className="border-border/50 shadow-sm">
+              <CardContent className="py-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    {status.current_step || "Processing..."}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </SlideUp>
+        )}
+      </AnimatePresence>
 
       {/* Resume preview */}
       <AnimatePresence>

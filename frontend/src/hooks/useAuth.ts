@@ -52,7 +52,7 @@ export function useAuth() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${redirectBase}/dashboard`,
+        redirectTo: `${redirectBase}/optimize`,
       },
     });
     if (error) throw error;

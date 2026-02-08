@@ -175,12 +175,16 @@ async def list_optimization_runs(
     summaries = []
     for run in runs:
         job_parsed = run.get("job_parsed") or {}
+        # Extract job_url if job_input looks like a URL
+        job_input = run.get("job_input") or ""
+        job_url = job_input if job_input.startswith(("http://", "https://")) else None
         summaries.append(
             OptimizationSummary(
                 id=run["id"],
                 status=run["status"],
                 job_title=job_parsed.get("title"),
                 job_company=job_parsed.get("company"),
+                job_url=job_url,
                 created_at=run["created_at"],
             )
         )
@@ -276,12 +280,17 @@ async def get_optimization_status(
     if not run:
         raise HTTPException(status_code=404, detail="Optimization run not found")
 
+    # Extract job_url if job_input looks like a URL
+    job_input = run.get("job_input") or ""
+    job_url = job_input if job_input.startswith(("http://", "https://")) else None
+
     return OptimizationStatus(
         id=run["id"],
         status=run["status"],
         current_step=run.get("current_step"),
         iterations=run.get("iterations", 0),
         job_parsed=run.get("job_parsed"),
+        job_url=job_url,
         feedback=run.get("feedback"),
         result_html=run.get("result_html"),
         error=run.get("error"),

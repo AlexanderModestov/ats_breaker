@@ -21,6 +21,7 @@ interface ProgressStepperProps {
 export function ProgressStepper({ status }: ProgressStepperProps) {
   const currentStepIndex = STEPS.findIndex((s) => s.key === status.status);
   const isFailed = status.status === "failed";
+  const isFullyComplete = status.status === "complete";
 
   return (
     <div className="space-y-6">
@@ -32,7 +33,9 @@ export function ProgressStepper({ status }: ProgressStepperProps) {
             className="absolute left-0 top-0 w-full bg-primary"
             initial={{ height: 0 }}
             animate={{
-              height: `${Math.max(0, (currentStepIndex / (STEPS.length - 1)) * 100)}%`,
+              height: isFullyComplete
+                ? "100%"
+                : `${Math.max(0, (currentStepIndex / (STEPS.length - 1)) * 100)}%`,
             }}
             transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
           />
@@ -41,8 +44,9 @@ export function ProgressStepper({ status }: ProgressStepperProps) {
         {/* Step items */}
         <div className="relative space-y-4">
           {STEPS.map((step, index) => {
-            const isComplete = index < currentStepIndex;
-            const isCurrent = index === currentStepIndex;
+            // When status is "complete", all steps including the last one are complete
+            const isComplete = isFullyComplete ? index <= currentStepIndex : index < currentStepIndex;
+            const isCurrent = isFullyComplete ? false : index === currentStepIndex;
             const isPending = index > currentStepIndex;
 
             return (

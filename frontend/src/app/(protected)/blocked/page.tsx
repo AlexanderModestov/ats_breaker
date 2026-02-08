@@ -103,9 +103,9 @@ function BlockedContent() {
           <Button
             variant="ghost"
             className="w-full"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push("/optimize")}
           >
-            Back to Dashboard
+            Back
           </Button>
         </CardFooter>
       </Card>

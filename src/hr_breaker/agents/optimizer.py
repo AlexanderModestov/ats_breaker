@@ -37,6 +37,13 @@ INPUT: The user's resume text (any format).
 
 OUTPUT: Generate HTML for the <body> of a resume PDF. Do NOT include <html>, <head>, or <body> tags - only the content.
 
+LANGUAGE RULE (CRITICAL):
+- The output resume MUST be in the SAME LANGUAGE as the original resume
+- If the original resume is in German, output in German
+- If the original resume is in French, output in French
+- If the job posting is in a different language than the resume, still output in the resume's original language
+- Never translate the resume to another language unless explicitly requested
+
 CONTENT RULES:
 - When describing job experiences, show concrete results: focus on impact, not tasks.
 - Include specific technologies within achievement descriptions.
@@ -58,6 +65,7 @@ STRICT RULES - NEVER VIOLATE:
 6. NEVER add <script> tags
 7. You CAN use <style> tags if you need custom styling beyond the provided classes
 8. Do not cut critical content (like work experience, education, etc) if you can cut something else (like summary)
+9. NEVER translate the resume - output MUST be in the same language as the original resume
 
 CONTENT BUDGET:
 - Target: ~500 words, ~4000 characters (these are rough estimates, actual fit depends on formatting)

@@ -3,6 +3,8 @@ output/
 frontend/node_modules/
 frontend/.next/
 frontend/.env
+frontend/.env.local
+frontend/.env.production.local
 tests
 .worktrees/
 __pycache__/

@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { motion } from "@/components/motion";
-import { LogOut, Settings, LayoutDashboard, Sparkles } from "lucide-react";
+import { LogOut, Settings, Sparkles, FileText, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/optimize", label: "Optimize", icon: Sparkles },
+  { href: "/cvs", label: "CVs", icon: FileText },
+  { href: "/history", label: "History", icon: History },
 ];
 
 export function Navbar() {
@@ -27,7 +28,7 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link
-          href="/dashboard"
+          href="/optimize"
           className="group flex items-center gap-2"
         >
           <motion.div

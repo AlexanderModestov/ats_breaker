@@ -70,6 +70,7 @@ export interface OptimizationStatus {
   current_step: string | null;
   iterations: number;
   job_parsed: JobParsed | null;
+  job_url: string | null;
   feedback: IterationFeedback[] | null;
   result_html: string | null;
   error: string | null;
@@ -86,6 +87,7 @@ export interface OptimizationSummary {
   status: string;
   job_title: string | null;
   job_company: string | null;
+  job_url: string | null;
   created_at: string;
 }
 

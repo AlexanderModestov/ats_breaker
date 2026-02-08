@@ -80,6 +80,7 @@ class OptimizationStatus(BaseModel):
     current_step: str | None = None
     iterations: int = 0
     job_parsed: dict[str, Any] | None = None
+    job_url: str | None = None
     feedback: list[dict[str, Any]] | None = None
     result_html: str | None = None
     error: str | None = None
@@ -100,6 +101,7 @@ class OptimizationSummary(BaseModel):
     status: str
     job_title: str | None = None
     job_company: str | None = None
+    job_url: str | None = None
     created_at: datetime
 
 

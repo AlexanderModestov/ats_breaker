@@ -22,7 +22,7 @@ export function useSubscriptionCheckout() {
     mutationFn: async () => {
       const baseUrl = window.location.origin;
       const response = await createSubscriptionCheckout(
-        `${baseUrl}/dashboard?success=subscription`,
+        `${baseUrl}/optimize?success=subscription`,
         `${baseUrl}/pricing`
       );
       return response;
@@ -41,7 +41,7 @@ export function useAddonCheckout() {
     mutationFn: async () => {
       const baseUrl = window.location.origin;
       const response = await createAddonCheckout(
-        `${baseUrl}/dashboard?success=addon`,
+        `${baseUrl}/optimize?success=addon`,
         `${baseUrl}/blocked`
       );
       return response;
