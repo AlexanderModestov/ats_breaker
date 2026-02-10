@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Clock, ExternalLink, ArrowRight } from "lucide-react";
+import { Building2, Clock, ExternalLink, ArrowRight, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -8,20 +8,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { motion } from "@/components/motion";
 import type { OptimizationSummary } from "@/types";
 
 interface OptimizationCardProps {
   optimization: OptimizationSummary;
   onClick: () => void;
+  onDelete?: (id: string) => void;
+  isDeleting?: boolean;
 }
 
 export function OptimizationCard({
   optimization,
   onClick,
+  onDelete,
+  isDeleting,
 }: OptimizationCardProps) {
   const title = optimization.job_title || "Untitled Job";
   const company = optimization.job_company || "Unknown Company";
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete && !isDeleting) {
+      onDelete(optimization.id);
+    }
+  };
 
   const formattedDate = new Date(optimization.created_at).toLocaleDateString("en-US", {
     month: "short",
@@ -56,6 +68,17 @@ export function OptimizationCard({
             <CardTitle className="line-clamp-1 text-base font-medium">
               {title}
             </CardTitle>
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           <CardDescription className="flex items-center gap-1.5">
             <Building2 className="h-3.5 w-3.5" />

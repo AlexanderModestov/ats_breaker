@@ -1,19 +1,39 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { History } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { OptimizationCard } from "@/components/OptimizationCard";
 import { motion, StaggerList, StaggerItem, SlideUp } from "@/components/motion";
-import { useOptimizations } from "@/hooks/useOptimization";
+import { useOptimizations, useDeleteOptimization } from "@/hooks/useOptimization";
 
 export default function HistoryPage() {
   const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const {
     data: optimizations,
     isLoading: optimizationsLoading,
     error: optimizationsError,
   } = useOptimizations();
+  const deleteOptimization = useDeleteOptimization();
+
+  const handleDeleteClick = (id: string) => {
+    setDeleteTarget(id);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteOptimization.mutateAsync(deleteTarget);
+      setDeleteTarget(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -68,12 +88,26 @@ export default function HistoryPage() {
                 <OptimizationCard
                   optimization={opt}
                   onClick={() => router.push(`/results/${opt.id}`)}
+                  onDelete={handleDeleteClick}
+                  isDeleting={deleteTarget === opt.id && isDeleting}
                 />
               </StaggerItem>
             ))}
           </StaggerList>
         )}
       </SlideUp>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete CV?"
+        description="This will permanently delete this CV and its generated PDF. This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteConfirm}
+        isLoading={isDeleting}
+        variant="destructive"
+      />
     </motion.div>
   );
 }

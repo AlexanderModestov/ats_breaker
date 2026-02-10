@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  deleteOptimization,
   downloadOptimizationPDF,
   getOptimizationStatus,
   listOptimizations,
@@ -99,4 +100,15 @@ export function useDownloadPDF() {
   }, []);
 
   return { download, downloading };
+}
+
+export function useDeleteOptimization() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (runId: string) => deleteOptimization(runId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["optimizations"] });
+    },
+  });
 }

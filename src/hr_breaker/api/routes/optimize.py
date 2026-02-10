@@ -350,3 +350,30 @@ async def get_optimization_pdf(
         )
     except SupabaseError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.delete("/{run_id}")
+async def delete_optimization(
+    run_id: str,
+    user_id: CurrentUser,
+    supabase: SupabaseServiceDep,
+) -> dict[str, bool]:
+    """Delete an optimization run."""
+    run = supabase.get_optimization_run(run_id, user_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Optimization run not found")
+
+    try:
+        # Delete the PDF from storage if it exists
+        pdf_path = run.get("result_pdf_path")
+        if pdf_path:
+            try:
+                supabase.delete_result_pdf(pdf_path)
+            except SupabaseError:
+                pass  # Ignore storage deletion errors
+
+        # Delete the optimization run record
+        supabase.delete_optimization_run(run_id)
+        return {"success": True}
+    except SupabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e

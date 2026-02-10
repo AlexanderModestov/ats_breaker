@@ -296,6 +296,22 @@ class SupabaseService:
             logger.error(f"Failed to download result PDF: {e}")
             raise SupabaseError(f"Failed to download result PDF: {e}") from e
 
+    def delete_result_pdf(self, file_path: str) -> None:
+        """Delete result PDF from storage."""
+        try:
+            self._client.storage.from_("results").remove([file_path])
+        except Exception as e:
+            logger.error(f"Failed to delete result PDF: {e}")
+            raise SupabaseError(f"Failed to delete result PDF: {e}") from e
+
+    def delete_optimization_run(self, run_id: str) -> None:
+        """Delete an optimization run."""
+        try:
+            self._client.table("optimization_runs").delete().eq("id", run_id).execute()
+        except Exception as e:
+            logger.error(f"Failed to delete optimization run: {e}")
+            raise SupabaseError(f"Failed to delete optimization run: {e}") from e
+
     # Subscription operations
     def consume_request_atomic(
         self,

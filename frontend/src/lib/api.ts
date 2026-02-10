@@ -138,6 +138,10 @@ export async function downloadOptimizationPDF(runId: string): Promise<Blob> {
   return response.blob();
 }
 
+export async function deleteOptimization(runId: string): Promise<void> {
+  await fetchWithAuth(`/optimize/${runId}`, { method: "DELETE" });
+}
+
 // Subscription API
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   return fetchWithAuth<SubscriptionStatus>("/subscription");
