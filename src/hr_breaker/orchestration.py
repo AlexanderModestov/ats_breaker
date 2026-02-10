@@ -13,7 +13,7 @@ from hr_breaker.filters import (
     LLMChecker,
     DataValidator,
     FilterRegistry,
-    HallucinationChecker,
+    ContentIntegrityChecker,
     KeywordMatcher,
     VectorSimilarityMatcher,
 )
@@ -29,7 +29,7 @@ from hr_breaker.services.pdf_parser import extract_text_from_pdf
 from hr_breaker.services.renderer import RenderError, HTMLRenderer
 
 # Ensure filters are registered
-_ = DataValidator, LLMChecker, KeywordMatcher, VectorSimilarityMatcher, HallucinationChecker
+_ = DataValidator, LLMChecker, KeywordMatcher, VectorSimilarityMatcher, ContentIntegrityChecker
 
 
 @contextmanager
