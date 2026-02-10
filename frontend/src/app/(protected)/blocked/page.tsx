@@ -100,13 +100,6 @@ function BlockedContent() {
                 : "Subscribe - €20/month"}
             </Button>
           )}
-          <Button
-            variant="ghost"
-            className="w-full"
-            onClick={() => router.push("/optimize")}
-          >
-            Back
-          </Button>
         </CardFooter>
       </Card>
     </div>
