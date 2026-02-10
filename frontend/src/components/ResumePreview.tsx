@@ -14,6 +14,135 @@ import { motion, AnimatePresence } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import type { OptimizationStatus } from "@/types";
 
+// CSS styles matching the PDF template (resume_wrapper.html)
+const resumeStyles = `
+  .resume-preview {
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-size: 11pt;
+    line-height: 1.25;
+    color: #000;
+    background: white;
+    padding: 0.4in;
+    max-width: 8.5in;
+    margin: 0 auto;
+  }
+  .resume-preview * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  .resume-preview a {
+    color: #000;
+    text-decoration: underline;
+  }
+  .resume-preview .header {
+    text-align: center;
+    margin-bottom: 8pt;
+  }
+  .resume-preview .name {
+    font-size: 14pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2pt;
+    margin-bottom: 4pt;
+  }
+  .resume-preview .contact-line {
+    font-size: 10pt;
+  }
+  .resume-preview .contact-line .sep {
+    margin: 0 6pt;
+    color: #666;
+  }
+  .resume-preview .section {
+    margin-top: 10pt;
+  }
+  .resume-preview .section-title {
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 11pt;
+    letter-spacing: 1pt;
+    border-bottom: 1pt solid #000;
+    padding-bottom: 2pt;
+    margin-bottom: 6pt;
+  }
+  .resume-preview .section-content {
+    padding-left: 0;
+  }
+  .resume-preview .summary {
+    text-align: justify;
+    line-height: 1.3;
+  }
+  .resume-preview .entry {
+    margin-bottom: 8pt;
+  }
+  .resume-preview .entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2pt;
+  }
+  .resume-preview .entry-main {
+    flex: 1;
+  }
+  .resume-preview .entry-date {
+    text-align: right;
+    white-space: nowrap;
+    margin-left: 8pt;
+  }
+  .resume-preview .company, .resume-preview .institution {
+    font-weight: bold;
+  }
+  .resume-preview .title, .resume-preview .degree {
+    font-style: italic;
+  }
+  .resume-preview .location {
+    color: #444;
+  }
+  .resume-preview .bullets {
+    list-style: none !important;
+    margin: 0;
+    padding: 0;
+  }
+  .resume-preview .bullets li {
+    position: relative;
+    padding-left: 12pt;
+    margin-bottom: 1pt;
+    text-align: justify;
+    line-height: 1.25;
+  }
+  .resume-preview .bullets li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #000;
+  }
+  .resume-preview .skills-list {
+    text-align: justify;
+    line-height: 1.3;
+  }
+  .resume-preview .project {
+    margin-bottom: 4pt;
+  }
+  .resume-preview .project-name {
+    font-weight: bold;
+  }
+  .resume-preview .simple-list {
+    list-style: none !important;
+    margin: 0;
+    padding: 0;
+  }
+  .resume-preview .simple-list li {
+    position: relative;
+    padding-left: 12pt;
+    margin-bottom: 1pt;
+  }
+  .resume-preview .simple-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+  }
+`;
+
 interface ResumePreviewProps {
   status: OptimizationStatus;
   onDownload: () => void;
@@ -72,14 +201,17 @@ export function ResumePreview({
         <CardContent className="p-0">
           {hasHtml && (
             <div className="relative">
+              <style dangerouslySetInnerHTML={{ __html: resumeStyles }} />
               <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full bg-background/80 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
                 <Eye className="h-3.5 w-3.5" />
-                <span>HTML Preview</span>
+                <span>Preview</span>
               </div>
-              <div
-                className="prose prose-sm max-w-none bg-white p-8 pt-14"
-                dangerouslySetInnerHTML={{ __html: status.result_html! }}
-              />
+              <div className="overflow-auto bg-gray-100 p-4 pt-12">
+                <div
+                  className="resume-preview shadow-lg"
+                  dangerouslySetInnerHTML={{ __html: status.result_html! }}
+                />
+              </div>
             </div>
           )}
         </CardContent>
