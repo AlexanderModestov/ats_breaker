@@ -37,7 +37,7 @@ def log_time(operation: str):
     start = time.perf_counter()
     yield
     elapsed = time.perf_counter() - start
-    logger.debug(f"{operation}: {elapsed:.2f}s")
+    print(f"  ⏱️  {operation}: {elapsed:.2f}s")
 
 
 async def run_filters(
@@ -51,17 +51,18 @@ async def run_filters(
 
     if parallel:
         # Run all filters concurrently
+        print("  🔍 Running filters in parallel...")
         start = time.perf_counter()
         filter_instances = [filter_cls() for filter_cls in filters]
         tasks = [f.evaluate(optimized, job, source) for f in filter_instances]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
-        logger.debug(f"All filters (parallel): {time.perf_counter() - start:.2f}s")
+        print(f"  ⏱️  All filters (parallel): {time.perf_counter() - start:.2f}s")
 
         # Convert exceptions to failed FilterResults
         results = []
         for f, result in zip(filter_instances, raw_results):
             if isinstance(result, Exception):
-                logger.error(f"Filter {f.name} raised exception: {result}")
+                print(f"    ❌ {f.name}: ERROR - {result}")
                 results.append(FilterResult(
                     filter_name=f.name,
                     passed=False,
@@ -71,12 +72,16 @@ async def run_filters(
                     suggestions=["Check filter implementation"],
                 ))
             else:
+                status = "✅" if result.passed else "❌"
+                print(f"    {status} {f.name}: score={result.score:.2f}")
                 results.append(result)
         return ValidationResult(results=results)
 
     # Sequential mode: sorted by priority, early exit on failure
+    print("  🔍 Running filters sequentially...")
     results = []
     filters = sorted(filters, key=lambda f: f.priority)
+    total_start = time.perf_counter()
 
     for filter_cls in filters:
         # Skip high-priority (last) filters if earlier ones failed
@@ -86,13 +91,17 @@ async def run_filters(
         f = filter_cls()
         start = time.perf_counter()
         result = await f.evaluate(optimized, job, source)
-        logger.debug(f"{filter_cls.name}: {time.perf_counter() - start:.2f}s")
+        elapsed = time.perf_counter() - start
+        status = "✅" if result.passed else "❌"
+        print(f"    {status} {filter_cls.name}: {elapsed:.2f}s (score={result.score:.2f})")
         results.append(result)
 
         # Early exit on failure (unless it's a final check)
         if not result.passed and filter_cls.priority < 100:
+            print(f"    ⚠️  Early exit: {filter_cls.name} failed")
             break
 
+    print(f"  ⏱️  All filters (sequential): {time.perf_counter() - total_start:.2f}s")
     return ValidationResult(results=results)
 
 
@@ -133,16 +142,20 @@ async def optimize_for_job(
     last_attempt: str | None = None
 
     for i in range(max_iterations):
-        logger.debug(f"Iteration {i + 1}/{max_iterations}")
+        iter_start = time.perf_counter()
+        print(f"\n  {'='*50}")
+        print(f"  🔄 ITERATION {i + 1}/{max_iterations}")
+        print(f"  {'='*50}")
+
         ctx = IterationContext(
             iteration=i,
             original_resume=source.content,
             last_attempt=last_attempt,
             validation=validation,
         )
-        with log_time("optimize_resume"):
+        with log_time("optimize_resume (LLM)"):
             optimized = await optimize_resume(source, job, ctx)
-        logger.debug(f"Optimizer changes: {optimized.changes}")
+        print(f"  📝 Changes: {optimized.changes[:100]}..." if len(optimized.changes) > 100 else f"  📝 Changes: {optimized.changes}")
         # Store last attempt for feedback (html or data depending on mode)
         last_attempt = optimized.html if optimized.html else (
             optimized.data.model_dump_json() if optimized.data else None
@@ -168,10 +181,17 @@ async def optimize_for_job(
         else:
             validation = await run_filters(optimized, job, source, parallel=parallel)
 
+        iter_elapsed = time.perf_counter() - iter_start
+        passed_count = sum(1 for r in validation.results if r.passed)
+        total_count = len(validation.results)
+        print(f"  📊 Iteration {i + 1} result: {passed_count}/{total_count} filters passed")
+        print(f"  ⏱️  Iteration {i + 1} total: {iter_elapsed:.2f}s")
+
         if on_iteration:
             on_iteration(i, optimized, validation)
 
         if validation.passed:
+            print(f"  ✅ All filters passed!")
             break
 
     return optimized, validation, job

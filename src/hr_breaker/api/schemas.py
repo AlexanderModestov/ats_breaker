@@ -84,6 +84,7 @@ class OptimizationStatus(BaseModel):
     feedback: list[dict[str, Any]] | None = None
     result_html: str | None = None
     error: str | None = None
+    timing: dict[str, float] | None = Field(None, description="Timing breakdown in seconds")
     created_at: datetime
 
 

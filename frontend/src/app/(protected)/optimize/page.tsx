@@ -32,16 +32,48 @@ function OptimizeContent() {
   const [selectedCV, setSelectedCV] = useState<CV | null>(null);
   const [jobInput, setJobInput] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [cvInitialized, setCvInitialized] = useState(false);
 
-  // Handle URL params for initial CV selection and success messages
+  // Handle CV selection with localStorage persistence
+  const handleCVSelect = useCallback((cv: CV) => {
+    setSelectedCV(cv);
+    localStorage.setItem("lastSelectedCvId", cv.id);
+  }, []);
+
+  // Auto-select CV: URL param > localStorage > first CV
   useEffect(() => {
-    if (initialCvId && cvs && !selectedCV) {
+    if (!cvs || cvs.length === 0 || cvInitialized) return;
+
+    // Priority 1: URL parameter
+    if (initialCvId) {
       const cv = cvs.find((c) => c.id === initialCvId);
       if (cv) {
         setSelectedCV(cv);
+        localStorage.setItem("lastSelectedCvId", cv.id);
+        setCvInitialized(true);
+        return;
       }
     }
 
+    // Priority 2: Last used CV from localStorage
+    const lastCvId = localStorage.getItem("lastSelectedCvId");
+    if (lastCvId) {
+      const cv = cvs.find((c) => c.id === lastCvId);
+      if (cv) {
+        setSelectedCV(cv);
+        setCvInitialized(true);
+        return;
+      }
+    }
+
+    // Priority 3: First CV in the list
+    setSelectedCV(cvs[0]);
+    localStorage.setItem("lastSelectedCvId", cvs[0].id);
+    setCvInitialized(true);
+  }, [cvs, initialCvId, cvInitialized]);
+
+  // Handle success messages from URL params
+  useEffect(() => {
     const success = searchParams.get("success");
     if (success === "subscription") {
       setSuccessMessage(
@@ -56,7 +88,7 @@ function OptimizeContent() {
     if (success) {
       window.history.replaceState({}, "", "/optimize");
     }
-  }, [searchParams, cvs, selectedCV, initialCvId]);
+  }, [searchParams]);
 
   // Check access and redirect if blocked
   useEffect(() => {
@@ -120,7 +152,7 @@ function OptimizeContent() {
       {/* Form */}
       <SlideUp delay={0.1} className="mx-auto max-w-2xl space-y-6">
         {/* CV Selection */}
-        <Card className="overflow-hidden border-border/50 shadow-sm transition-shadow hover:shadow-md">
+        <Card className="border-border/50 shadow-sm transition-shadow hover:shadow-md">
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Select Resume</CardTitle>
             <CardDescription>Choose which resume to optimize</CardDescription>
@@ -129,7 +161,7 @@ function OptimizeContent() {
             <CVDropdown
               cvs={cvs || []}
               selectedCV={selectedCV}
-              onSelect={setSelectedCV}
+              onSelect={handleCVSelect}
               disabled={loadingCVs}
             />
             {cvs?.length === 0 && (

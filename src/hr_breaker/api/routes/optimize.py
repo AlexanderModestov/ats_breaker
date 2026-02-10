@@ -1,6 +1,7 @@
 """Optimization API routes."""
 
 import asyncio
+import time
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -36,7 +37,11 @@ async def _run_optimization(
 ) -> None:
     """Background task to run the optimization."""
     settings = get_settings()
-    logger.info(f"[{run_id}] Starting optimization background task")
+    total_start = time.perf_counter()
+    timing: dict[str, float] = {}
+    print(f"\n{'='*60}")
+    print(f"[{run_id}] OPTIMIZATION STARTED")
+    print(f"{'='*60}")
 
     try:
         # Step 1: Parse job posting
@@ -49,7 +54,10 @@ async def _run_optimization(
         job_text = job_input
         if job_input.startswith("http://") or job_input.startswith("https://"):
             try:
+                scrape_start = time.perf_counter()
                 job_text = scrape_job_posting(job_input)
+                timing["scrape_job"] = time.perf_counter() - scrape_start
+                print(f"⏱️  Scrape job: {timing['scrape_job']:.2f}s")
             except CloudflareBlockedError:
                 supabase.update_optimization_run(run_id, {
                     "status": "failed",
@@ -66,8 +74,11 @@ async def _run_optimization(
                 return
 
         # Parse job posting
-        logger.info(f"[{run_id}] Parsing job posting...")
+        parse_start = time.perf_counter()
+        print(f"📋 Parsing job posting...")
         job = await parse_job_posting(job_text)
+        timing["parse_job"] = time.perf_counter() - parse_start
+        print(f"⏱️  Parse job: {timing['parse_job']:.2f}s - {job.title} at {job.company}")
         logger.info(f"[{run_id}] Job parsed: {job.title} at {job.company}")
         job_parsed = {
             "title": job.title,
@@ -85,9 +96,11 @@ async def _run_optimization(
         })
 
         # Step 2: Extract name from CV and create ResumeSource
-        logger.info(f"[{run_id}] Extracting name from CV...")
+        name_start = time.perf_counter()
+        print(f"👤 Extracting name from CV...")
         first_name, last_name = await extract_name(cv_content)
-        logger.info(f"[{run_id}] Name extracted: {first_name} {last_name}")
+        timing["extract_name"] = time.perf_counter() - name_start
+        print(f"⏱️  Extract name: {timing['extract_name']:.2f}s - {first_name} {last_name}")
         source = ResumeSource(
             content=cv_content,
             first_name=first_name,
@@ -125,7 +138,8 @@ async def _run_optimization(
             })
 
         # Step 3-5: Run optimization loop
-        logger.info(f"[{run_id}] Starting optimization loop (max {max_iterations} iterations)...")
+        loop_start = time.perf_counter()
+        print(f"🔄 Starting optimization loop (max {max_iterations} iterations)...")
         optimized, validation, _ = await optimize_for_job(
             source=source,
             job=job,
@@ -133,9 +147,16 @@ async def _run_optimization(
             on_iteration=on_iteration,
             parallel=parallel,
         )
+        timing["optimization_loop"] = time.perf_counter() - loop_start
+        timing["total"] = time.perf_counter() - total_start
 
         # Step 6: Save result
-        logger.info(f"[{run_id}] Optimization loop completed. Passed: {validation.passed}")
+        print(f"\n{'='*60}")
+        print(f"📊 OPTIMIZATION COMPLETE")
+        print(f"{'='*60}")
+        print(f"⏱️  Optimization loop: {timing['optimization_loop']:.2f}s")
+        print(f"⏱️  Total time: {timing['total']:.2f}s")
+        print(f"✅ Passed: {validation.passed}")
         result_html = optimized.html if optimized else None
         result_pdf_path = None
 
@@ -152,8 +173,9 @@ async def _run_optimization(
             "result_html": result_html,
             "result_pdf_path": result_pdf_path,
             "feedback": all_feedback,
+            "timing": timing,
         })
-        logger.info(f"[{run_id}] Optimization complete!")
+        logger.info(f"[{run_id}] Optimization complete! Timing: {timing}")
 
     except Exception as e:
         logger.exception(f"Optimization failed: {e}")
@@ -294,6 +316,7 @@ async def get_optimization_status(
         feedback=run.get("feedback"),
         result_html=run.get("result_html"),
         error=run.get("error"),
+        timing=run.get("timing"),
         created_at=run["created_at"],
     )
 
