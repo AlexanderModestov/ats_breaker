@@ -49,8 +49,8 @@ class SupabaseService:
             logger.warning(f"Failed to get profile: {e}")
             return None
 
-    def update_profile(self, user_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
-        """Update user profile."""
+    def update_profile(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        """Update user profile. Raises SupabaseError if no matching profile found."""
         try:
             result = (
                 self._client.table("profiles")
@@ -58,7 +58,11 @@ class SupabaseService:
                 .eq("id", user_id)
                 .execute()
             )
-            return result.data[0] if result.data else None
+            if not result.data:
+                raise SupabaseError(f"No profile found for user_id={user_id}")
+            return result.data[0]
+        except SupabaseError:
+            raise
         except Exception as e:
             logger.error(f"Failed to update profile: {e}")
             raise SupabaseError(f"Failed to update profile: {e}") from e

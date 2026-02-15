@@ -54,14 +54,14 @@ async def handle_stripe_webhook(
                     subscription.current_period_end, tz=timezone.utc
                 )
 
-                supabase.update_profile(user_id, {
+                updated = supabase.update_profile(user_id, {
                     "subscription_status": "active",
                     "subscription_id": subscription_id,
                     "stripe_customer_id": customer_id,
                     "current_period_end": period_end.isoformat(),
                     "period_request_count": 0,
                 })
-                logger.info(f"Activated subscription for user {user_id}")
+                logger.info(f"Activated subscription for user {user_id}: {updated.get('subscription_status')}")
 
             elif session.metadata.get("type") == "addon":
                 # Add-on purchase completed - use atomic function
