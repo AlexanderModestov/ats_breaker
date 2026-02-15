@@ -21,6 +21,19 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import type { CV } from "@/types";
 
+const CHECKOUT_TS_KEY = "post_checkout_ts";
+const CHECKOUT_GRACE_MS = 60_000; // 60 seconds
+
+function isWithinCheckoutGrace(): boolean {
+  try {
+    const ts = sessionStorage.getItem(CHECKOUT_TS_KEY);
+    if (!ts) return false;
+    return Date.now() - parseInt(ts, 10) < CHECKOUT_GRACE_MS;
+  } catch {
+    return false;
+  }
+}
+
 function OptimizeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,9 +48,20 @@ function OptimizeContent() {
   const [jobInput, setJobInput] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cvInitialized, setCvInitialized] = useState(false);
-  const [postCheckout, setPostCheckout] = useState(
-    () => !!searchParams.get("success")
-  );
+
+  // Survive component re-mounts by persisting post-checkout flag in sessionStorage
+  const [postCheckout, setPostCheckout] = useState(() => {
+    const hasSuccessParam = !!searchParams.get("success");
+    if (hasSuccessParam) {
+      try { sessionStorage.setItem(CHECKOUT_TS_KEY, String(Date.now())); } catch {}
+      return true;
+    }
+    return isWithinCheckoutGrace();
+  });
+  const clearPostCheckout = useCallback(() => {
+    try { sessionStorage.removeItem(CHECKOUT_TS_KEY); } catch {}
+    setPostCheckout(false);
+  }, []);
 
   // Handle CV selection with localStorage persistence
   const handleCVSelect = useCallback((cv: CV) => {
@@ -104,20 +128,20 @@ function OptimizeContent() {
     }, 2000);
     const timeout = setTimeout(() => {
       clearInterval(interval);
-      setPostCheckout(false);
-    }, 30000);
+      clearPostCheckout();
+    }, CHECKOUT_GRACE_MS);
     return () => { clearInterval(interval); clearTimeout(timeout); };
-  }, [postCheckout, queryClient]);
+  }, [postCheckout, queryClient, clearPostCheckout]);
 
   // Clear post-checkout state once subscription is confirmed active
   useEffect(() => {
     if (postCheckout && subscription && !loadingSubscription) {
       const remaining = subscription.remaining_requests;
       if (remaining === null || remaining > 0 || subscription.is_unlimited) {
-        setPostCheckout(false);
+        clearPostCheckout();
       }
     }
-  }, [postCheckout, subscription, loadingSubscription]);
+  }, [postCheckout, subscription, loadingSubscription, clearPostCheckout]);
 
   // Check access and redirect if blocked (skip during post-checkout grace period)
   useEffect(() => {
