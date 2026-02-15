@@ -2,6 +2,7 @@
 
 import { useCallback, useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Rocket, AlertTriangle, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import type { CV } from "@/types";
 function OptimizeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const initialCvId = searchParams.get("cv");
 
   const { data: cvs, isLoading: loadingCVs } = useCVs();
@@ -33,6 +35,9 @@ function OptimizeContent() {
   const [jobInput, setJobInput] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cvInitialized, setCvInitialized] = useState(false);
+  const [postCheckout, setPostCheckout] = useState(
+    () => !!searchParams.get("success")
+  );
 
   // Handle CV selection with localStorage persistence
   const handleCVSelect = useCallback((cv: CV) => {
@@ -72,7 +77,7 @@ function OptimizeContent() {
     setCvInitialized(true);
   }, [cvs, initialCvId, cvInitialized]);
 
-  // Handle success messages from URL params
+  // Handle success messages from URL params and invalidate stale subscription cache
   useEffect(() => {
     const success = searchParams.get("success");
     if (success === "subscription") {
@@ -86,12 +91,37 @@ function OptimizeContent() {
     }
 
     if (success) {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       window.history.replaceState({}, "", "/optimize");
     }
-  }, [searchParams]);
+  }, [searchParams, queryClient]);
 
-  // Check access and redirect if blocked
+  // Poll subscription after checkout until the Stripe webhook is processed
   useEffect(() => {
+    if (!postCheckout) return;
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    }, 2000);
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      setPostCheckout(false);
+    }, 30000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, [postCheckout, queryClient]);
+
+  // Clear post-checkout state once subscription is confirmed active
+  useEffect(() => {
+    if (postCheckout && subscription && !loadingSubscription) {
+      const remaining = subscription.remaining_requests;
+      if (remaining === null || remaining > 0 || subscription.is_unlimited) {
+        setPostCheckout(false);
+      }
+    }
+  }, [postCheckout, subscription, loadingSubscription]);
+
+  // Check access and redirect if blocked (skip during post-checkout grace period)
+  useEffect(() => {
+    if (postCheckout) return;
     if (!loadingSubscription && subscription) {
       const remaining = subscription.remaining_requests;
       if (remaining !== null && remaining <= 0 && !subscription.is_unlimited) {
@@ -99,7 +129,7 @@ function OptimizeContent() {
         router.push(`/blocked?reason=${reason}`);
       }
     }
-  }, [subscription, loadingSubscription, router]);
+  }, [subscription, loadingSubscription, router, postCheckout]);
 
   const handleOptimize = useCallback(async () => {
     if (!selectedCV || !jobInput.trim()) return;

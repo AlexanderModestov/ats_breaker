@@ -5,6 +5,8 @@ from pydantic_ai import Agent
 from hr_breaker.config import get_model_settings, get_settings, logger
 from hr_breaker.models import JobPosting
 
+COMPANY_NOT_SPECIFIED = "Not Specified"
+
 SYSTEM_PROMPT = """You are a job posting parser. Extract structured information from job postings.
 
 Extract:
@@ -18,7 +20,7 @@ Extract:
 
 Rules:
 - For title and company: extract ONLY what is explicitly stated in the text. Never infer or fabricate names.
-- If the company name is truly absent from the posting, set company to "Unknown".
+- If the company name is truly absent from the posting, set company to "Not Specified".
 - Be thorough in extracting keywords - include all technologies, tools, frameworks, methodologies mentioned.
 """
 
@@ -38,7 +40,7 @@ def _is_grounded(value: str, text: str) -> bool:
     """Check if extracted value actually appears in the source text."""
     text_lower = text.lower()
     value_lower = value.lower().strip()
-    if not value_lower or value_lower == "unknown":
+    if not value_lower or value_lower in ("unknown", COMPANY_NOT_SPECIFIED.lower()):
         return True
     # Exact substring match
     if value_lower in text_lower:
@@ -57,7 +59,7 @@ async def parse_job_posting(text: str) -> JobPosting:
     warnings = []
     if not _is_grounded(job.company, text):
         warnings.append(f"company '{job.company}' not found in posting text")
-        job.company = "Unknown"
+        job.company = COMPANY_NOT_SPECIFIED
     if not _is_grounded(job.title, text):
         warnings.append(f"title '{job.title}' not found in posting text")
 

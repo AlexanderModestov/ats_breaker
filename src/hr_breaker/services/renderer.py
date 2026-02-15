@@ -113,15 +113,26 @@ class HTMLRenderer(BaseRenderer):
         Args:
             html_body: HTML content for the <body> (no wrapper needed)
         """
+        import re
         from weasyprint import HTML
+
+        # Strip inline font-family overrides from LLM output so WeasyPrint
+        # only uses the fonts declared in the wrapper template.
+        html_body = re.sub(r'font-family\s*:[^;"]+;?', '', html_body)
 
         # Wrap LLM's body content with our template
         html_content = self._wrapper_html.replace("{{BODY}}", html_body)
 
         # Render with WeasyPrint
         html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
-        doc = html.render(font_config=self.font_config)
-        pdf_bytes = doc.write_pdf()
+        try:
+            doc = html.render(font_config=self.font_config)
+            pdf_bytes = doc.write_pdf()
+        except MemoryError:
+            raise RenderError(
+                "MemoryError during PDF rendering — likely caused by a problematic font. "
+                "Inline font-family styles have been stripped; this may indicate a system font issue."
+            )
         page_count = len(doc.pages)
 
         warnings = []

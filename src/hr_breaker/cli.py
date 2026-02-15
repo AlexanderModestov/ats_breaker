@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from hr_breaker.agents import extract_name, parse_job_posting
+from hr_breaker.agents import extract_name, parse_job_posting, COMPANY_NOT_SPECIFIED
 from hr_breaker.config import get_settings
 from hr_breaker.models import GeneratedPDF, ResumeSource
 from hr_breaker.orchestration import optimize_for_job
@@ -82,6 +82,10 @@ def optimize(
 
         # Parse job first to get company/role for debug dir
         job = await parse_job_posting(job_text)
+        if job.company == COMPANY_NOT_SPECIFIED:
+            job.company = click.prompt(
+                "Could not detect company name. Please enter it"
+            )
         click.echo(f"Job: {job.title} at {job.company}")
 
         if debug:
