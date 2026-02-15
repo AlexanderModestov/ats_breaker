@@ -102,8 +102,15 @@ async def handle_stripe_webhook(
                     db_status = "active"
                 elif status == "canceled":
                     db_status = "cancelled"
-                else:
+                elif status in ("incomplete", "past_due", "unpaid"):
+                    # Transient states — don't overwrite active subscription
+                    logger.warning(f"Ignoring transient subscription status '{status}' for user {user_id}")
+                    return {"status": "ok"}
+                elif status == "incomplete_expired":
                     db_status = "expired"
+                else:
+                    logger.warning(f"Unknown subscription status '{status}' for user {user_id}, ignoring")
+                    return {"status": "ok"}
 
                 period_end = datetime.fromtimestamp(
                     subscription.current_period_end, tz=timezone.utc

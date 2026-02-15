@@ -52,8 +52,8 @@ def check_access(user_email: str, profile: dict[str, Any]) -> AccessResult:
 
     now = datetime.now(timezone.utc)
 
-    # 2. Active subscriber
-    if subscription_status == "active" and current_period_end and now < current_period_end:
+    # 2. Active or cancelled-but-paid-through subscriber
+    if subscription_status in ("active", "cancelled") and current_period_end and now < current_period_end:
         remaining_period = settings.subscription_request_limit - period_request_count
         remaining_total = remaining_period + addon_credits
 
