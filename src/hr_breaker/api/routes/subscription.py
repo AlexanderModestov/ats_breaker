@@ -101,10 +101,14 @@ async def verify_checkout(
         raise HTTPException(status_code=400, detail=f"Checkout not complete: {session.status}")
 
     if session.mode == "subscription" and session.subscription:
-        subscription = stripe_service.get_subscription(session.subscription)
-        period_end = datetime.fromtimestamp(
-            subscription.current_period_end, tz=timezone.utc
-        )
+        try:
+            subscription = stripe_service.get_subscription(session.subscription)
+            period_end = datetime.fromtimestamp(
+                subscription.current_period_end, tz=timezone.utc
+            )
+        except StripeError as e:
+            logger.error(f"Failed to retrieve subscription via verify: {e}")
+            raise HTTPException(status_code=502, detail=f"Failed to verify with Stripe: {e}") from e
 
         try:
             supabase.update_profile(user_id, {

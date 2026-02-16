@@ -132,6 +132,10 @@ async def handle_stripe_webhook(
                 })
                 logger.info(f"Subscription expired for user {user_id}")
 
+    except StripeError as e:
+        logger.error(f"Stripe API error in webhook: {e}")
+        # Return 502 so Stripe will retry the webhook
+        raise HTTPException(status_code=502, detail=f"Stripe API error: {e}") from e
     except SupabaseError as e:
         logger.error(f"Failed to update profile from webhook: {e}")
         # Return 500 so Stripe will retry the webhook
