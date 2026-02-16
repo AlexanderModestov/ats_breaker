@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, CreditCard, ShoppingCart, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,9 +20,18 @@ function BlockedContent() {
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason") || "trial_exhausted";
 
-  const { data: subscription } = useSubscription();
+  const { data: subscription } = useSubscription({ refetchInterval: 3000 });
   const subscriptionCheckout = useSubscriptionCheckout();
   const addonCheckout = useAddonCheckout();
+
+  // Redirect back if subscription is actually active (e.g. webhook processed after verify-checkout failed)
+  useEffect(() => {
+    if (!subscription) return;
+    const remaining = subscription.remaining_requests;
+    if (remaining === null || remaining > 0 || subscription.is_unlimited) {
+      router.replace("/optimize");
+    }
+  }, [subscription, router]);
 
   const isQuotaExhausted = reason === "quota_exhausted";
 

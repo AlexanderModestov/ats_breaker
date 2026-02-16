@@ -8,11 +8,12 @@ import {
   verifyCheckout,
 } from "@/lib/api";
 
-export function useSubscription() {
+export function useSubscription(options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ["subscription"],
     queryFn: getSubscriptionStatus,
     staleTime: 30000, // 30 seconds
+    refetchInterval: options?.refetchInterval,
   });
 }
 
