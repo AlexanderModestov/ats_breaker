@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
 from hr_breaker.config import get_settings, logger
 from hr_breaker.services.stripe_service import StripeService, StripeError
+from hr_breaker.services.supabase import SupabaseError
 from hr_breaker.services.access_control import check_access
 
 router = APIRouter()
@@ -25,6 +26,12 @@ class CheckoutResponse(BaseModel):
     """Response with checkout URL."""
 
     checkout_url: str
+
+
+class VerifyCheckoutRequest(BaseModel):
+    """Request to verify a completed checkout session."""
+
+    session_id: str
 
 
 class SubscriptionStatusResponse(BaseModel):
@@ -47,6 +54,81 @@ async def get_subscription_status(
     """Get the current user's subscription status."""
     user_id, user_email = user
 
+    profile = supabase.get_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    access = check_access(user_email or "", profile)
+
+    return SubscriptionStatusResponse(
+        status=profile.get("subscription_status", "trial"),
+        remaining_requests=access.remaining,
+        is_unlimited=access.unlimited,
+        is_trial=access.is_trial,
+        can_subscribe=access.can_subscribe,
+        can_buy_addon=access.can_buy_addon,
+        renewal_date=access.renewal_date.isoformat() if access.renewal_date else None,
+    )
+
+
+@router.post("/verify-checkout", response_model=SubscriptionStatusResponse)
+async def verify_checkout(
+    request: VerifyCheckoutRequest,
+    user: CurrentUserWithEmail,
+    supabase: SupabaseServiceDep,
+) -> SubscriptionStatusResponse:
+    """
+    Verify a completed Stripe checkout session and activate the subscription.
+
+    Called by the frontend after returning from Stripe checkout. Directly
+    verifies the session with Stripe and updates the DB, bypassing webhooks.
+    """
+    user_id, user_email = user
+
+    try:
+        stripe_service = StripeService()
+        session = stripe_service.retrieve_checkout_session(request.session_id)
+    except StripeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid session: {e}") from e
+
+    # Verify session belongs to this user
+    session_user_id = session.metadata.get("user_id") if session.metadata else None
+    if session_user_id != user_id:
+        raise HTTPException(status_code=403, detail="Session does not belong to this user")
+
+    # Verify session is complete
+    if session.status != "complete":
+        raise HTTPException(status_code=400, detail=f"Checkout not complete: {session.status}")
+
+    if session.mode == "subscription" and session.subscription:
+        subscription = stripe_service.get_subscription(session.subscription)
+        period_end = datetime.fromtimestamp(
+            subscription.current_period_end, tz=timezone.utc
+        )
+
+        try:
+            supabase.update_profile(user_id, {
+                "subscription_status": "active",
+                "subscription_id": session.subscription,
+                "stripe_customer_id": session.customer,
+                "current_period_end": period_end.isoformat(),
+                "period_request_count": 0,
+            })
+            logger.info(f"Verified and activated subscription for user {user_id}")
+        except SupabaseError as e:
+            logger.error(f"Failed to activate subscription via verify: {e}")
+            raise HTTPException(status_code=500, detail="Failed to update subscription") from e
+
+    elif session.metadata and session.metadata.get("type") == "addon":
+        settings = get_settings()
+        try:
+            supabase.add_addon_credits_atomic(user_id, settings.addon_request_count)
+            logger.info(f"Verified and added addon credits for user {user_id}")
+        except SupabaseError as e:
+            logger.error(f"Failed to add addon credits via verify: {e}")
+            raise HTTPException(status_code=500, detail="Failed to add credits") from e
+
+    # Return updated subscription status
     profile = supabase.get_profile(user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")

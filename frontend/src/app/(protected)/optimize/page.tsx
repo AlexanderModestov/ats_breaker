@@ -16,7 +16,7 @@ import { CVDropdown } from "@/components/CVDropdown";
 import { JobInput } from "@/components/JobInput";
 import { useCVs } from "@/hooks/useCVs";
 import { useStartOptimization } from "@/hooks/useOptimization";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useSubscription, useVerifyCheckout } from "@/hooks/useSubscription";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import type { CV } from "@/types";
@@ -43,6 +43,7 @@ function OptimizeContent() {
   const { data: cvs, isLoading: loadingCVs } = useCVs();
   const startOptimization = useStartOptimization();
   const { data: subscription, isLoading: loadingSubscription } = useSubscription();
+  const verifyCheckout = useVerifyCheckout();
 
   const [selectedCV, setSelectedCV] = useState<CV | null>(null);
   const [jobInput, setJobInput] = useState("");
@@ -101,9 +102,11 @@ function OptimizeContent() {
     setCvInitialized(true);
   }, [cvs, initialCvId, cvInitialized]);
 
-  // Handle success messages from URL params and invalidate stale subscription cache
+  // Handle post-checkout: verify with Stripe directly, then update subscription cache
   useEffect(() => {
     const success = searchParams.get("success");
+    const sessionId = searchParams.get("session_id");
+
     if (success === "subscription") {
       setSuccessMessage(
         "Subscription activated! You now have 50 requests per month."
@@ -114,15 +117,28 @@ function OptimizeContent() {
       );
     }
 
+    if (success && sessionId) {
+      // Verify checkout directly with Stripe — this updates the DB and returns fresh data
+      verifyCheckout.mutate(sessionId, {
+        onSuccess: () => {
+          clearPostCheckout();
+        },
+        onError: () => {
+          // Verification failed — fall back to polling
+          queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        },
+      });
+    }
+
     if (success) {
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       window.history.replaceState({}, "", "/optimize");
     }
-  }, [searchParams, queryClient]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Poll subscription after checkout until the Stripe webhook is processed
+  // Fallback: if no session_id or verify failed, poll until webhook arrives
   useEffect(() => {
-    if (!postCheckout) return;
+    if (!postCheckout || verifyCheckout.isSuccess) return;
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["subscription"] });
     }, 2000);
@@ -131,7 +147,7 @@ function OptimizeContent() {
       clearPostCheckout();
     }, CHECKOUT_GRACE_MS);
     return () => { clearInterval(interval); clearTimeout(timeout); };
-  }, [postCheckout, queryClient, clearPostCheckout]);
+  }, [postCheckout, queryClient, clearPostCheckout, verifyCheckout.isSuccess]);
 
   // Clear post-checkout state once subscription is confirmed active
   useEffect(() => {

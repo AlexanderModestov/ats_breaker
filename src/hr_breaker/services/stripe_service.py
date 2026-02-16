@@ -130,3 +130,11 @@ class StripeService:
         except stripe.StripeError as e:
             logger.error(f"Failed to retrieve subscription: {e}")
             raise StripeError(f"Failed to retrieve subscription: {e}") from e
+
+    def retrieve_checkout_session(self, session_id: str) -> stripe.checkout.Session:
+        """Retrieve a checkout session by ID."""
+        try:
+            return stripe.checkout.Session.retrieve(session_id)
+        except stripe.StripeError as e:
+            logger.error(f"Failed to retrieve checkout session: {e}")
+            raise StripeError(f"Failed to retrieve checkout session: {e}") from e

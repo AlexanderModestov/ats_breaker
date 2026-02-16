@@ -157,6 +157,15 @@ export async function createSubscriptionCheckout(
   });
 }
 
+export async function verifyCheckout(
+  sessionId: string
+): Promise<SubscriptionStatus> {
+  return fetchWithAuth<SubscriptionStatus>("/subscription/verify-checkout", {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+}
+
 export async function createAddonCheckout(
   successUrl: string,
   cancelUrl: string
