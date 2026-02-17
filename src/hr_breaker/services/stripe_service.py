@@ -131,6 +131,28 @@ class StripeService:
             logger.error(f"Failed to retrieve subscription: {e}")
             raise StripeError(f"Failed to retrieve subscription: {e}") from e
 
+    @staticmethod
+    def get_period_end(subscription: stripe.Subscription) -> int:
+        """
+        Extract current_period_end from a subscription.
+
+        Stripe moved this field from the subscription to subscription items.
+        Falls back to items.data[0].current_period_end when top-level is absent.
+        """
+        top_level = subscription.get("current_period_end")
+        if top_level:
+            return top_level
+
+        items = subscription.get("items", {}).get("data", [])
+        if items:
+            item_period = items[0].get("current_period_end")
+            if item_period:
+                return item_period
+
+        raise StripeError(
+            f"No current_period_end found on subscription {subscription.get('id')}"
+        )
+
     def retrieve_checkout_session(self, session_id: str) -> stripe.checkout.Session:
         """Retrieve a checkout session by ID."""
         try:

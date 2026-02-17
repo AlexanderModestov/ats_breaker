@@ -104,7 +104,7 @@ async def verify_checkout(
         try:
             subscription = stripe_service.get_subscription(session.subscription)
             period_end = datetime.fromtimestamp(
-                subscription.current_period_end, tz=timezone.utc
+                stripe_service.get_period_end(subscription), tz=timezone.utc
             )
         except StripeError as e:
             logger.error(f"Failed to retrieve subscription via verify: {e}")

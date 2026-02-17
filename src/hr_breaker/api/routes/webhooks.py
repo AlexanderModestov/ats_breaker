@@ -51,7 +51,7 @@ async def handle_stripe_webhook(
                 # Get subscription details for period end
                 subscription = stripe_service.get_subscription(subscription_id)
                 period_end = datetime.fromtimestamp(
-                    subscription.current_period_end, tz=timezone.utc
+                    stripe_service.get_period_end(subscription), tz=timezone.utc
                 )
 
                 updated = supabase.update_profile(user_id, {
@@ -82,7 +82,7 @@ async def handle_stripe_webhook(
 
             if user_id:
                 period_end = datetime.fromtimestamp(
-                    subscription.current_period_end, tz=timezone.utc
+                    stripe_service.get_period_end(subscription), tz=timezone.utc
                 )
 
                 supabase.update_profile(user_id, {
@@ -113,7 +113,7 @@ async def handle_stripe_webhook(
                     return {"status": "ok"}
 
                 period_end = datetime.fromtimestamp(
-                    subscription.current_period_end, tz=timezone.utc
+                    stripe_service.get_period_end(subscription), tz=timezone.utc
                 )
 
                 supabase.update_profile(user_id, {
