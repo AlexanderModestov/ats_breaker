@@ -24,27 +24,29 @@ def match_requirements(job: JobPosting, html: str) -> list[RequirementItem]:
     and keywords are covered by the resume.
     """
     plain = _strip_html(html).lower()
+    plain_words = set(_significant_words(plain))
 
     items: list[RequirementItem] = []
 
     # --- requirements ---
-    all_req_text = " ".join(job.requirements).lower()
+    all_req_words = set(_significant_words(" ".join(job.requirements).lower()))
 
     for idx, req in enumerate(job.requirements):
         words = _significant_words(req)
         if not words:
             covered = False
         else:
-            matched = sum(1 for w in words if w.lower() in plain)
+            matched = sum(1 for w in words if w.lower() in plain_words)
             covered = matched / len(words) >= 0.5
         items.append(RequirementItem(id=f"req_{idx}", text=req, covered=covered))
 
     # --- keywords not already in requirements text ---
     kw_idx = 0
     for kw in job.keywords:
-        if kw.lower() in all_req_text:
+        kw_words = set(_significant_words(kw.lower()))
+        if kw_words and kw_words.issubset(all_req_words):
             continue
-        covered = kw.lower() in plain
+        covered = bool(kw_words and kw_words.issubset(plain_words))
         items.append(RequirementItem(id=f"kw_{kw_idx}", text=kw, covered=covered))
         kw_idx += 1
 
