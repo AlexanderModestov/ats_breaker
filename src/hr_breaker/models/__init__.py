@@ -1,3 +1,4 @@
+from .editor import EditResult, RequirementItem, ResumePatch
 from .resume import ResumeSource, OptimizedResume
 from .resume_data import (
     ResumeData,
@@ -12,6 +13,9 @@ from .feedback import FilterResult, ValidationResult, GeneratedPDF
 from .iteration import IterationContext
 
 __all__ = [
+    "EditResult",
+    "RequirementItem",
+    "ResumePatch",
     "ResumeSource",
     "OptimizedResume",
     "ResumeData",
