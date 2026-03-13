@@ -95,6 +95,33 @@ export interface OptimizationListResponse {
   runs: OptimizationSummary[];
 }
 
+// Editor types
+export interface ResumePatch {
+  selector: string;
+  action: "replace" | "append" | "prepend" | "remove";
+  html: string | null;
+}
+
+export interface EditResponse {
+  patches: ResumePatch[];
+  updated_html: string;
+}
+
+export interface RequirementItem {
+  id: string;
+  text: string;
+  covered: boolean;
+}
+
+export interface RequirementsResponse {
+  requirements: RequirementItem[];
+}
+
+export interface ValidateResponse {
+  results: FilterResult[];
+  requirements: RequirementItem[];
+}
+
 // Theme type
 export type Theme = "minimal" | "professional" | "bold";
 

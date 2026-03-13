@@ -2,15 +2,18 @@ import { getSupabaseClient } from "./supabase";
 import type {
   CV,
   CVListResponse,
+  EditResponse,
   OptimizationListResponse,
   OptimizationStartResponse,
   OptimizationStatus,
   OptimizationSummary,
   OptimizeRequest,
+  RequirementsResponse,
   UserProfile,
   UserProfileUpdate,
   SubscriptionStatus,
   CheckoutResponse,
+  ValidateResponse,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
@@ -140,6 +143,57 @@ export async function downloadOptimizationPDF(runId: string): Promise<Blob> {
 
 export async function deleteOptimization(runId: string): Promise<void> {
   await fetchWithAuth(`/optimize/${runId}`, { method: "DELETE" });
+}
+
+// Editor API
+export async function getRequirements(
+  runId: string
+): Promise<RequirementsResponse> {
+  return fetchWithAuth<RequirementsResponse>(
+    `/optimize/${runId}/requirements`
+  );
+}
+
+export async function editResume(
+  runId: string,
+  instruction: string,
+  html: string
+): Promise<EditResponse> {
+  return fetchWithAuth<EditResponse>(`/optimize/${runId}/edit`, {
+    method: "POST",
+    body: JSON.stringify({ instruction, html }),
+  });
+}
+
+export async function validateResume(
+  runId: string,
+  html: string
+): Promise<ValidateResponse> {
+  return fetchWithAuth<ValidateResponse>(`/optimize/${runId}/validate`, {
+    method: "POST",
+    body: JSON.stringify({ html }),
+  });
+}
+
+export async function downloadPdfFromHtml(
+  runId: string,
+  html: string
+): Promise<Blob> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE}/optimize/${runId}/download`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ html }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Download failed: ${response.status}`);
+  }
+
+  return response.blob();
 }
 
 // Subscription API
