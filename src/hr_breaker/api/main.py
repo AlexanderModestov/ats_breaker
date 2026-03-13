@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from hr_breaker.api.routes import (
     cvs_router,
+    editor_router,
     optimize_router,
     subscription_router,
     users_router,
@@ -34,6 +35,7 @@ app.add_middleware(
 app.include_router(users_router, prefix="/api", tags=["users"])
 app.include_router(cvs_router, prefix="/api/cvs", tags=["cvs"])
 app.include_router(optimize_router, prefix="/api/optimize", tags=["optimize"])
+app.include_router(editor_router, prefix="/api/optimize", tags=["editor"])
 app.include_router(subscription_router, prefix="/api/subscription", tags=["subscription"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
 

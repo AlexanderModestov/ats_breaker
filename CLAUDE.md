@@ -17,7 +17,7 @@ Tool for optimizing resumes for job postings and passing automated filters.
 
 ## Architecture
 
-1. Streamlit frontend
+1. Next.js frontend + FastAPI backend
 2. Pydantic-AI LLM agent framework
 3. Google Gemini models (configurable via env)
 4. Modular filter system - easy to add new checks
@@ -52,7 +52,7 @@ src/hr_breaker/
 │   └── scrapers/    # Job scraper implementations
 ├── utils/           # Helpers
 ├── orchestration.py # Core optimization loop
-├── main.py          # Streamlit UI
+├── api/             # FastAPI backend
 ├── cli.py           # Click CLI
 └── config.py        # Settings
 ```
@@ -90,9 +90,6 @@ To add filter: subclass `BaseFilter`, set `name` and `priority`, use `@FilterReg
 
 ### Commands
 ```bash
-# Web UI
-uv run streamlit run src/hr_breaker/main.py
-
 # CLI
 uv run hr-breaker optimize resume.txt https://example.com/job
 uv run hr-breaker optimize resume.txt job.txt -d              # debug mode

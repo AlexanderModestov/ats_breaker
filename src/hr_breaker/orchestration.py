@@ -1,4 +1,4 @@
-"""Core optimization loop - used by both CLI and Streamlit."""
+"""Core optimization loop."""
 
 import asyncio
 import tempfile
