@@ -23,13 +23,24 @@ These classes are pre-defined and styled. Use them exactly as shown:
 ```
 
 ### Sections
+
+Every section MUST have a predictable `id` attribute for post-generation editing:
+
 ```html
-<section class="section">
-    <h2 class="section-title">SECTION NAME</h2>
-    <div class="section-content">
-        <!-- content here -->
-    </div>
+<section id="summary" class="section">
+    <h2 class="section-title">SUMMARY</h2>
+    <div class="section-content">...</div>
 </section>
+
+<section id="experience" class="section">
+    <h2 class="section-title">EXPERIENCE</h2>
+    <div class="section-content">...</div>
+</section>
+
+<section id="education" class="section">...</section>
+<section id="skills" class="section">...</section>
+<section id="projects" class="section">...</section>
+<section id="certifications" class="section">...</section>
 ```
 
 ### Summary
@@ -42,8 +53,9 @@ These classes are pre-defined and styled. Use them exactly as shown:
 ### Experience/Education Entry
 
 **IMPORTANT: Company and title go on ONE line, date on the right:**
+Each entry MUST have a sequential `id` attribute (e.g., `experience-item-0`, `experience-item-1`):
 ```html
-<div class="entry">
+<div id="experience-item-0" class="entry">
     <div class="entry-header">
         <div class="entry-main">
             <span class="company">Company Name</span> - <span class="title">Job Title</span>
@@ -59,7 +71,7 @@ These classes are pre-defined and styled. Use them exactly as shown:
 
 For education:
 ```html
-<div class="entry">
+<div id="education-item-0" class="entry">
     <div class="entry-header">
         <div class="entry-main">
             <span class="institution">University Name</span> - <span class="degree">BS Computer Science</span>
@@ -76,7 +88,7 @@ For education:
 
 Use `<strong>` for category labels (NOT markdown `**bold**`):
 ```html
-<div class="skills-list">
+<div id="skills-list" class="skills-list">
     <strong>Languages:</strong> Python, JavaScript, TypeScript, Go<br>
     <strong>Frameworks:</strong> React, Node.js, FastAPI, Django<br>
     <strong>Tools:</strong> PostgreSQL, AWS, Docker, Kubernetes
