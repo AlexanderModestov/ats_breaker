@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { editResume, validateResume } from "@/lib/api";
 import type { FilterResult, EditResponse } from "@/types";
@@ -9,6 +9,17 @@ export function useResumeEditor(runId: string, initialHtml: string) {
   const [history, setHistory] = useState<string[]>([initialHtml]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const initializedRef = useRef(!!initialHtml);
+
+  // Sync initialHtml into state when it becomes available (e.g. after async load)
+  useEffect(() => {
+    if (initialHtml && !initializedRef.current) {
+      initializedRef.current = true;
+      setHtml(initialHtml);
+      setHistory([initialHtml]);
+      setHistoryIndex(0);
+    }
+  }, [initialHtml]);
 
   // Requirements (fetched via validate endpoint which returns both)
   const requirementsQuery = useQuery({
