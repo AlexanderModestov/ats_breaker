@@ -3,7 +3,7 @@
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Download, Building2, MapPin, ExternalLink, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, Download, Building2, MapPin, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResumePreview } from "@/components/ResumePreview";
@@ -97,7 +97,7 @@ export default function ResultsPage({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="mx-auto max-w-3xl space-y-8"
+      className="mx-auto max-w-3xl space-y-4"
     >
       {/* Header */}
       <SlideUp className="flex items-center justify-between">
@@ -176,37 +176,15 @@ export default function ResultsPage({
               )}
             </div>
           )}
-          <p className="text-muted-foreground">
-            {isComplete
-              ? "Your optimized resume is ready for download"
-              : isFailed
+          {!isComplete && (
+            <p className="text-muted-foreground">
+              {isFailed
                 ? "Optimization failed"
                 : "Please wait while we optimize your resume"}
-          </p>
+            </p>
+          )}
         </div>
       </SlideUp>
-
-      {/* Job URL */}
-      {status.job_url && (
-        <SlideUp delay={0.2}>
-          <Card className="border-border/50 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Job Posting</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <a
-                href={status.job_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ExternalLink className="h-4 w-4 shrink-0" />
-                <span className="truncate group-hover:underline">{status.job_url}</span>
-              </a>
-            </CardContent>
-          </Card>
-        </SlideUp>
-      )}
 
       {/* Processing indicator */}
       <AnimatePresence>
@@ -227,22 +205,7 @@ export default function ResultsPage({
       </AnimatePresence>
 
       {/* Resume preview */}
-      <AnimatePresence>
-        {isComplete && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-          >
-            <ResumePreview
-              status={status}
-              onDownload={() => download(id)}
-              downloading={downloading}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isComplete && <ResumePreview status={status} />}
 
       {/* Auto-update notice */}
       <AnimatePresence>

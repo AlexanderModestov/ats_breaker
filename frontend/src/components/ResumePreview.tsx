@@ -1,8 +1,7 @@
 "use client";
 
-import { Download, Eye, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
+import { Eye, CheckCircle, AlertCircle, ChevronDown, ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -145,14 +144,10 @@ const resumeStyles = `
 
 interface ResumePreviewProps {
   status: OptimizationStatus;
-  onDownload: () => void;
-  downloading?: boolean;
 }
 
 export function ResumePreview({
   status,
-  onDownload,
-  downloading,
 }: ResumePreviewProps) {
   const [showFilters, setShowFilters] = useState(false);
   const isComplete = status.status === "complete";
@@ -175,27 +170,20 @@ export function ResumePreview({
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className="text-lg">Preview</CardTitle>
-              <CardDescription>
-                {status.job_parsed
-                  ? `Optimized for ${status.job_parsed.title}`
-                  : "Optimized resume"}
-              </CardDescription>
+              {status.job_url && (
+                <CardDescription>
+                  <a
+                    href={status.job_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    <span className="truncate group-hover:underline">{status.job_url}</span>
+                  </a>
+                </CardDescription>
+              )}
             </div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button onClick={onDownload} disabled={downloading} className="gap-2">
-                {downloading ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Download PDF
-                  </>
-                )}
-              </Button>
-            </motion.div>
           </div>
         </CardHeader>
         <CardContent className="p-0">

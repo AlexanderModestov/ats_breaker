@@ -212,7 +212,7 @@ function OptimizeContent() {
       </AnimatePresence>
 
       {/* Header */}
-      <SlideUp className="space-y-1">
+      <SlideUp className="mx-auto max-w-2xl space-y-1">
         <h1 className="text-3xl font-bold tracking-tight">Optimize Resume</h1>
         <p className="text-muted-foreground">
           Select a CV and provide a job posting to generate an optimized resume
