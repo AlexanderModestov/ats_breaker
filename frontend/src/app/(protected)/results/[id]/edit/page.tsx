@@ -54,6 +54,13 @@ const IFRAME_SCRIPT = `
       rect: { top: rect.top, left: rect.left, bottom: rect.bottom, right: rect.right }
     }, '*');
   });
+
+  // Mark editable elements with hover styling
+  document.querySelectorAll(EDITABLE).forEach(function(el) {
+    if (!el.closest(NON_EDITABLE)) {
+      el.setAttribute('data-editable', 'true');
+    }
+  });
 })();
 </script>`;
 
