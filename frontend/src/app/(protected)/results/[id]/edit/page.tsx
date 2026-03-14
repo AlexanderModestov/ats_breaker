@@ -28,7 +28,7 @@ export default function EditorPage({
 
   const {
     html,
-    updateHtml,
+    applyTextEdit,
     requirements,
     requirementsLoading,
     validationResults,
@@ -174,7 +174,7 @@ export default function EditorPage({
               height="100%"
               language="html"
               value={html}
-              onChange={(value) => value !== undefined && updateHtml(value)}
+              onChange={() => {}} // Monaco editing disabled — will be replaced by inline editing
               options={{
                 minimap: { enabled: false },
                 wordWrap: "on",

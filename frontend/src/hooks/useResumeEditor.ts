@@ -55,12 +55,18 @@ export function useResumeEditor(runId: string, initialHtml: string) {
     [historyIndex, runValidation]
   );
 
-  // Manual HTML edit (from Monaco)
-  const updateHtml = useCallback(
-    (newHtml: string) => {
-      pushHtml(newHtml);
+  // Direct text edit (no LLM)
+  const applyTextEdit = useCallback(
+    (selector: string, newText: string) => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const el = doc.querySelector(selector);
+      if (!el) return;
+      el.textContent = newText;
+      const updated = doc.body.innerHTML;
+      pushHtml(updated);
     },
-    [pushHtml]
+    [html, pushHtml]
   );
 
   // LLM edit
@@ -91,7 +97,7 @@ export function useResumeEditor(runId: string, initialHtml: string) {
 
   return {
     html,
-    updateHtml,
+    applyTextEdit,
     requirements: requirementsQuery.data ?? [],
     requirementsLoading: requirementsQuery.isLoading,
     validationResults,
