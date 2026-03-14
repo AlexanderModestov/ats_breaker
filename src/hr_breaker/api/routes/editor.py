@@ -1,6 +1,7 @@
 """Resume editor API routes."""
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
@@ -119,3 +120,30 @@ async def validate_resume(
 
     requirements = match_requirements(job, req.html)
     return ValidateResponse(results=results, requirements=requirements)
+
+
+class DownloadRequest(BaseModel):
+    html: str
+
+
+@router.post("/{run_id}/download")
+async def download_edited_pdf(
+    run_id: str,
+    req: DownloadRequest,
+    user_id: CurrentUser,
+    supabase: SupabaseServiceDep,
+):
+    """Render edited resume HTML to PDF and return it."""
+    _get_completed_run(run_id, user_id, supabase)
+
+    from hr_breaker.services.renderer import HTMLRenderer
+
+    renderer = HTMLRenderer()
+    result = renderer.render(req.html)
+    return Response(
+        content=result.pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=resume_{run_id}.pdf"
+        },
+    )

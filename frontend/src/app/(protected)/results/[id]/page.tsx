@@ -2,7 +2,8 @@
 
 import { use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Building2, MapPin, ExternalLink, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Download, Building2, MapPin, ExternalLink, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResumePreview } from "@/components/ResumePreview";
@@ -117,26 +118,35 @@ export default function ResultsPage({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2"
             >
-              <Button
-                onClick={() => download(id)}
-                disabled={downloading}
-                className="gap-2"
-              >
-                {downloading ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Download PDF
-                  </>
-                )}
-              </Button>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Link href={`/results/${id}/edit`}>
+                  <Button variant="outline" className="gap-2">
+                    <Pencil className="h-4 w-4" />
+                    Edit Resume
+                  </Button>
+                </Link>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  onClick={() => download(id)}
+                  disabled={downloading}
+                  className="gap-2"
+                >
+                  {downloading ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </>
+                  )}
+                </Button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
