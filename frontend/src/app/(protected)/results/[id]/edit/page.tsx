@@ -75,7 +75,7 @@ export default function EditorPage({
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {/* Left panel — Requirements */}
       <div className="w-72 border-r overflow-y-auto p-4 flex flex-col gap-4">
         <Button
