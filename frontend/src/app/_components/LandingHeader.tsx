@@ -94,13 +94,8 @@ export function LandingHeader() {
           <div className="h-5 w-px bg-border" />
 
           <Link href="/signin">
-            <Button variant="ghost" size="sm">
-              {t.nav.login[lang]}
-            </Button>
-          </Link>
-          <Link href="/signin">
             <Button variant="accent" size="sm">
-              {t.nav.signup[lang]}
+              {t.nav.login[lang]}
             </Button>
           </Link>
         </div>

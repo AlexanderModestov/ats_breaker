@@ -10,7 +10,7 @@ export function PricingSection() {
   const { lang } = useLang();
 
   return (
-    <section className="py-20 bg-secondary/30">
+    <section id="pricing" className="py-20 bg-secondary/30 scroll-mt-16">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="initial"

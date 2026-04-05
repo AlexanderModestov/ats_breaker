@@ -29,18 +29,13 @@ export function LandingFooter() {
             <h3 className="text-sm font-semibold">{t.footer.links[lang]}</h3>
             <ul className="mt-3 space-y-2">
               <li>
-                <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   {t.footer.pricing[lang]}
-                </Link>
+                </a>
               </li>
               <li>
                 <Link href="/signin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   {t.footer.login[lang]}
-                </Link>
-              </li>
-              <li>
-                <Link href="/signin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  {t.footer.signup[lang]}
                 </Link>
               </li>
             </ul>
