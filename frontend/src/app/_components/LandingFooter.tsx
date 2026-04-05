@@ -34,12 +34,12 @@ export function LandingFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/signin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   {t.footer.login[lang]}
                 </Link>
               </li>
               <li>
-                <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/signin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   {t.footer.signup[lang]}
                 </Link>
               </li>

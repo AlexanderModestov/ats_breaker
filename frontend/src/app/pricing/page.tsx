@@ -21,7 +21,7 @@ export default function PricingPage() {
 
   const handleSubscribe = () => {
     if (!isAuthenticated) {
-      router.push("/login?redirect=/pricing");
+      router.push("/signin?redirect=/pricing");
       return;
     }
     subscriptionCheckout.mutate();

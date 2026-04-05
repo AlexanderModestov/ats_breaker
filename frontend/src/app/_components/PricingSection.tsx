@@ -86,7 +86,7 @@ export function PricingSection() {
               </ul>
 
               <div className="mt-8">
-                <Link href="/login" className="block">
+                <Link href="/signin" className="block">
                   <Button
                     variant={plan.highlighted ? "accent" : "outline"}
                     size="lg"

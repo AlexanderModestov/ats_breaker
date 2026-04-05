@@ -36,7 +36,7 @@ export function HeroSection() {
           transition={{ duration: 0.5, delay: 0.2, ease: ease.smooth }}
           className="mt-10"
         >
-          <Link href="/login">
+          <Link href="/signin">
             <Button variant="accent" size="lg" className="text-base px-8">
               {t.hero.cta[lang]}
             </Button>

@@ -38,7 +38,7 @@ export function LandingHeader() {
       className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl"
     >
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/landing" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <span className="text-sm font-bold text-primary-foreground">HR</span>
           </div>
@@ -93,12 +93,12 @@ export function LandingHeader() {
 
           <div className="h-5 w-px bg-border" />
 
-          <Link href="/login">
+          <Link href="/signin">
             <Button variant="ghost" size="sm">
               {t.nav.login[lang]}
             </Button>
           </Link>
-          <Link href="/login">
+          <Link href="/signin">
             <Button variant="accent" size="sm">
               {t.nav.signup[lang]}
             </Button>
