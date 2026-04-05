@@ -81,7 +81,64 @@ export const t = {
   },
   pricing: {
     heading: { en: "Pricing", ru: "Тарифы" },
+    subtitle: {
+      en: "Choose the plan that fits your job search",
+      ru: "Выберите тариф под ваш поиск работы",
+    },
+    monthly: { en: "/month", ru: "/мес" },
     cta: { en: "See Pricing", ru: "Смотреть тарифы" },
+    plans: [
+      {
+        name: { en: "Free", ru: "Free" },
+        price: "0",
+        description: {
+          en: "Try it out with limited monthly usage",
+          ru: "Попробуйте с ограниченным количеством в месяц",
+        },
+        features: [
+          { en: "3 resume optimizations / month", ru: "3 оптимизации резюме / мес" },
+          { en: "ATS simulation check", ru: "Проверка ATS-симуляцией" },
+          { en: "PDF export", ru: "Экспорт в PDF" },
+          { en: "Keyword matching", ru: "Подбор ключевых слов" },
+        ],
+        cta: { en: "Get Started", ru: "Начать" },
+        highlighted: false,
+      },
+      {
+        name: { en: "Pro", ru: "Pro" },
+        price: "19",
+        description: {
+          en: "Unlimited optimizations for active job seekers",
+          ru: "Безлимитные оптимизации для активного поиска",
+        },
+        features: [
+          { en: "Unlimited optimizations", ru: "Безлимитные оптимизации" },
+          { en: "ATS simulation + AI detection", ru: "ATS-симуляция + AI-детекция" },
+          { en: "Hallucination detection", ru: "Проверка на галлюцинации" },
+          { en: "Vector similarity matching", ru: "Векторное сравнение" },
+          { en: "Priority rendering", ru: "Приоритетная обработка" },
+        ],
+        cta: { en: "Go Pro", ru: "Выбрать Pro" },
+        highlighted: true,
+      },
+      {
+        name: { en: "Mentor", ru: "Mentor" },
+        price: "50",
+        description: {
+          en: "Everything in Pro, plus personal HR coach",
+          ru: "Всё из Pro + персональный HR-коуч",
+        },
+        features: [
+          { en: "Everything in Pro", ru: "Всё из тарифа Pro" },
+          { en: "1-on-1 HR coach sessions", ru: "Индивидуальные сессии с HR-коучем" },
+          { en: "Resume strategy review", ru: "Стратегический разбор резюме" },
+          { en: "Interview preparation tips", ru: "Подготовка к собеседованиям" },
+          { en: "LinkedIn profile advice", ru: "Рекомендации по LinkedIn" },
+        ],
+        cta: { en: "Get Mentor", ru: "Выбрать Mentor" },
+        highlighted: false,
+      },
+    ],
   },
   faq: {
     heading: { en: "Frequently Asked Questions", ru: "Часто задаваемые вопросы" },
