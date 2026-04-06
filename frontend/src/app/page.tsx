@@ -16,11 +16,24 @@ export default function LandingPage() {
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
 
+  // Detect auth callback (Supabase puts token in URL hash)
+  const hasAuthHash =
+    typeof window !== "undefined" && window.location.hash.includes("access_token");
+
   useEffect(() => {
     if (!loading && isAuthenticated) {
       router.replace("/optimize");
     }
   }, [isAuthenticated, loading, router]);
+
+  // Hide landing while processing OAuth callback or already authenticated
+  if (hasAuthHash || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   return (
     <LangProvider>
