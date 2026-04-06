@@ -2,6 +2,8 @@ import { getSupabaseClient } from "./supabase";
 import type {
   CV,
   CVListResponse,
+  CoachMessage,
+  CoachSession,
   EditResponse,
   OptimizationListResponse,
   OptimizationStartResponse,
@@ -9,6 +11,8 @@ import type {
   OptimizationSummary,
   OptimizeRequest,
   RequirementsResponse,
+  StorybankEntry,
+  StorybankEntryRequest,
   UserProfile,
   UserProfileUpdate,
   SubscriptionStatus,
@@ -228,4 +232,92 @@ export async function createAddonCheckout(
     method: "POST",
     body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
   });
+}
+
+// Coach API
+export async function listCoachSessions(): Promise<CoachSession[]> {
+  return fetchWithAuth<CoachSession[]>("/coach/sessions");
+}
+
+export async function getCoachMessages(sessionId: string): Promise<CoachMessage[]> {
+  return fetchWithAuth<CoachMessage[]>(`/coach/sessions/${sessionId}/messages`);
+}
+
+export async function streamCoachChat(
+  optimizationRunId: string,
+  message: string,
+  sessionId?: string,
+  onDelta: (text: string) => void = () => {},
+  onDone: (sessionId: string) => void = () => {},
+  onError: (error: string) => void = () => {},
+): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE}/coach/chat`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      optimization_run_id: optimizationRunId,
+      message,
+      session_id: sessionId,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || `Chat failed: ${response.status}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === "delta") onDelta(event.content || "");
+          else if (event.type === "done") onDone(event.session_id || "");
+          else if (event.type === "error") onError(event.content || "Unknown error");
+        } catch {
+          // skip malformed events
+        }
+      }
+    }
+  }
+}
+
+// Storybank API
+export async function listStorybank(): Promise<StorybankEntry[]> {
+  return fetchWithAuth<StorybankEntry[]>("/coach/storybank");
+}
+
+export async function createStorybankEntry(data: StorybankEntryRequest): Promise<StorybankEntry> {
+  return fetchWithAuth<StorybankEntry>("/coach/storybank", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateStorybankEntry(id: string, data: StorybankEntryRequest): Promise<StorybankEntry> {
+  return fetchWithAuth<StorybankEntry>(`/coach/storybank/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStorybankEntry(id: string): Promise<void> {
+  await fetchWithAuth(`/coach/storybank/${id}`, { method: "DELETE" });
 }

@@ -144,3 +144,52 @@ export interface CheckoutRequest {
 export interface CheckoutResponse {
   checkout_url: string;
 }
+
+// Coach types
+export interface CoachSession {
+  id: string;
+  optimization_run_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CoachMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface CoachChatRequest {
+  optimization_run_id: string;
+  message: string;
+  session_id?: string;
+}
+
+export interface CoachSSEEvent {
+  type: "delta" | "done" | "error";
+  content?: string;
+  session_id?: string;
+}
+
+// Storybank types
+export interface StorybankEntry {
+  id: string;
+  title: string;
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+  tags: string[];
+  rating: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorybankEntryRequest {
+  title: string;
+  situation?: string;
+  task?: string;
+  action?: string;
+  result?: string;
+  tags?: string[];
+  rating?: number | null;
+}
