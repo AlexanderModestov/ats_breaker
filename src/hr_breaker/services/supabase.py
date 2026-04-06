@@ -316,6 +316,159 @@ class SupabaseService:
             logger.error(f"Failed to delete optimization run: {e}")
             raise SupabaseError(f"Failed to delete optimization run: {e}") from e
 
+    # Coach session operations
+    def get_or_create_coach_session(
+        self, user_id: str, optimization_run_id: str
+    ) -> dict[str, Any]:
+        """Get existing coach session or create a new one."""
+        try:
+            result = (
+                self._client.table("coach_sessions")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("optimization_run_id", optimization_run_id)
+                .maybe_single()
+                .execute()
+            )
+            if result.data:
+                return result.data
+
+            # Create new session
+            session_id = str(uuid4())
+            result = (
+                self._client.table("coach_sessions")
+                .insert({
+                    "id": session_id,
+                    "user_id": user_id,
+                    "optimization_run_id": optimization_run_id,
+                })
+                .execute()
+            )
+            return result.data[0]
+        except Exception as e:
+            logger.error(f"Failed to get or create coach session: {e}")
+            raise SupabaseError(f"Failed to get or create coach session: {e}") from e
+
+    def list_coach_sessions(self, user_id: str) -> list[dict[str, Any]]:
+        """List all coach sessions for a user."""
+        try:
+            result = (
+                self._client.table("coach_sessions")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("updated_at", desc=True)
+                .execute()
+            )
+            return result.data
+        except Exception as e:
+            logger.error(f"Failed to list coach sessions: {e}")
+            raise SupabaseError(f"Failed to list coach sessions: {e}") from e
+
+    # Coach message operations
+    def get_coach_messages(self, session_id: str) -> list:
+        """Get messages for a coach session."""
+        try:
+            result = (
+                self._client.table("coach_messages")
+                .select("messages")
+                .eq("session_id", session_id)
+                .maybe_single()
+                .execute()
+            )
+            if result.data:
+                return result.data.get("messages", [])
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get coach messages: {e}")
+            raise SupabaseError(f"Failed to get coach messages: {e}") from e
+
+    def save_coach_messages(self, session_id: str, messages: list) -> None:
+        """Upsert coach messages and touch session updated_at."""
+        try:
+            now = datetime.now().isoformat()
+            # Upsert messages row
+            self._client.table("coach_messages").upsert(
+                {
+                    "session_id": session_id,
+                    "messages": messages,
+                    "updated_at": now,
+                },
+                on_conflict="session_id",
+            ).execute()
+
+            # Touch coach_sessions.updated_at
+            self._client.table("coach_sessions").update(
+                {"updated_at": now}
+            ).eq("id", session_id).execute()
+        except Exception as e:
+            logger.error(f"Failed to save coach messages: {e}")
+            raise SupabaseError(f"Failed to save coach messages: {e}") from e
+
+    # Storybank operations
+    def list_storybank(self, user_id: str) -> list[dict[str, Any]]:
+        """List all storybank entries for a user."""
+        try:
+            result = (
+                self._client.table("storybank")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            return result.data
+        except Exception as e:
+            logger.error(f"Failed to list storybank entries: {e}")
+            raise SupabaseError(f"Failed to list storybank entries: {e}") from e
+
+    def create_storybank_entry(
+        self, user_id: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Create a new storybank entry."""
+        try:
+            result = (
+                self._client.table("storybank")
+                .insert({**data, "user_id": user_id})
+                .execute()
+            )
+            return result.data[0]
+        except Exception as e:
+            logger.error(f"Failed to create storybank entry: {e}")
+            raise SupabaseError(f"Failed to create storybank entry: {e}") from e
+
+    def update_storybank_entry(
+        self, entry_id: str, user_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a storybank entry with ownership check."""
+        try:
+            result = (
+                self._client.table("storybank")
+                .update({**data, "updated_at": datetime.now().isoformat()})
+                .eq("id", entry_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+            if not result.data:
+                return None
+            return result.data[0]
+        except Exception as e:
+            logger.error(f"Failed to update storybank entry: {e}")
+            raise SupabaseError(f"Failed to update storybank entry: {e}") from e
+
+    def delete_storybank_entry(self, entry_id: str, user_id: str) -> bool:
+        """Delete a storybank entry with ownership check."""
+        try:
+            result = (
+                self._client.table("storybank")
+                .delete()
+                .eq("id", entry_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return len(result.data) > 0
+        except Exception as e:
+            logger.error(f"Failed to delete storybank entry: {e}")
+            raise SupabaseError(f"Failed to delete storybank entry: {e}") from e
+
     # Subscription operations
     def consume_request_atomic(
         self,
