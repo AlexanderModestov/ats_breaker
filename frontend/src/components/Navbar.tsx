@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { motion } from "@/components/motion";
-import { LogOut, Settings, Sparkles, FileText, History } from "lucide-react";
+import { LogOut, Settings, Sparkles, FileText, MessageCircle, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/optimize", label: "Optimize", icon: Sparkles },
   { href: "/cvs", label: "CVs", icon: FileText },
+  { href: "/coach", label: "Coach", icon: MessageCircle },
   { href: "/history", label: "History", icon: History },
 ];
 
