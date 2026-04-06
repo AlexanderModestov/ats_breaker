@@ -1,5 +1,6 @@
 """API routes package."""
 
+from .coach import router as coach_router
 from .cvs import router as cvs_router
 from .editor import router as editor_router
 from .optimize import router as optimize_router
@@ -8,6 +9,7 @@ from .users import router as users_router
 from .webhooks import router as webhooks_router
 
 __all__ = [
+    "coach_router",
     "cvs_router",
     "editor_router",
     "optimize_router",

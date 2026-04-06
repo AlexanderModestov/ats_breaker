@@ -137,3 +137,54 @@ class HealthResponse(BaseModel):
 
     status: str = "ok"
     version: str = "0.1.0"
+
+
+class CoachChatRequest(BaseModel):
+    """Request to send a message to the coach."""
+
+    session_id: str | None = None
+    optimization_run_id: str
+    message: str
+
+
+class CoachSessionResponse(BaseModel):
+    """Coach session info."""
+
+    id: str
+    optimization_run_id: str
+    created_at: str
+    updated_at: str
+
+
+class CoachMessageResponse(BaseModel):
+    """Coach message for display."""
+
+    role: str
+    content: str
+
+
+class StorybankEntryRequest(BaseModel):
+    """Request to create/update a storybank entry."""
+
+    title: str
+    situation: str = ""
+    task: str = ""
+    action: str = ""
+    result: str = ""
+    tags: list[str] = []
+    rating: int | None = None
+
+
+class StorybankEntryResponse(BaseModel):
+    """Storybank entry."""
+
+    id: str
+    title: str
+    situation: str
+    task: str
+    action: str
+    result: str
+    tags: list[str]
+    rating: int | None
+    created_at: str
+    updated_at: str

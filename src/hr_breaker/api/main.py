@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from hr_breaker.api.routes import (
+    coach_router,
     cvs_router,
     editor_router,
     optimize_router,
@@ -38,6 +39,7 @@ app.include_router(optimize_router, prefix="/api/optimize", tags=["optimize"])
 app.include_router(editor_router, prefix="/api/optimize", tags=["editor"])
 app.include_router(subscription_router, prefix="/api/subscription", tags=["subscription"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
+app.include_router(coach_router, prefix="/api/coach", tags=["coach"])
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])
