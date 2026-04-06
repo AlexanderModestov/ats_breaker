@@ -47,18 +47,8 @@ export function PricingSection() {
 
               <div>
                 <h3 className="text-lg font-semibold">{plan.name[lang]}</h3>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold tracking-tight">
-                    €{plan.price}
-                  </span>
-                  {plan.price !== "0" && (
-                    <span className="text-muted-foreground text-sm">
-                      {t.pricing.monthly[lang]}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {plan.description[lang]}
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {plan.tagline[lang]}
                 </p>
               </div>
 
@@ -84,21 +74,23 @@ export function PricingSection() {
                   </li>
                 ))}
               </ul>
-
-              <div className="mt-8">
-                <Link href="/signin" className="block">
-                  <Button
-                    variant={plan.highlighted ? "accent" : "outline"}
-                    size="lg"
-                    className="w-full"
-                  >
-                    {plan.cta[lang]}
-                  </Button>
-                </Link>
-              </div>
             </motion.div>
           ))}
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+          className="mt-10 text-center"
+        >
+          <Link href="/signin">
+            <Button variant="accent" size="lg">
+              {lang === "en" ? "Get Started" : "Начать"}
+            </Button>
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
