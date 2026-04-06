@@ -26,20 +26,28 @@ router = APIRouter()
 
 def _extract_display_messages(raw_messages: list) -> list[dict]:
     """Extract user/assistant text messages from Pydantic-AI message format."""
+    from pydantic_ai.messages import (
+        ModelRequest,
+        ModelResponse,
+        TextPart,
+        UserPromptPart,
+    )
+
     display = []
-    for msg in raw_messages:
-        if isinstance(msg, dict):
-            kind = msg.get("kind") or msg.get("type", "")
-            if "request" in kind.lower():
-                for part in msg.get("parts", []):
-                    part_type = part.get("kind") or part.get("type", "")
-                    if "user" in part_type.lower() and "prompt" in part_type.lower():
-                        display.append({"role": "user", "content": part.get("content", "")})
-            elif "response" in kind.lower():
-                for part in msg.get("parts", []):
-                    part_type = part.get("kind") or part.get("type", "")
-                    if "text" in part_type.lower():
-                        display.append({"role": "assistant", "content": part.get("content", "")})
+    try:
+        messages = ModelMessagesTypeAdapter.validate_python(raw_messages)
+    except Exception:
+        return display
+
+    for msg in messages:
+        if isinstance(msg, ModelRequest):
+            for part in msg.parts:
+                if isinstance(part, UserPromptPart):
+                    display.append({"role": "user", "content": part.content})
+        elif isinstance(msg, ModelResponse):
+            for part in msg.parts:
+                if isinstance(part, TextPart):
+                    display.append({"role": "assistant", "content": part.content})
     return display
 
 
@@ -54,6 +62,10 @@ async def get_session_messages(
     session_id: str, user_id: CurrentUser, supabase: SupabaseServiceDep
 ):
     """Get display messages for a coach session."""
+    # Verify session belongs to user
+    sessions = supabase.list_coach_sessions(user_id)
+    if not any(s["id"] == session_id for s in sessions):
+        raise HTTPException(status_code=404, detail="Session not found")
     raw = supabase.get_coach_messages(session_id)
     return _extract_display_messages(raw)
 
