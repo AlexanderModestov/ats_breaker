@@ -1,5 +1,6 @@
 """Coach API routes — chat streaming + storybank CRUD."""
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -137,7 +138,7 @@ async def chat(
                 # Stream done — save full history
                 all_messages = result.all_messages()
                 serialized = to_jsonable_python(all_messages)
-                supabase.save_coach_messages(session_id, serialized)
+                await asyncio.to_thread(supabase.save_coach_messages, session_id, serialized)
 
                 # Send done event with session_id
                 done = json.dumps({"type": "done", "session_id": session_id})
