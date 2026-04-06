@@ -15,7 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_coach_sessions_user_id ON coach_sessions(user_id)
 -- Coach messages: stores conversation history per session
 CREATE TABLE IF NOT EXISTS coach_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id UUID NOT NULL REFERENCES coach_sessions(id) ON DELETE CASCADE,
+    session_id UUID NOT NULL UNIQUE REFERENCES coach_sessions(id) ON DELETE CASCADE,
     messages JSONB NOT NULL DEFAULT '[]',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

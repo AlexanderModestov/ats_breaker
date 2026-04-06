@@ -409,7 +409,7 @@ class SupabaseService:
         """List all storybank entries for a user."""
         try:
             result = (
-                self._client.table("storybank")
+                self._client.table("storybank_entries")
                 .select("*")
                 .eq("user_id", user_id)
                 .order("created_at", desc=True)
@@ -426,7 +426,7 @@ class SupabaseService:
         """Create a new storybank entry."""
         try:
             result = (
-                self._client.table("storybank")
+                self._client.table("storybank_entries")
                 .insert({**data, "user_id": user_id})
                 .execute()
             )
@@ -441,7 +441,7 @@ class SupabaseService:
         """Update a storybank entry with ownership check."""
         try:
             result = (
-                self._client.table("storybank")
+                self._client.table("storybank_entries")
                 .update({**data, "updated_at": datetime.now().isoformat()})
                 .eq("id", entry_id)
                 .eq("user_id", user_id)
@@ -458,7 +458,7 @@ class SupabaseService:
         """Delete a storybank entry with ownership check."""
         try:
             result = (
-                self._client.table("storybank")
+                self._client.table("storybank_entries")
                 .delete()
                 .eq("id", entry_id)
                 .eq("user_id", user_id)
