@@ -83,6 +83,7 @@ export default function CoachPage() {
         {/* Tab switcher */}
         <div className="flex rounded-lg border border-border bg-muted p-0.5 text-sm shrink-0">
           <button
+            type="button"
             className={cn(
               "rounded-md px-4 py-1.5 font-medium transition-colors",
               activeTab === "chat"
@@ -94,6 +95,7 @@ export default function CoachPage() {
             Chat
           </button>
           <button
+            type="button"
             className={cn(
               "flex items-center gap-1.5 rounded-md px-4 py-1.5 font-medium transition-colors",
               activeTab === "storybank"

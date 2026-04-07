@@ -17,11 +17,6 @@ import { useStorybank, useUpdateStory, useDeleteStory } from "@/hooks/useStoryba
 import type { StorybankEntry, StorybankEntryRequest } from "@/types";
 import { cn } from "@/lib/utils";
 
-interface StorybankPanelProps {
-  collapsed: boolean;
-  onToggle: () => void;
-}
-
 /* ------------------------------------------------------------------ */
 /*  StoryCard (internal sub-component)                                 */
 /* ------------------------------------------------------------------ */
@@ -260,55 +255,22 @@ function StoryCard({ entry }: StoryCardProps) {
 /*  StorybankPanel                                                      */
 /* ------------------------------------------------------------------ */
 
-export function StorybankPanel({ collapsed, onToggle }: StorybankPanelProps) {
+export function StorybankPanel() {
   const { data: stories = [], isLoading } = useStorybank();
 
-  /* ---------- collapsed: floating button ---------- */
-  if (collapsed) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2 }}
-        className="fixed right-4 top-20 z-40"
-      >
-        <Button
-          size="icon"
-          variant="outline"
-          className="h-10 w-10 rounded-full shadow-md"
-          onClick={onToggle}
-        >
-          <BookOpen className="h-5 w-5" />
-        </Button>
-      </motion.div>
-    );
-  }
-
-  /* ---------- expanded panel ---------- */
   return (
-    <motion.aside
-      initial={{ x: 80, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 80, opacity: 0 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className="flex h-full w-80 shrink-0 flex-col border-l border-border bg-background"
-    >
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-foreground">Storybank</h2>
-          <Badge variant="secondary" className="text-[10px] font-normal">
-            {stories.length}
-          </Badge>
-        </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggle}>
-          <X className="h-4 w-4 text-muted-foreground" />
-        </Button>
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <BookOpen className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold text-foreground">Storybank</h2>
+        <Badge variant="secondary" className="text-[10px] font-normal">
+          {stories.length}
+        </Badge>
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <span className="text-sm text-muted-foreground">Loading...</span>
@@ -321,9 +283,13 @@ export function StorybankPanel({ collapsed, onToggle }: StorybankPanelProps) {
             </p>
           </div>
         ) : (
-          stories.map((entry) => <StoryCard key={entry.id} entry={entry} />)
+          <div className="mx-auto max-w-2xl space-y-2">
+            {stories.map((entry) => (
+              <StoryCard key={entry.id} entry={entry} />
+            ))}
+          </div>
         )}
       </div>
-    </motion.aside>
+    </div>
   );
 }
