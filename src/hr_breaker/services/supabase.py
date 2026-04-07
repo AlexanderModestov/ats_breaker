@@ -327,11 +327,11 @@ class SupabaseService:
                 .select("*")
                 .eq("user_id", user_id)
                 .eq("optimization_run_id", optimization_run_id)
-                .maybe_single()
+                .limit(1)
                 .execute()
             )
             if result.data:
-                return result.data
+                return result.data[0]
 
             # Create new session
             session_id = str(uuid4())
