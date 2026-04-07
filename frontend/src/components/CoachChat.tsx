@@ -11,7 +11,15 @@ interface CoachChatProps {
   messages: CoachMessage[];
   isStreaming: boolean;
   onSend: (message: string) => void;
+  runId: string;
 }
+
+const SUGGESTIONS = [
+  "What's most important for this role?",
+  "Practice a leadership question with me",
+  "Give me feedback on my answer",
+  "What questions should I expect?",
+];
 
 function MessageBubble({ message }: { message: CoachMessage }) {
   const isUser = message.role === "user";
@@ -82,12 +90,40 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
+          <div className="flex h-full items-center justify-center px-4">
+            <div className="w-full max-w-md text-center">
               <h3 className="text-lg font-semibold">Interview Coach</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Ask questions about the role, practice answers, or get feedback on your resume.
+                I know this job posting and your resume. I can help you prepare.
               </p>
+              <ul className="mt-4 space-y-1 text-sm text-muted-foreground text-left list-none">
+                {[
+                  "Practice answering interview questions",
+                  "Get feedback on your STAR stories",
+                  "Understand what the role really needs",
+                  "Save your best stories to Storybank",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-0.5 text-primary">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setInput(s);
+                      textareaRef.current?.focus();
+                    }}
+                    className="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
