@@ -122,7 +122,6 @@ export default function CoachPage() {
               messages={messages}
               isStreaming={isStreaming}
               onSend={handleSend}
-              runId={selectedRunId}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground">

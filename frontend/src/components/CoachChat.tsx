@@ -11,7 +11,6 @@ interface CoachChatProps {
   messages: CoachMessage[];
   isStreaming: boolean;
   onSend: (message: string) => void;
-  runId: string;
 }
 
 const SUGGESTIONS = [
@@ -129,7 +128,7 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
         ) : (
           <AnimatePresence initial={false}>
             {messages.map((msg, i) => (
-              <MessageBubble key={i} message={msg} />
+              <MessageBubble key={msg.role + "-" + i} message={msg} />
             ))}
           </AnimatePresence>
         )}
