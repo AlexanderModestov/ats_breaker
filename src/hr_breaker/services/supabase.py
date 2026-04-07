@@ -372,11 +372,11 @@ class SupabaseService:
                 self._client.table("coach_messages")
                 .select("messages")
                 .eq("session_id", session_id)
-                .maybe_single()
+                .limit(1)
                 .execute()
             )
             if result.data:
-                return result.data.get("messages", [])
+                return result.data[0].get("messages", [])
             return []
         except Exception as e:
             logger.error(f"Failed to get coach messages: {e}")
