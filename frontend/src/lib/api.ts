@@ -299,6 +299,14 @@ export async function streamCoachChat(
   }
 }
 
+// Telegram API
+export async function linkTelegramId(telegramId: number): Promise<void> {
+  await fetchWithAuth("/auth/telegram/link", {
+    method: "POST",
+    body: JSON.stringify({ telegram_id: telegramId }),
+  });
+}
+
 // Storybank API
 export async function listStorybank(): Promise<StorybankEntry[]> {
   return fetchWithAuth<StorybankEntry[]>("/coach/storybank");

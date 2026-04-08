@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { motion } from "@/components/motion";
 import { ArrowRight, FileText, Sparkles, Target } from "lucide-react";
+import { getTelegramUserId } from "@/lib/telegram";
+import { linkTelegramId } from "@/lib/api";
 
 const features = [
   {
@@ -31,6 +33,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
+      const telegramId = getTelegramUserId();
+      if (telegramId) {
+        linkTelegramId(telegramId)
+          .then(() => {
+            (window as any).Telegram?.WebApp?.close();
+          })
+          .catch(() => {
+            // Non-fatal: user is logged in, linking failed silently
+          });
+      }
       router.push("/optimize");
     }
   }, [isAuthenticated, loading, router]);
