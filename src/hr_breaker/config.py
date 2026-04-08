@@ -60,6 +60,10 @@ class Settings(BaseModel):
     subscription_request_limit: int = 50
     addon_request_count: int = 10
 
+    # Telegram bot settings
+    bot_api_key: str = ""
+    telegram_bot_token: str = ""
+
     # Scraper settings
     scraper_httpx_timeout: float = 30.0
     scraper_wayback_timeout: float = 15.0
@@ -159,6 +163,9 @@ def get_settings() -> Settings:
         trial_request_limit=int(os.getenv("TRIAL_REQUEST_LIMIT", "3")),
         subscription_request_limit=int(os.getenv("SUBSCRIPTION_REQUEST_LIMIT", "50")),
         addon_request_count=int(os.getenv("ADDON_REQUEST_COUNT", "10")),
+        # Telegram bot settings
+        bot_api_key=os.getenv("BOT_API_KEY", ""),
+        telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
     )
 
 

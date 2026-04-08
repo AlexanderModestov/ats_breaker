@@ -9,6 +9,7 @@ from hr_breaker.api.routes import (
     editor_router,
     optimize_router,
     subscription_router,
+    telegram_router,
     users_router,
     webhooks_router,
 )
@@ -40,6 +41,7 @@ app.include_router(editor_router, prefix="/api/optimize", tags=["editor"])
 app.include_router(subscription_router, prefix="/api/subscription", tags=["subscription"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
 app.include_router(coach_router, prefix="/api/coach", tags=["coach"])
+app.include_router(telegram_router, prefix="/api/auth/telegram", tags=["telegram"])
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])
