@@ -529,6 +529,72 @@ class SupabaseService:
             logger.error(f"Failed to add addon credits: {e}")
             raise SupabaseError(f"Failed to add addon credits: {e}") from e
 
+    def get_profile_by_telegram_id(self, telegram_id: int) -> dict[str, Any] | None:
+        """Get user profile by Telegram ID."""
+        try:
+            result = (
+                self._client.table("profiles")
+                .select("*")
+                .eq("telegram_id", telegram_id)
+                .single()
+                .execute()
+            )
+            return result.data
+        except Exception:
+            return None
+
+    def link_telegram(self, user_id: str, telegram_id: int) -> None:
+        """Link a Telegram ID to a user profile."""
+        try:
+            self._client.table("profiles").update(
+                {"telegram_id": telegram_id}
+            ).eq("id", user_id).execute()
+        except Exception as e:
+            raise SupabaseError(f"Failed to link Telegram: {e}") from e
+
+    def get_default_cv(self, user_id: str) -> dict[str, Any] | None:
+        """Get the user's default CV (most recently uploaded)."""
+        try:
+            result = (
+                self._client.table("cvs")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if not result.data:
+                return None
+            profile = self.get_profile(user_id)
+            if profile and profile.get("default_cv_id"):
+                cv = (
+                    self._client.table("cvs")
+                    .select("*")
+                    .eq("id", profile["default_cv_id"])
+                    .single()
+                    .execute()
+                )
+                return cv.data if cv.data else result.data[0]
+            return result.data[0]
+        except Exception:
+            return None
+
+    def get_recent_runs(self, user_id: str, limit: int = 5) -> list[dict[str, Any]]:
+        """Get recent optimization runs for a user."""
+        try:
+            result = (
+                self._client.table("optimization_runs")
+                .select("id, job_title, job_company, status, created_at")
+                .eq("user_id", user_id)
+                .eq("status", "completed")
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return result.data or []
+        except Exception:
+            return []
+
     @staticmethod
     def _get_content_type(ext: str) -> str:
         """Get content type for file extension."""
