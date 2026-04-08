@@ -19,9 +19,13 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
 COPY templates/ ./templates/
+COPY telegram_bot/ ./telegram_bot/
 
 # Install dependencies
 RUN uv sync --frozen --no-dev
+
+# Install bot dependencies
+RUN cd telegram_bot && uv sync --frozen --no-dev
 
 # Install Playwright browsers (chromium only to save space)
 RUN uv run playwright install chromium
