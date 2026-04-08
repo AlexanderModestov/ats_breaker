@@ -34,4 +34,4 @@ RUN uv run playwright install chromium
 EXPOSE 8000
 
 # Run API - use PORT env var for Railway compatibility
-CMD ["sh", "-c", "uv run uvicorn hr_breaker.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "cd telegram_bot && uv run python -m bot.main & cd /app && uv run uvicorn hr_breaker.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
