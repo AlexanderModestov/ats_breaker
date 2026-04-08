@@ -1,0 +1,13 @@
+[project]
+name = "hr-breaker-bot"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "aiogram>=3.17",
+    "httpx>=0.27",
+    "pydantic-settings>=2.0",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+hr-breaker-bot = "bot.main:main"
