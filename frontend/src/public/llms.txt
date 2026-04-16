@@ -1,0 +1,40 @@
+# HR-Breaker
+
+> HR-Breaker is a resume optimization SaaS that rewrites your resume to match any job posting, runs a real Applicant Tracking System (ATS) simulation, and returns an optimized, ATS-parsable PDF. It is built for job seekers who want to pass automated screening filters without fabricating experience.
+
+## What it does
+
+- Accepts resumes in PDF, LaTeX, Markdown, HTML, or plain text.
+- Extracts the key requirements and keywords from a job posting URL or pasted description.
+- Rewrites and reformats the resume to match the posting.
+- Runs a built-in ATS simulation before returning the file.
+- Performs hallucination detection to ensure no skills, roles, or credentials are fabricated — every claim in the output must be grounded in the uploaded source resume.
+- Returns a single-column, ATS-parsable PDF.
+
+## Pricing
+
+- **Starter** — free to try, no credit card required.
+- **Job Hunter** — paid tier for active job seekers; full feature set.
+- **Offer Mode** — top tier including interview prep and cover letter generation.
+- Add-on packs: €5 per extra 10 optimization requests.
+
+## Product pages
+
+- [Homepage](https://hrbreaker.co/): value proposition, how it works, feature list, pricing, FAQ.
+- [Pricing](https://hrbreaker.co/pricing): plan comparison and add-on packs.
+
+## FAQ highlights
+
+- **Will the optimized resume contain false information?** No. Hallucination detection compares every claim in the output against the uploaded source and flags anything that was not present.
+- **Which input formats are supported?** PDF, LaTeX, Markdown, HTML, and plain text.
+- **What do I get back?** A single-column, ATS-parsable PDF, optimized for the specific job posting.
+- **Do I need to create an account to try it?** No — the Starter tier is free and requires no credit card.
+
+## Legal
+
+- [Privacy Policy](https://hrbreaker.co/privacy)
+- [Terms of Service](https://hrbreaker.co/terms)
+
+## Contact
+
+- Website: https://hrbreaker.co/
