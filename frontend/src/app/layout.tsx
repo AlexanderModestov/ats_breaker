@@ -5,12 +5,6 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { JsonLd } from './components/JsonLd'  // add this import
 
-// then inside the return, put <JsonLd /> anywhere in <body>:
-<body>
-  <JsonLd />       {/* ← add this line */}
-  {children}
-</body>
-
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -63,6 +57,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+        <JsonLd />       {/* ← add this line */}
         <Providers>{children}</Providers>
       </body>
     </html>
