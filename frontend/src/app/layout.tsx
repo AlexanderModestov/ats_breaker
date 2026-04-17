@@ -3,6 +3,13 @@ import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
+import { JsonLd } from './components/JsonLd'  // add this import
+
+// then inside the return, put <JsonLd /> anywhere in <body>:
+<body>
+  <JsonLd />       {/* ← add this line */}
+  {children}
+</body>
 
 const inter = Inter({
   subsets: ["latin"],
