@@ -10,8 +10,36 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HR-Breaker",
-  description: "Resume optimization tool for job postings",
+  metadataBase: new URL("https://hrbreaker.co"),
+  title: {
+    default: "HR-Breaker — ATS Resume Optimization for Any Job Posting",
+    template: "%s | HR-Breaker",
+  },
+  description:
+    "HR-Breaker optimizes your resume to match any job posting, runs an ATS simulation, and returns a tailored PDF in seconds. Free to try — no credit card required.",
+  applicationName: "HR-Breaker",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "https://hrbreaker.co/",
+    siteName: "HR-Breaker",
+    title: "HR-Breaker — ATS Resume Optimization for Any Job Posting",
+    description:
+      "Optimize your resume for any job posting. Pass ATS filters with confidence — no fabrications, no hallucinations.",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "HR-Breaker — ATS Resume Optimization for Any Job Posting",
+    description:
+      "Optimize your resume for any job posting. Pass ATS filters with confidence.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
