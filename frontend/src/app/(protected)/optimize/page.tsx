@@ -17,6 +17,7 @@ import { JobInput } from "@/components/JobInput";
 import { useCVs } from "@/hooks/useCVs";
 import { useStartOptimization } from "@/hooks/useOptimization";
 import { useSubscription, useVerifyCheckout } from "@/hooks/useSubscription";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import type { CV } from "@/types";
@@ -44,6 +45,7 @@ function OptimizeContent() {
   const startOptimization = useStartOptimization();
   const { data: subscription, isLoading: loadingSubscription } = useSubscription();
   const verifyCheckout = useVerifyCheckout();
+  const { track } = useAnalytics();
 
   const [selectedCV, setSelectedCV] = useState<CV | null>(null);
   const [jobInput, setJobInput] = useState("");
@@ -174,16 +176,20 @@ function OptimizeContent() {
   const handleOptimize = useCallback(async () => {
     if (!selectedCV || !jobInput.trim()) return;
 
+    const trimmed = jobInput.trim();
+    const isUrl = /^https?:\/\//i.test(trimmed);
+    track("job_provided", { input_type: isUrl ? "url" : "text" });
+
     try {
       const result = await startOptimization.mutateAsync({
         cv_id: selectedCV.id,
-        job_input: jobInput.trim(),
+        job_input: trimmed,
       });
       router.push(`/results/${result.run_id}`);
     } catch (err) {
       console.error("Failed to start optimization:", err);
     }
-  }, [selectedCV, jobInput, startOptimization, router]);
+  }, [selectedCV, jobInput, startOptimization, router, track]);
 
   const canOptimize = selectedCV && jobInput.trim().length > 0;
 
