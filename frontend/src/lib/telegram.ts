@@ -10,13 +10,8 @@ export function getTelegramWebApp() {
 
 export function getTelegramUserId(): number | null {
   const twa = getTelegramWebApp();
-  if (!twa) return null;
-  try {
-    const user = JSON.parse(twa.initDataUnsafe?.user ?? "null");
-    return user?.id ?? null;
-  } catch {
-    return null;
-  }
+  const id = twa?.initDataUnsafe?.user?.id;
+  return typeof id === "number" ? id : null;
 }
 
 export function isTelegramMiniApp(): boolean {
