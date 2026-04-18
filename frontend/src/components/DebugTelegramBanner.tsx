@@ -13,12 +13,27 @@ export function DebugTelegramBanner() {
   const [status, setStatus] = useState<string>("idle");
   const [tgAppearedAt, setTgAppearedAt] = useState<string>("checking...");
   const [scriptSrc, setScriptSrc] = useState<string>("?");
+  const [fetchProbe, setFetchProbe] = useState<string>("?");
+  const [cspViolation, setCspViolation] = useState<string>("none");
 
   useEffect(() => {
     const tag = document.querySelector(
       'script[src*="telegram-web-app"]'
     ) as HTMLScriptElement | null;
     setScriptSrc(tag?.src ?? "(not found)");
+
+    // CSP violation listener
+    const cspHandler = (e: SecurityPolicyViolationEvent) => {
+      setCspViolation(
+        `${e.effectiveDirective} blocked ${e.blockedURI} (policy: ${e.originalPolicy.slice(0, 100)})`
+      );
+    };
+    document.addEventListener("securitypolicyviolation", cspHandler);
+
+    // Fetch probe
+    fetch("https://telegram.org/js/telegram-web-app.js", { method: "GET" })
+      .then((r) => setFetchProbe(`${r.status} ${r.statusText} (len=${r.headers.get("content-length") ?? "?"})`))
+      .catch((e) => setFetchProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
 
     if ((window as any).Telegram) {
       setTgAppearedAt("0ms (already)");
@@ -40,6 +55,7 @@ export function DebugTelegramBanner() {
     return () => {
       clearInterval(iv);
       clearTimeout(to);
+      document.removeEventListener("securitypolicyviolation", cspHandler);
     };
   }, []);
 
@@ -141,6 +157,8 @@ loading: ${loading}
 scriptTagPresent: ${scriptPresent}
 scriptSrc: ${scriptSrc}
 tgAppearedAt: ${tgAppearedAt}
+fetchProbe: ${fetchProbe}
+cspViolation: ${cspViolation}
 typeof Telegram: ${hasTelegramObj}
 TelegramWebviewProxy: ${hasWebviewProxy}
 platform: ${platform}
