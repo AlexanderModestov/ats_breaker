@@ -14,7 +14,11 @@ export function DebugTelegramBanner() {
   const [tgAppearedAt, setTgAppearedAt] = useState<string>("checking...");
   const [scriptSrc, setScriptSrc] = useState<string>("?");
   const [fetchProbe, setFetchProbe] = useState<string>("?");
+  const [apiProbe, setApiProbe] = useState<string>("?");
   const [cspViolation, setCspViolation] = useState<string>("none");
+
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
   useEffect(() => {
     const tag = document.querySelector(
@@ -30,10 +34,15 @@ export function DebugTelegramBanner() {
     };
     document.addEventListener("securitypolicyviolation", cspHandler);
 
-    // Fetch probe
+    // Fetch probe for Telegram SDK
     fetch("https://telegram.org/js/telegram-web-app.js", { method: "GET" })
       .then((r) => setFetchProbe(`${r.status} ${r.statusText} (len=${r.headers.get("content-length") ?? "?"})`))
       .catch((e) => setFetchProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
+
+    // Fetch probe for backend health
+    fetch(`${apiBase}/health`)
+      .then((r) => setApiProbe(`${r.status} ${r.statusText}`))
+      .catch((e) => setApiProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
 
     if ((window as any).Telegram) {
       setTgAppearedAt("0ms (already)");
@@ -157,7 +166,9 @@ loading: ${loading}
 scriptTagPresent: ${scriptPresent}
 scriptSrc: ${scriptSrc}
 tgAppearedAt: ${tgAppearedAt}
-fetchProbe: ${fetchProbe}
+fetchProbe (tg): ${fetchProbe}
+apiBase: ${apiBase}
+apiProbe: ${apiProbe}
 cspViolation: ${cspViolation}
 typeof Telegram: ${hasTelegramObj}
 TelegramWebviewProxy: ${hasWebviewProxy}
