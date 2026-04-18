@@ -1,6 +1,7 @@
 // frontend/src/hooks/useAnalytics.ts
 "use client";
 
+import { useRef } from "react";
 import { posthog } from "@/lib/posthog";
 
 export type AnalyticsEvent =
@@ -16,14 +17,17 @@ export type AnalyticsEvent =
   | "pricing_viewed"
   | "pdf_history_viewed";
 
-export function useAnalytics() {
-  return {
-    track: (event: AnalyticsEvent, props?: Record<string, unknown>) => {
-      try {
-        posthog.capture(event, props);
-      } catch {
-        // PostHog may be uninitialized (no key in env); swallow — never break UX.
-      }
-    },
-  };
+type TrackFn = (event: AnalyticsEvent, props?: Record<string, unknown>) => void;
+
+export function useAnalytics(): { track: TrackFn } {
+  // Stable reference across renders so callers can safely pass `track` into
+  // useEffect deps without re-firing on unrelated re-renders.
+  const trackRef = useRef<TrackFn>((event, props) => {
+    try {
+      posthog.capture(event, props);
+    } catch {
+      // PostHog may be uninitialized (no key in env); swallow — never break UX.
+    }
+  });
+  return { track: trackRef.current };
 }

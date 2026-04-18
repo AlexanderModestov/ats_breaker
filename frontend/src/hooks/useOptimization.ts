@@ -9,10 +9,11 @@ import {
   listOptimizations,
   startOptimization,
 } from "@/lib/api";
-import { posthog } from "@/lib/posthog";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import type { OptimizationStatus, OptimizationSummary, OptimizeRequest } from "@/types";
 
 const POLL_INTERVAL = 2000; // 2 seconds
+const ERROR_MESSAGE_MAX_LEN = 120;
 
 export function useOptimizations() {
   return useQuery<OptimizationSummary[], Error>({
@@ -22,17 +23,17 @@ export function useOptimizations() {
 }
 
 export function useStartOptimization() {
+  const { track } = useAnalytics();
   return useMutation({
     mutationFn: (request: OptimizeRequest) => {
-      try {
-        posthog.capture("optimization_started");
-      } catch { /* noop when disabled */ }
+      track("optimization_started");
       return startOptimization(request);
     },
   });
 }
 
 export function useOptimizationStatus(runId: string | null) {
+  const { track } = useAnalytics();
   const [status, setStatus] = useState<OptimizationStatus | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,19 +61,17 @@ export function useOptimizationStatus(runId: string | null) {
         const durationSec = startedAtRef.current
           ? Math.round((Date.now() - startedAtRef.current) / 1000)
           : undefined;
-        try {
-          if (data.status === "complete") {
-            posthog.capture("optimization_completed", {
-              iterations: data.iterations,
-              duration_sec: durationSec,
-            });
-          } else {
-            posthog.capture("optimization_failed", {
-              stage: data.current_step,
-              error_type: data.error,
-            });
-          }
-        } catch { /* noop */ }
+        if (data.status === "complete") {
+          track("optimization_completed", {
+            iterations: data.iterations,
+            duration_sec: durationSec,
+          });
+        } else {
+          track("optimization_failed", {
+            stage: data.current_step,
+            error_message: data.error?.slice(0, ERROR_MESSAGE_MAX_LEN) ?? null,
+          });
+        }
       }
       if (isTerminal) {
         stopPolling();
@@ -81,7 +80,7 @@ export function useOptimizationStatus(runId: string | null) {
       setError(e instanceof Error ? e : new Error("Failed to fetch status"));
       stopPolling();
     }
-  }, [runId, stopPolling]);
+  }, [runId, stopPolling, track]);
 
   useEffect(() => {
     if (!runId) {
@@ -107,6 +106,7 @@ export function useOptimizationStatus(runId: string | null) {
 }
 
 export function useDownloadPDF() {
+  const { track } = useAnalytics();
   const [downloading, setDownloading] = useState(false);
 
   const download = useCallback(async (runId: string, filename?: string) => {
@@ -119,15 +119,13 @@ export function useDownloadPDF() {
       a.download = filename || `resume_${runId}.pdf`;
       document.body.appendChild(a);
       a.click();
-      try {
-        posthog.capture("pdf_downloaded");
-      } catch { /* noop */ }
+      track("pdf_downloaded");
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } finally {
       setDownloading(false);
     }
-  }, []);
+  }, [track]);
 
   return { download, downloading };
 }
