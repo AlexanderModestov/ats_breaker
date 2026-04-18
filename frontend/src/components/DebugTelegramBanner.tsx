@@ -16,6 +16,8 @@ export function DebugTelegramBanner() {
   const [fetchProbe, setFetchProbe] = useState<string>("?");
   const [apiProbe, setApiProbe] = useState<string>("?");
   const [authedProbe, setAuthedProbe] = useState<string>("?");
+  const [postProbe, setPostProbe] = useState<string>("?");
+  const [linkProbeNoAuth, setLinkProbeNoAuth] = useState<string>("?");
   const [cspViolation, setCspViolation] = useState<string>("none");
 
   const apiBase =
@@ -46,14 +48,31 @@ export function DebugTelegramBanner() {
       .catch((e) => setApiProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
 
     // Fetch probe WITH Authorization header — triggers CORS preflight.
-    // Uses a dummy bearer token; expected outcomes:
-    //   - "200 ..." or "401 ..." → preflight OK, CORS wired correctly
-    //   - "FAIL: Failed to fetch" → preflight is blocked, CORS misconfigured on backend
     fetch(`${apiBase}/health`, {
       headers: { Authorization: "Bearer probe" },
     })
       .then((r) => setAuthedProbe(`${r.status} ${r.statusText}`))
       .catch((e) => setAuthedProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
+
+    // POST probe to a known endpoint — expect 405 Method Not Allowed.
+    // "FAIL: Failed to fetch" → POST requests are blocked generally.
+    fetch(`${apiBase}/health`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ probe: true }),
+    })
+      .then((r) => setPostProbe(`${r.status} ${r.statusText}`))
+      .catch((e) => setPostProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
+
+    // POST to /auth/telegram/link without auth — expect 401.
+    // "FAIL: Failed to fetch" → route missing/blocked even at CORS level.
+    fetch(`${apiBase}/auth/telegram/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegram_id: 0 }),
+    })
+      .then((r) => setLinkProbeNoAuth(`${r.status} ${r.statusText}`))
+      .catch((e) => setLinkProbeNoAuth("FAIL: " + (e instanceof Error ? e.message : String(e))));
 
     if ((window as any).Telegram) {
       setTgAppearedAt("0ms (already)");
@@ -181,6 +200,8 @@ fetchProbe (tg): ${fetchProbe}
 apiBase: ${apiBase}
 apiProbe (simple GET): ${apiProbe}
 apiProbe (GET+Auth, preflight): ${authedProbe}
+apiProbe (POST /health): ${postProbe}
+apiProbe (POST /link no-auth): ${linkProbeNoAuth}
 cspViolation: ${cspViolation}
 typeof Telegram: ${hasTelegramObj}
 TelegramWebviewProxy: ${hasWebviewProxy}

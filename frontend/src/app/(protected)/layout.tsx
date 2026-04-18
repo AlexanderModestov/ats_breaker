@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLinkTelegram } from "@/hooks/useLinkTelegram";
-import { DebugTelegramBanner } from "@/components/DebugTelegramBanner";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 
@@ -48,7 +47,6 @@ export default function ProtectedLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <DebugTelegramBanner />
       <Navbar />
       <motion.main
         initial={{ opacity: 0 }}

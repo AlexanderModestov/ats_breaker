@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException
 
 from hr_breaker.api.auth import AuthError, get_user_id_from_token, get_email_from_token
+from hr_breaker.config import get_settings
 from hr_breaker.services.supabase import SupabaseService
 
 
@@ -13,25 +14,55 @@ def get_supabase_service() -> SupabaseService:
     return SupabaseService()
 
 
+def _resolve_bot_user(
+    supabase: SupabaseService,
+    x_bot_api_key: str | None,
+    x_telegram_user_id: str | None,
+) -> str | None:
+    """
+    If bot auth headers are present and valid, return the linked user's ID.
+    Returns None when neither header is set (caller falls back to JWT auth).
+    Raises HTTPException if headers are present but invalid.
+    """
+    if not x_bot_api_key and not x_telegram_user_id:
+        return None
+
+    settings = get_settings()
+    if not settings.bot_api_key or x_bot_api_key != settings.bot_api_key:
+        raise HTTPException(status_code=401, detail="Invalid bot API key")
+    if not x_telegram_user_id:
+        raise HTTPException(status_code=400, detail="Missing X-Telegram-User-Id")
+    try:
+        telegram_id = int(x_telegram_user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid X-Telegram-User-Id") from e
+
+    profile = supabase.get_profile_by_telegram_id(telegram_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Telegram user not linked")
+    return profile["id"]
+
+
 async def get_current_user(
+    supabase: Annotated[SupabaseService, Depends(get_supabase_service)],
     authorization: Annotated[str | None, Header()] = None,
+    x_bot_api_key: Annotated[str | None, Header()] = None,
+    x_telegram_user_id: Annotated[str | None, Header()] = None,
 ) -> str:
     """
-    Extract and verify the current user from the Authorization header.
+    Resolve the current user via one of two auth schemes:
 
-    Args:
-        authorization: The Authorization header value
-
-    Returns:
-        The user ID
-
-    Raises:
-        HTTPException: If authentication fails
+    1. Web/Mini App: ``Authorization: Bearer <Supabase JWT>``
+    2. Telegram bot: ``X-Bot-Api-Key`` + ``X-Telegram-User-Id`` — looked up
+       in ``profiles.telegram_id``.
     """
+    bot_user_id = _resolve_bot_user(supabase, x_bot_api_key, x_telegram_user_id)
+    if bot_user_id is not None:
+        return bot_user_id
+
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing authorization header")
 
-    # Extract token from "Bearer <token>" format
     parts = authorization.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(status_code=401, detail="Invalid authorization header format")
@@ -39,21 +70,28 @@ async def get_current_user(
     token = parts[1]
 
     try:
-        user_id = get_user_id_from_token(token)
-        return user_id
+        return get_user_id_from_token(token)
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message) from e
 
 
 async def get_current_user_email(
+    supabase: Annotated[SupabaseService, Depends(get_supabase_service)],
     authorization: Annotated[str | None, Header()] = None,
+    x_bot_api_key: Annotated[str | None, Header()] = None,
+    x_telegram_user_id: Annotated[str | None, Header()] = None,
 ) -> tuple[str, str | None]:
     """
-    Extract user ID and email from the Authorization header.
-
-    Returns:
-        Tuple of (user_id, email)
+    Same two auth schemes as ``get_current_user``; also returns the user's
+    email. For bot auth the email is read from the linked Supabase profile
+    (may be ``None`` if the profile has no email on file).
     """
+    bot_user_id = _resolve_bot_user(supabase, x_bot_api_key, x_telegram_user_id)
+    if bot_user_id is not None:
+        profile = supabase.get_profile(bot_user_id)
+        email = profile.get("email") if profile else None
+        return bot_user_id, email
+
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing authorization header")
 
