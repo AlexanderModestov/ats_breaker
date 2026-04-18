@@ -15,6 +15,7 @@ export function DebugTelegramBanner() {
   const [scriptSrc, setScriptSrc] = useState<string>("?");
   const [fetchProbe, setFetchProbe] = useState<string>("?");
   const [apiProbe, setApiProbe] = useState<string>("?");
+  const [authedProbe, setAuthedProbe] = useState<string>("?");
   const [cspViolation, setCspViolation] = useState<string>("none");
 
   const apiBase =
@@ -39,10 +40,20 @@ export function DebugTelegramBanner() {
       .then((r) => setFetchProbe(`${r.status} ${r.statusText} (len=${r.headers.get("content-length") ?? "?"})`))
       .catch((e) => setFetchProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
 
-    // Fetch probe for backend health
+    // Fetch probe for backend health (simple request, no preflight)
     fetch(`${apiBase}/health`)
       .then((r) => setApiProbe(`${r.status} ${r.statusText}`))
       .catch((e) => setApiProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
+
+    // Fetch probe WITH Authorization header — triggers CORS preflight.
+    // Uses a dummy bearer token; expected outcomes:
+    //   - "200 ..." or "401 ..." → preflight OK, CORS wired correctly
+    //   - "FAIL: Failed to fetch" → preflight is blocked, CORS misconfigured on backend
+    fetch(`${apiBase}/health`, {
+      headers: { Authorization: "Bearer probe" },
+    })
+      .then((r) => setAuthedProbe(`${r.status} ${r.statusText}`))
+      .catch((e) => setAuthedProbe("FAIL: " + (e instanceof Error ? e.message : String(e))));
 
     if ((window as any).Telegram) {
       setTgAppearedAt("0ms (already)");
@@ -168,7 +179,8 @@ scriptSrc: ${scriptSrc}
 tgAppearedAt: ${tgAppearedAt}
 fetchProbe (tg): ${fetchProbe}
 apiBase: ${apiBase}
-apiProbe: ${apiProbe}
+apiProbe (simple GET): ${apiProbe}
+apiProbe (GET+Auth, preflight): ${authedProbe}
 cspViolation: ${cspViolation}
 typeof Telegram: ${hasTelegramObj}
 TelegramWebviewProxy: ${hasWebviewProxy}
