@@ -119,6 +119,9 @@ export function useDownloadPDF() {
       a.download = filename || `resume_${runId}.pdf`;
       document.body.appendChild(a);
       a.click();
+      try {
+        posthog.capture("pdf_downloaded");
+      } catch { /* noop */ }
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } finally {
