@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CreditCard, Check, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,11 +14,17 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscriptionCheckout } from "@/hooks/useSubscription";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 export default function PricingPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const subscriptionCheckout = useSubscriptionCheckout();
+  const { track } = useAnalytics();
+
+  useEffect(() => {
+    track("pricing_viewed");
+  }, [track]);
 
   const handleSubscribe = () => {
     if (!isAuthenticated) {
