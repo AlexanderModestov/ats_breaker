@@ -9,6 +9,7 @@ import {
   listOptimizations,
   startOptimization,
 } from "@/lib/api";
+import { posthog } from "@/lib/posthog";
 import type { OptimizationStatus, OptimizationSummary, OptimizeRequest } from "@/types";
 
 const POLL_INTERVAL = 2000; // 2 seconds
@@ -22,7 +23,12 @@ export function useOptimizations() {
 
 export function useStartOptimization() {
   return useMutation({
-    mutationFn: (request: OptimizeRequest) => startOptimization(request),
+    mutationFn: (request: OptimizeRequest) => {
+      try {
+        posthog.capture("optimization_started");
+      } catch { /* noop when disabled */ }
+      return startOptimization(request);
+    },
   });
 }
 
@@ -31,6 +37,8 @@ export function useOptimizationStatus(runId: string | null) {
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const startedAtRef = useRef<number>(0);
+  const terminalFiredRef = useRef<boolean>(false);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -41,14 +49,32 @@ export function useOptimizationStatus(runId: string | null) {
 
   const fetchStatus = useCallback(async () => {
     if (!runId) return;
-
     try {
       const data = await getOptimizationStatus(runId);
       setStatus(data);
       setError(null);
 
-      // Stop polling if complete or failed
-      if (data.status === "complete" || data.status === "failed") {
+      const isTerminal = data.status === "complete" || data.status === "failed";
+      if (isTerminal && !terminalFiredRef.current) {
+        terminalFiredRef.current = true;
+        const durationSec = startedAtRef.current
+          ? Math.round((Date.now() - startedAtRef.current) / 1000)
+          : undefined;
+        try {
+          if (data.status === "complete") {
+            posthog.capture("optimization_completed", {
+              iterations: data.iterations,
+              duration_sec: durationSec,
+            });
+          } else {
+            posthog.capture("optimization_failed", {
+              stage: data.current_step,
+              error_type: data.error,
+            });
+          }
+        } catch { /* noop */ }
+      }
+      if (isTerminal) {
         stopPolling();
       }
     } catch (e) {
@@ -62,18 +88,19 @@ export function useOptimizationStatus(runId: string | null) {
       setStatus(null);
       setError(null);
       setLoading(false);
+      terminalFiredRef.current = false;
+      startedAtRef.current = 0;
       return;
     }
 
     setLoading(true);
+    terminalFiredRef.current = false;
+    startedAtRef.current = Date.now();
     fetchStatus().then(() => setLoading(false));
 
-    // Start polling
     intervalRef.current = setInterval(fetchStatus, POLL_INTERVAL);
 
-    return () => {
-      stopPolling();
-    };
+    return () => stopPolling();
   }, [runId, fetchStatus, stopPolling]);
 
   return { status, error, loading, refetch: fetchStatus };
