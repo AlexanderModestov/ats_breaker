@@ -29,11 +29,13 @@ const schema = {
         {
           "@type": "Offer",
           name: "Job Hunter",
+          price: "19",
           priceCurrency: "EUR",
         },
         {
           "@type": "Offer",
           name: "Offer Mode",
+          price: "49",
           priceCurrency: "EUR",
         },
       ],

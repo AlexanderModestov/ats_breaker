@@ -1,345 +1,274 @@
 # GEO Audit Report: HR-Breaker
 
-**Audit Date:** 2026-04-16 (re-audit #2)
+**Audit Date:** 2026-04-17 (re-audit #8)
 **URL:** https://hrbreaker.co/
-**Business Type:** SaaS — Resume optimization / ATS tool (early-stage)
-**Stack:** Next.js (SSR/prerendered) on Vercel, Supabase backend
-**Pages Analyzed:** 2 public (/, /pricing) + /signin probed
-**Previous Audit:** 2026-04-16 (baseline) — Score: 20/100
+**Business Type:** SaaS — Resume optimization / ATS tool
+**Stack:** Next.js on Vercel, Supabase
+**Pages Analyzed:** 2 public (/, /pricing)
+**Baseline (Apr 16):** 20/100 → **Current: 32/100 (+12)**
 
 ---
 
 ## Executive Summary
 
-**Overall GEO Score: 22/100 (Critical) — up from 20/100**
+**Overall GEO Score: 32/100 (Critical) — up from 20/100 baseline (+12)**
 
-HR-Breaker deployed `robots.txt` and `sitemap.xml` since the baseline audit — both are now live and correctly configured with explicit AI crawler permissions. This fixes two Critical-tier issues and lifts Technical GEO from 45 to 55. However, the site remains in Critical territory because the highest-leverage items — structured data (JSON-LD), Open Graph tags, canonical URL, llms.txt, and content/brand authority signals — have not yet been addressed. The foundation is now better, but the categories that carry 75% of the GEO score weight (Citability, Brand, E-E-A-T) are unchanged.
+HR-Breaker has made significant technical progress over 2 days, deploying robots.txt, sitemap.xml, llms.txt, optimized meta tags, OG/Twitter cards, canonical URLs, and now JSON-LD schema (Organization + SoftwareApplication + FAQPage). Schema jumped from 0 to 62 in a single deploy — the biggest single-fix improvement. Technical GEO is now at 72/100, well into "Good" territory. The site remains in Critical tier overall because the three categories that carry 65% of the weight — Citability (35), Brand (10), and E-E-A-T (15) — require content and off-site work that can't be solved with config files alone.
 
 ### Score Breakdown
 
 | Category | Score | Previous | Delta | Weight | Weighted |
 |---|---|---|---|---|---|
-| AI Citability | 30/100 | 30 | — | 25% | 7.50 |
+| AI Citability | 35/100 | 32 | +3 | 25% | 8.75 |
 | Brand Authority | 10/100 | 10 | — | 20% | 2.00 |
 | Content E-E-A-T | 15/100 | 15 | — | 20% | 3.00 |
-| Technical GEO | 55/100 | 45 | **+10** | 15% | 8.25 |
-| Schema & Structured Data | 0/100 | 0 | — | 10% | 0.00 |
-| Platform Optimization | 10/100 | 10 | — | 10% | 1.00 |
-| **Overall GEO Score** | | | **+2** | | **21.75 ≈ 22/100** |
+| Technical GEO | 72/100 | 70 | +2 | 15% | 10.80 |
+| Schema & Structured Data | 62/100 | 0 | **+62** | 10% | 6.20 |
+| Platform Optimization | 12/100 | 12 | — | 10% | 1.20 |
+| **Overall GEO Score** | | | **+7** | | **31.95 ≈ 32/100** |
 
-### What Improved Since Baseline
+### Score History
 
-| Fix | Status | Impact |
+| Date | Score | What Changed |
 |---|---|---|
-| robots.txt with AI crawler allows | ✅ Deployed | Technical +5 |
-| sitemap.xml (2 URLs) | ✅ Deployed | Technical +5 |
-| llms.txt | ❌ Not deployed | — |
-| JSON-LD schema | ❌ Not added | — |
-| Open Graph / Twitter Cards | ❌ Not added | — |
-| Canonical URL | ❌ Not added | — |
-| Privacy / Terms pages | ❌ Still 404 | — |
-| Favicon | ❌ Still 404 | — |
+| Apr 16 (baseline) | 20 | First audit — nothing deployed |
+| Apr 16 (audit 2) | 22 | +robots.txt, +sitemap.xml |
+| Apr 17 (audit 4) | 25 | +llms.txt, +title/meta, +canonical, +OG/Twitter |
+| Apr 17 (audit 8) | **32** | **+JSON-LD (Org + SoftwareApp + FAQPage)** |
+
+### Full Progress Tracker
+
+| Fix | Status | Score Impact |
+|---|---|---|
+| robots.txt (17 AI crawlers) | ✅ Apr 16 | Tech +5 |
+| sitemap.xml (dynamic, 2 URLs) | ✅ Apr 16 | Tech +5 |
+| llms.txt | ✅ Apr 17 | Tech +5 |
+| Title tags (unique, keyword-rich) | ✅ Apr 17 | Citability +1, Tech +1 |
+| Meta descriptions (150+ chars) | ✅ Apr 17 | Citability +1, Tech +1 |
+| Canonical URLs (per page) | ✅ Apr 17 | Tech +3 |
+| OG meta (title, desc, url, type, locale) | ✅ Apr 17 | Tech +2, Platform +1 |
+| Twitter Card meta (summary_large_image) | ✅ Apr 17 | Tech +1, Platform +1 |
+| robots meta "index, follow" | ✅ Apr 17 | Tech +1 |
+| JSON-LD: Organization | ✅ Apr 17 | Schema +20 |
+| JSON-LD: SoftwareApplication + Offers | ✅ Apr 17 | Schema +20 |
+| JSON-LD: FAQPage (5 Q&As) | ✅ Apr 17 | Schema +22, Citability +3 |
+| og:image | ❌ Missing | — |
+| /privacy page | ❌ 404 | — |
+| /terms page | ❌ 404 | — |
+| /about page | ❌ 404 | — |
+| Favicon | ❌ 404 | — |
+| Social profiles (LinkedIn, X) | ❌ Missing | — |
+| Blog / content | ❌ Missing | — |
 
 ---
 
-## Remaining Critical Issues (Fix Immediately)
+## Remaining Critical Issues
 
-### C1. ~~No robots.txt~~ — FIXED ✅
-Now live with 17 AI crawlers explicitly allowed, /signin and /api/ disallowed, sitemap declared. Excellent implementation.
+### C1. Broken /privacy and /terms links (404)
+Footer links to Privacy Policy and Terms of Service both return 404. This is a trust failure for users, AI E-E-A-T evaluators, and potentially a GDPR violation (EUR pricing = EU jurisdiction).
 
-### C2. ~~No sitemap.xml~~ — FIXED ✅
-Now live with 2 URLs (/, /pricing), dynamic `lastModified`, correct priorities. Will need updating when /about, /privacy, /terms, /blog pages ship.
+**Fix:** Publish real Privacy Policy and Terms of Service pages. Add to sitemap.ts once live.
 
-### C3. No structured data (still 0 JSON-LD)
-Zero JSON-LD, microdata, or RDFa anywhere on the site. For a SaaS with pricing tiers and FAQ content, this is the single highest-leverage fix remaining.
+---
 
-**Fix:** Add this JSON-LD to the homepage layout:
+## High Priority Issues
+
+### H1. No og:image
+OG title/description are set, but no image. Link previews on LinkedIn, Slack, X show no visual.
+
+**Fix:** Create a 1200×630 PNG and add via Next.js metadata:
+```tsx
+openGraph: {
+  images: [{ url: 'https://hrbreaker.co/og-image.png', width: 1200, height: 630 }],
+}
+```
+
+### H2. No /about page — zero E-E-A-T entity signals
+No identifiable person or team behind the product. AI trust systems cannot verify who operates HR-Breaker.
+
+### H3. Organization.sameAs is empty
+The JSON-LD has `"sameAs": []` — no linked social profiles. This means Google and AI systems can't cross-reference the entity.
+
+**Fix:** Create LinkedIn Company Page + X/Twitter, then populate sameAs:
+```json
+"sameAs": [
+  "https://www.linkedin.com/company/hrbreaker",
+  "https://twitter.com/hrbreaker"
+]
+```
+
+### H4. Job Hunter and Offer Mode offers missing "price"
+Two of three Offer objects have no `price` field. Google may not generate rich results for incomplete Offer data.
+
+**Fix:** Add `"price": "20"` for Job Hunter and the actual price for Offer Mode.
+
+### H5. No favicon
+`/favicon.ico` returns 404.
+
+### H6. FAQ answers still not in visible SSR HTML
+The 5 FAQ answers exist in JSON-LD (good for schema), but the visible page text still only shows question headings — answers hydrate client-side. For maximum citability, the answers should also be in the rendered HTML.
+
+---
+
+## Medium Priority Issues
+
+### M1. No images on page (0 `<img>` tags)
+### M2. No blog or content surface
+### M3. No testimonials or social proof
+### M4. EUR pricing but no localization
+### M5. No Organization logo in schema
+### M6. H1 opacity:0 inline animation style
+
+---
+
+## Category Deep Dives
+
+### AI Citability — 35/100 (was 32, +3)
+
+The FAQ answers are now machine-readable via FAQPage schema — AI systems can extract them directly without parsing page text. This lifts citability for question-answering use cases. However, the visible page content is still thin (~330 words), with no statistics, no comparison tables, and no in-depth explanations.
+
+**What would move this to 50+:**
+- Server-render FAQ answers in visible HTML (+5)
+- Add a hero statistic with source citation (+3)
+- Add a comparison table: manual vs. HR-Breaker optimization (+5)
+- Publish 3 blog posts on ATS topics (+10)
+
+### Brand Authority — 10/100 (unchanged)
+
+No external signals anywhere. The Organization schema has `sameAs: []` which explicitly signals no cross-platform presence. Until LinkedIn, X/Twitter, Product Hunt, or YouTube exist and are linked, this stays near zero.
+
+### Content E-E-A-T — 15/100 (unchanged)
+
+Still no author, no about page, broken legal pages. The Organization schema provides a description but no credentials, no team, no address.
+
+### Technical GEO — 72/100 (was 70, +2)
+
+Mature technical foundation. JSON-LD properly embedded and valid. All core GEO files deployed. Remaining gaps: og:image, favicon, broken legal links.
+
+**Deployed:** robots.txt ✅, sitemap.xml ✅, llms.txt ✅, canonical ✅, OG ✅, Twitter ✅, robots meta ✅, JSON-LD ✅, SSR ✅, HTTPS+HSTS ✅, CSP ✅
+**Missing:** og:image ❌, favicon ❌, /privacy 404 ❌, /terms 404 ❌
+
+### Schema & Structured Data — 62/100 (was 0, +62)
+
+**Now deployed:**
+- ✅ Organization (@id, name, url, description)
+- ✅ SoftwareApplication (category, OS, description, 3 Offers)
+- ✅ FAQPage (5 Questions with Answers)
+- ✅ JSON-LD on both / and /pricing pages
+
+**Gaps preventing 80+:**
+- ⚠️ sameAs empty (no social links)
+- ⚠️ 2 of 3 Offers missing price
+- ⚠️ No Organization logo
+- ⚠️ No BreadcrumbList schema
+- ⚠️ No WebSite + SearchAction schema
+
+### Platform Optimization — 12/100 (unchanged)
+
+No active presence on any platform AI models train on or cite.
+
+---
+
+## Quick Wins (This Week)
+
+1. **Ship /privacy + /terms** — fixes broken links + GDPR + E-E-A-T (+5-8 composite pts)
+2. **Add og:image** — 1200×630 share image (+2 pts, major UX improvement for sharing)
+3. **Add favicon** — trivial fix, noticeable gap (+1 pt)
+4. **Fill missing Offer prices** in JSON-LD (+2 Schema pts)
+5. **Server-render FAQ answers** in visible HTML (+3-5 Citability pts)
+
+**Expected score after these 5 fixes: 32 → ~42 (exit Critical into Poor tier)**
+
+---
+
+## 30-Day Action Plan
+
+### Week 1: Schema + Legal ← YOU ARE HERE
+- [x] ~~robots.txt~~ ✅
+- [x] ~~sitemap.xml~~ ✅
+- [x] ~~llms.txt~~ ✅
+- [x] ~~Title + meta description optimization~~ ✅
+- [x] ~~Canonical URLs~~ ✅
+- [x] ~~OG + Twitter Card meta~~ ✅
+- [x] ~~JSON-LD (Organization + SoftwareApplication + FAQPage)~~ ✅
+- [ ] Ship /privacy + /terms pages
+- [ ] Add og:image
+- [ ] Add favicon
+- [ ] Fill missing Offer prices in JSON-LD
+- [ ] Server-render FAQ answers in HTML
+- [ ] Add Organization logo to schema
+
+### Week 2: Trust & Content (target: 50/100)
+- [ ] Publish /about with founder bio, photo, LinkedIn
+- [ ] Create LinkedIn Company Page + X/Twitter
+- [ ] Populate Organization.sameAs with social URLs
+- [ ] Publish /how-it-works explaining hallucination detection
+- [ ] Add 2-3 product screenshots with alt text
+- [ ] Add 1 hero statistic with credible source
+
+### Week 3: Brand Authority (target: 60/100)
+- [ ] Product Hunt launch
+- [ ] YouTube demo (2-3 min)
+- [ ] Collect 5 testimonials with real names
+- [ ] First blog post: "How ATS Keyword Matching Works"
+- [ ] Add Article schema to blog
+
+### Week 4: Content Engine (target: 70/100)
+- [ ] 2 more blog posts (ATS topics)
+- [ ] Add BreadcrumbList + WebSite schema
+- [ ] Submit sitemap to Google Search Console + Bing
+- [ ] Set up brand mention monitoring
+- [ ] Re-audit: target 70/100
+
+---
+
+## Appendix: JSON-LD Validation
 
 ```json
 {
   "@context": "https://schema.org",
   "@graph": [
     {
-      "@type": "Organization",
-      "@id": "https://hrbreaker.co/#org",
-      "name": "HR-Breaker",
-      "url": "https://hrbreaker.co/",
-      "description": "Resume optimization SaaS that rewrites your resume to match any job posting, runs ATS simulation, and returns an optimized PDF.",
-      "sameAs": []
+      "@type": "Organization",           // ✅ Valid
+      "@id": "https://hrbreaker.co/#org", // ✅ Good practice
+      "name": "HR-Breaker",              // ✅
+      "url": "https://hrbreaker.co/",    // ✅
+      "description": "...",              // ✅
+      "sameAs": []                       // ⚠️ Empty — populate when social profiles exist
     },
     {
-      "@type": "SoftwareApplication",
-      "name": "HR-Breaker",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "description": "Optimize your resume for any job posting. Pass ATS filters with confidence.",
+      "@type": "SoftwareApplication",    // ✅ Valid
+      "applicationCategory": "BusinessApplication", // ✅
       "offers": [
-        { "@type": "Offer", "name": "Starter", "price": "0", "priceCurrency": "EUR" },
-        { "@type": "Offer", "name": "Job Hunter", "priceCurrency": "EUR" },
-        { "@type": "Offer", "name": "Offer Mode", "priceCurrency": "EUR" }
+        { "name": "Starter", "price": "0", "priceCurrency": "EUR" },  // ✅ Complete
+        { "name": "Job Hunter", "priceCurrency": "EUR" },              // ⚠️ Missing price
+        { "name": "Offer Mode", "priceCurrency": "EUR" }               // ⚠️ Missing price
       ]
     },
     {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What is ATS and why does it matter?",
-          "acceptedAnswer": { "@type": "Answer", "text": "ATS (Applicant Tracking System) is software used by employers to filter resumes before a human reviews them. Over 75% of large companies use ATS, meaning your resume must be formatted and keyword-optimized to pass automated screening." }
-        },
-        {
-          "@type": "Question",
-          "name": "Will my resume contain false information?",
-          "acceptedAnswer": { "@type": "Answer", "text": "No. HR-Breaker includes hallucination detection that compares every claim in the optimized resume against your uploaded source material. Nothing is fabricated or exaggerated." }
-        },
-        {
-          "@type": "Question",
-          "name": "What formats can I upload?",
-          "acceptedAnswer": { "@type": "Answer", "text": "You can upload your resume in PDF, LaTeX, Markdown, HTML, or plain text. HR-Breaker converts all formats into a single-column, ATS-parsable PDF." }
-        },
-        {
-          "@type": "Question",
-          "name": "How long does it take?",
-          "acceptedAnswer": { "@type": "Answer", "text": "HR-Breaker generates your optimized resume in seconds. Upload your resume, paste the job posting, and receive a tailored PDF immediately." }
-        },
-        {
-          "@type": "Question",
-          "name": "Is my data safe?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. HR-Breaker uses encrypted connections and does not share your resume data with third parties." }
-        }
-      ]
+      "@type": "FAQPage",               // ✅ Valid
+      "mainEntity": [5 Questions]        // ✅ All have acceptedAnswer
     }
   ]
 }
 ```
 
-### C4. Broken legal links (/privacy, /terms → 404)
-Footer still references Privacy Policy and Terms of Service but both return 404. This remains a critical trust failure — especially for a SaaS handling resumes (PII) with EUR pricing (GDPR jurisdiction).
+**Verdict:** Valid and well-structured. Fix the 2 missing prices and add sameAs values to reach Schema 75+.
 
-**Fix:** Publish real Privacy Policy and Terms of Service at `/privacy` and `/terms`. Add them to `sitemap.ts` once live.
+## Appendix: Pages Analyzed
 
-### C5. No canonical URL
-No `<link rel="canonical">` present. Risk of duplicate indexing.
-
-**Fix:** Add via Next.js Metadata API:
-```ts
-export const metadata: Metadata = {
-  alternates: { canonical: 'https://hrbreaker.co/' },
-}
-```
-
----
-
-## High Priority Issues
-
-### H1. Title tag is just "HR-Breaker"
-No keywords, no value proposition. Unchanged from baseline.
-
-**Fix:** `HR-Breaker — ATS Resume Optimization for Any Job Posting`
-
-### H2. Meta description is 45 chars
-"Resume optimization tool for job postings" — too short, too generic. Unchanged.
-
-**Fix:** "HR-Breaker optimizes your resume to match any job posting, runs an ATS simulation, and returns a tailored PDF in seconds. Free to try — no credit card required." (158 chars)
-
-### H3. No Open Graph / Twitter Card meta tags
-Links shared on LinkedIn, Slack, X, Discord show no preview. This directly suppresses the brand-mention velocity that AI models weight heavily.
-
-**Fix:** Add OG + Twitter meta via Next.js Metadata API with a 1200×630 social share image.
-
-### H4. No llms.txt
-Still 404. The file was generated in `deliverables/hrbreaker/public/llms.txt` but not deployed.
-
-**Fix:** Copy `public/llms.txt` from the deliverables into the Next.js project's `public/` directory and redeploy.
-
-### H5. No author, team, or about page
-Zero E-E-A-T signals. No identifiable entity behind the product.
-
-### H6. Unsupported "hallucination detection" claim
-Still no methodology page explaining how this works.
-
-### H7. FAQ answers not in server-rendered HTML
-5 FAQ questions visible but answers still hydrate client-side. AI crawlers and Google AIO may not see them.
-
-### H8. No favicon
-Still 404 at `/favicon.ico`.
+| URL | Status | Title | Schema | Key Issues |
+|---|---|---|---|---|
+| / | 200 | HR-Breaker — ATS Resume Optimization... | Org + SoftwareApp + FAQ ✅ | No og:image, FAQ client-only |
+| /pricing | 200 | Pricing — Free, Job Hunter... | Has JSON-LD ✅ | Missing Offer prices |
+| /robots.txt | 200 ✅ | — | — | Excellent |
+| /sitemap.xml | 200 ✅ | — | — | Good (2 URLs) |
+| /llms.txt | 200 ✅ | — | — | Comprehensive |
+| /privacy | 404 ❌ | — | — | Critical: broken link |
+| /terms | 404 ❌ | — | — | Critical: broken link |
+| /about | 404 | — | — | High: missing |
+| /favicon.ico | 404 | — | — | High: missing |
 
 ---
 
-## Medium Priority Issues
-
-### M1. H1 opacity:0 inline style (animation)
-Hero text starts invisible; some non-JS crawlers may not see it.
-
-### M2. Zero images
-No screenshots, no product UI, no visual content for multimodal AI.
-
-### M3. No blog or content surface
-Nothing to cite beyond the homepage.
-
-### M4. No testimonials, case studies, or stats
-No social proof, no quotable numbers.
-
-### M5. EUR pricing but no localization or hreflang
-Single-language site targeting European market.
-
-### M6. Duplicate title + meta description across / and /pricing
-Both pages have identical `<title>HR-Breaker</title>` and same meta description.
-
-### M7. No social or brand links in footer
-No LinkedIn, X, YouTube, Product Hunt, or GitHub links.
-
----
-
-## Low Priority Issues
-
-### L1. No X-Frame-Options header (CSP covers it)
-### L2. No .well-known/security.txt
-### L3. Edge cache age ~9 days (fine for static marketing page)
-
----
-
-## Category Deep Dives
-
-### AI Citability — 30/100 (unchanged)
-
-Content remains thin (~330 words visible text), with short feature bullets averaging ~15 words each. No statistics, no self-contained answer blocks, no comparison tables. FAQ section has 5 questions but answers are client-rendered, reducing citability for crawlers that don't execute JavaScript.
-
-**Key gaps:**
-- 0 passages with citable statistics
-- 0 self-contained 40-80 word answer blocks
-- FAQ answers not in SSR HTML
-- No comparison content (HR-Breaker vs. manual optimization, etc.)
-
-### Brand Authority — 10/100 (unchanged)
-
-No social accounts linked, no press, no testimonials, no third-party mentions visible. Domain is brandable but has no external entity signals. AI models cannot triangulate HR-Breaker as a known entity.
-
-### Content E-E-A-T — 15/100 (unchanged)
-
-No author, no about page, no team, no credentials, no contact info beyond the product. Broken /privacy and /terms links actively hurt trustworthiness. "Hallucination detection" claim remains unsupported.
-
-### Technical GEO — 55/100 (was 45, +10)
-
-**Improvements:**
-- ✅ robots.txt deployed with 17 AI crawlers explicitly allowed
-- ✅ sitemap.xml deployed with dynamic lastModified
-- ✅ Sitemap declared in robots.txt
-
-**Still missing:**
-- ❌ No llms.txt (404)
-- ❌ No canonical URL
-- ❌ No OG / Twitter meta
-- ❌ No favicon
-- ❌ Broken /privacy and /terms links
-- ❌ No X-Frame-Options header
-
-**Unchanged strengths:**
-- ✅ SSR via Next.js prerender
-- ✅ HTTPS with HSTS (max-age=63072000)
-- ✅ Strong CSP with frame-ancestors 'none'
-- ✅ Fast TTFB via Vercel edge
-- ✅ HTML lang="en"
-
-### Schema & Structured Data — 0/100 (unchanged)
-
-Absolute zero. No JSON-LD, microdata, or RDFa. The full schema template is provided above in C3.
-
-### Platform Optimization — 10/100 (unchanged)
-
-| Platform | Readiness | Change |
-|---|---|---|
-| Google AI Overviews | Low | Slightly better (crawlers can now reach content) |
-| ChatGPT | Low | GPTBot now explicitly allowed — but nothing quotable |
-| Perplexity | Very low | PerplexityBot allowed but no citable content |
-| Gemini | Low | Same as AIO |
-| Bing Copilot | Low | No Bing Webmaster submission yet |
-
----
-
-## Quick Wins (Remaining — This Week)
-
-1. **Deploy llms.txt** — file already generated, just copy to `public/`. (5 min)
-2. **Add JSON-LD schema** — Organization + SoftwareApplication + FAQPage. Template in C3 above. (2 hr)
-3. **Set unique title + meta description per page** via `generateMetadata`. (30 min)
-4. **Add canonical URL** site-wide. (15 min)
-5. **Add OG + Twitter Card meta** with a share image. (1 hr)
-6. **Ship Privacy Policy + Terms of Service pages.** (half-day)
-7. **Add favicon + apple-touch-icon.** (15 min)
-8. **Server-render FAQ answers** — move from client hydration to SSR HTML. (1-2 hr)
-
-**Expected score if all 8 done: 22 → ~45 (Poor tier — exit from Critical).**
-
----
-
-## 30-Day Action Plan
-
-### Week 1: Technical Foundations (target: 45/100)
-- [x] ~~Deploy robots.txt with AI crawler allows~~ ✅
-- [x] ~~Deploy sitemap.xml~~ ✅
-- [ ] Deploy llms.txt
-- [ ] Add JSON-LD schema (Organization + SoftwareApplication + FAQPage)
-- [ ] Unique title + meta description per route
-- [ ] Add canonical URL, OG + Twitter meta, favicon
-- [ ] Publish Privacy Policy + Terms of Service
-- [ ] Server-render FAQ answers in HTML
-
-### Week 2: Trust & Content Depth (target: 55/100)
-- [ ] Publish /about with founder bio, photo, LinkedIn
-- [ ] Publish /trust or /how-it-works explaining hallucination detection
-- [ ] Add 2-3 product screenshots with descriptive alt text
-- [ ] Add 1 hero statistic with credible source citation
-- [ ] Launch LinkedIn Company Page + X/Twitter; link from footer
-
-### Week 3: Brand Authority (target: 65/100)
-- [ ] Product Hunt launch
-- [ ] Record + publish 2-3 min YouTube demo
-- [ ] Collect 5 testimonials with real names + LinkedIn
-- [ ] First blog post: "How ATS Keyword Matching Actually Works"
-
-### Week 4: Content Engine (target: 70/100)
-- [ ] 2 more cornerstone blog posts
-- [ ] Add Article schema to blog
-- [ ] Submit sitemap to Google Search Console + Bing Webmaster
-- [ ] Re-run `/geo audit` — compare via `/geo compare hrbreaker.co`
-
----
-
-## Appendix A: robots.txt Review (DEPLOYED)
-
-```
-User-agent: *          → Allow: / | Disallow: /signin, /api/, /_next/
-17 AI crawlers         → All explicitly Allow: /
-Sitemap                → https://hrbreaker.co/sitemap.xml
-```
-
-**Verdict:** Excellent. Matches the recommended template exactly. All major AI crawlers (GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, Claude-Web, anthropic-ai, PerplexityBot, Perplexity-User, Google-Extended, Applebot-Extended, CCBot, Bytespider, Amazonbot, Meta-ExternalAgent, FacebookBot, cohere-ai, DuckAssistBot) are permitted.
-
-## Appendix B: sitemap.xml Review (DEPLOYED)
-
-| URL | lastmod | changefreq | priority |
-|---|---|---|---|
-| https://hrbreaker.co/ | 2026-04-16T22:38:28.263Z | weekly | 1 |
-| https://hrbreaker.co/pricing | 2026-04-16T22:38:28.263Z | monthly | 0.9 |
-
-**Verdict:** Correct. Dynamic lastModified from `app/sitemap.ts`. Will need expansion when /about, /privacy, /terms, /blog pages ship.
-
-## Appendix C: Pages Analyzed
-
-| URL | Status | Title | GEO Issues |
-|---|---|---|---|
-| / | 200 | HR-Breaker | 15 remaining |
-| /pricing | 200 | HR-Breaker (duplicate) | 4 |
-| /signin | 200 | (auth page — excluded) | — |
-| /robots.txt | **200 ✅** | — | Fixed |
-| /sitemap.xml | **200 ✅** | — | Fixed |
-| /llms.txt | 404 | — | H4 |
-| /privacy | 404 | — | C4 |
-| /terms | 404 | — | C4 |
-| /about | 404 | — | H5 |
-| /blog | 404 | — | M3 |
-| /favicon.ico | 404 | — | H8 |
-
----
-
-**Next steps:** Deploy llms.txt + JSON-LD schema + OG meta this week. Re-audit with `/geo audit https://hrbreaker.co/` after those land — target score: 45/100 (exit Critical tier).
+**Score trajectory: 20 → 22 → 25 → 32. Next target: 42 (exit Critical). Requires: /privacy + /terms + og:image + FAQ SSR.**
