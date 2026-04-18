@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useLinkTelegram } from "@/hooks/useLinkTelegram";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 
@@ -13,6 +14,8 @@ export default function ProtectedLayout({
 }) {
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
+
+  useLinkTelegram();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
