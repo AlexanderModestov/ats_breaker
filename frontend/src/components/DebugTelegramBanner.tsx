@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getTelegramUserId, isTelegramMiniApp } from "@/lib/telegram";
 import { linkTelegramId } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,52 @@ const LINKED_KEY = "tg_linked";
 export function DebugTelegramBanner() {
   const { isAuthenticated, loading } = useAuth();
   const [status, setStatus] = useState<string>("idle");
+  const [tgAppearedAt, setTgAppearedAt] = useState<string>("checking...");
+  const [scriptSrc, setScriptSrc] = useState<string>("?");
+
+  useEffect(() => {
+    const tag = document.querySelector(
+      'script[src*="telegram-web-app"]'
+    ) as HTMLScriptElement | null;
+    setScriptSrc(tag?.src ?? "(not found)");
+
+    if ((window as any).Telegram) {
+      setTgAppearedAt("0ms (already)");
+      return;
+    }
+    const start = Date.now();
+    const iv = setInterval(() => {
+      if ((window as any).Telegram) {
+        setTgAppearedAt(`${Date.now() - start}ms`);
+        clearInterval(iv);
+      }
+    }, 100);
+    const to = setTimeout(() => {
+      clearInterval(iv);
+      setTgAppearedAt((prev) =>
+        prev === "checking..." ? "NEVER (5s timeout)" : prev
+      );
+    }, 5000);
+    return () => {
+      clearInterval(iv);
+      clearTimeout(to);
+    };
+  }, []);
+
+  async function loadScriptManually() {
+    setStatus("injecting script...");
+    const s = document.createElement("script");
+    s.src = "https://telegram.org/js/telegram-web-app.js";
+    s.onload = () => {
+      setStatus(
+        `script onload fired. Telegram now: ${typeof (window as any).Telegram}`
+      );
+    };
+    s.onerror = (e) => {
+      setStatus("script ERROR: " + JSON.stringify(e));
+    };
+    document.head.appendChild(s);
+  }
 
   const w = typeof window !== "undefined" ? (window as any) : null;
   const twa = w?.Telegram?.WebApp ?? null;
@@ -93,6 +139,8 @@ export function DebugTelegramBanner() {
 isAuth: ${isAuthenticated}
 loading: ${loading}
 scriptTagPresent: ${scriptPresent}
+scriptSrc: ${scriptSrc}
+tgAppearedAt: ${tgAppearedAt}
 typeof Telegram: ${hasTelegramObj}
 TelegramWebviewProxy: ${hasWebviewProxy}
 platform: ${platform}
@@ -104,7 +152,6 @@ linked: ${linked}
 close fn: ${hasCloseFn}
 hash: ${locationHash || "(empty)"}
 href: ${locationHref}
-UA: ${ua}
 status: ${status}`}
       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
         <button
@@ -124,6 +171,12 @@ status: ${status}`}
           style={{ padding: "4px 8px", background: "#555", color: "#fff", border: 0 }}
         >
           Clear storage
+        </button>
+        <button
+          onClick={loadScriptManually}
+          style={{ padding: "4px 8px", background: "#ff0", color: "#000", border: 0 }}
+        >
+          Load TG script now
         </button>
       </div>
     </div>
