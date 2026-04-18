@@ -12,8 +12,10 @@ export function DebugTelegramBanner() {
   const { isAuthenticated, loading } = useAuth();
   const [status, setStatus] = useState<string>("idle");
 
-  const twa =
-    typeof window !== "undefined" ? (window as any).Telegram?.WebApp : null;
+  const w = typeof window !== "undefined" ? (window as any) : null;
+  const twa = w?.Telegram?.WebApp ?? null;
+  const hasTelegramObj = typeof w?.Telegram !== "undefined";
+  const hasWebviewProxy = typeof w?.TelegramWebviewProxy !== "undefined";
   const platform = twa?.platform ?? "(no Telegram.WebApp)";
   const version = twa?.version ?? "-";
   const isMini = isTelegramMiniApp();
@@ -27,6 +29,13 @@ export function DebugTelegramBanner() {
       ? sessionStorage.getItem(LINKED_KEY)
       : null;
   const hasCloseFn = typeof twa?.close === "function";
+  const scriptPresent =
+    typeof document !== "undefined"
+      ? !!document.querySelector('script[src*="telegram-web-app"]')
+      : false;
+  const locationHref = typeof window !== "undefined" ? window.location.href : "-";
+  const locationHash = typeof window !== "undefined" ? window.location.hash : "-";
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "-";
 
   async function tryLink() {
     const id = liveId ?? (stashed ? Number(stashed) : null);
@@ -83,6 +92,9 @@ export function DebugTelegramBanner() {
       {`DEBUG TG BANNER
 isAuth: ${isAuthenticated}
 loading: ${loading}
+scriptTagPresent: ${scriptPresent}
+typeof Telegram: ${hasTelegramObj}
+TelegramWebviewProxy: ${hasWebviewProxy}
 platform: ${platform}
 version: ${version}
 isMiniApp: ${isMini}
@@ -90,6 +102,9 @@ liveId: ${liveId}
 stashed: ${stashed}
 linked: ${linked}
 close fn: ${hasCloseFn}
+hash: ${locationHash || "(empty)"}
+href: ${locationHref}
+UA: ${ua}
 status: ${status}`}
       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
         <button
