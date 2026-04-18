@@ -157,3 +157,34 @@ Enable `posthog.debug()` when `NODE_ENV === 'development'`.
 - Data exports / warehousing
 
 Each becomes a separate task when there is concrete demand.
+
+## Deviations from Plan (recorded 2026-04-18)
+
+### 1. `job_provided` fires from `/optimize` page, not `JobInput` component
+
+**Plan said:** instrument `frontend/src/components/JobInput.tsx` on submit.
+
+**What shipped:** instrumented `frontend/src/app/(protected)/optimize/page.tsx` inside `handleOptimize`.
+
+**Why:** `JobInput` is a controlled input — it has no submit event of its own; the parent owns the "Start Optimization" button. Firing on the parent's submit handler captures the actual commitment moment without adding a new callback prop to `JobInput`.
+
+**Behavior:** `job_provided` fires once per optimize click, immediately before `optimization_started`. Properties: `{ input_type: "url" | "text" }`.
+
+### 2. `optimization_failed` property names use available `OptimizationStatus` fields
+
+**Plan said:** `{ error_type, stage }`.
+
+**What shipped:** `error_type = OptimizationStatus.error` (the server error string), `stage = OptimizationStatus.current_step`.
+
+**Why:** the `OptimizationStatus` type has `error: string | null` and `current_step: string | null`, not dedicated `error_type` / `stage` fields. Re-mapped to keep the agreed property names stable at the analytics layer.
+
+### 3. `npm run lint` is broken project-wide (not introduced by this work)
+
+**Plan said:** Task 13 runs `npm run lint`.
+
+**What shipped:** Task 13 skipped. `next lint` was removed in Next 16; the `"lint": "next lint"` script in `frontend/package.json` now fails with `Invalid project directory provided: .../frontend/lint`. There is no `eslint.config.js` or legacy `.eslintrc.*` in `frontend/`, so a direct `npx eslint` invocation also fails.
+
+**Why it does not block shipping:** `next build` type-checks the entire project on every commit and has passed cleanly after each task. That is the only working automated gate today.
+
+**Follow-up (out of scope here):** a separate task should restore frontend linting — either by adopting `eslint.config.mjs` (ESLint 9 flat config, which ships with Next 16 scaffolds) or by removing the now-broken `lint` script.
+
