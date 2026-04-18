@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CVCard } from "@/components/CVCard";
 import { motion, StaggerList, StaggerItem, SlideUp } from "@/components/motion";
 import { useCVs, useUploadCV, useDeleteCV } from "@/hooks/useCVs";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 export default function CVsPage() {
   const router = useRouter();
@@ -17,11 +18,17 @@ export default function CVsPage() {
   const { data: cvs, isLoading: cvsLoading, error: cvsError } = useCVs();
   const uploadCV = useUploadCV();
   const deleteCV = useDeleteCV();
+  const { track } = useAnalytics();
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+
+      track("resume_uploaded", {
+        format: file.name.split(".").pop()?.toLowerCase() ?? "unknown",
+        size_kb: Math.round(file.size / 1024),
+      });
 
       setUploading(true);
       try {
@@ -35,7 +42,7 @@ export default function CVsPage() {
         }
       }
     },
-    [uploadCV]
+    [uploadCV, track]
   );
 
   const handleDelete = useCallback(
