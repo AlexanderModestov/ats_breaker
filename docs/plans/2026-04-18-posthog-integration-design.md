@@ -170,13 +170,13 @@ Each becomes a separate task when there is concrete demand.
 
 **Behavior:** `job_provided` fires once per optimize click, immediately before `optimization_started`. Properties: `{ input_type: "url" | "text" }`.
 
-### 2. `optimization_failed` property names use available `OptimizationStatus` fields
+### 2. `optimization_failed` sends `error_message` (truncated) instead of `error_type`
 
 **Plan said:** `{ error_type, stage }`.
 
-**What shipped:** `error_type = OptimizationStatus.error` (the server error string), `stage = OptimizationStatus.current_step`.
+**What shipped:** `{ error_message: OptimizationStatus.error?.slice(0, 120), stage: OptimizationStatus.current_step }`.
 
-**Why:** the `OptimizationStatus` type has `error: string | null` and `current_step: string | null`, not dedicated `error_type` / `stage` fields. Re-mapped to keep the agreed property names stable at the analytics layer.
+**Why:** the `OptimizationStatus` type has `error: string | null` (free-form server error message) and `current_step: string | null`, not dedicated enum-like fields. Sending the raw error string as `error_type` would blow up PostHog's property cardinality — every unique error message becomes a distinct facet value, destroying dashboard aggregates. Renamed to `error_message` so the field name matches its content, and truncated to 120 chars to cap cardinality. A future improvement can map errors to a small classifier enum.
 
 ### 3. `npm run lint` is broken project-wide (not introduced by this work)
 
@@ -187,4 +187,18 @@ Each becomes a separate task when there is concrete demand.
 **Why it does not block shipping:** `next build` type-checks the entire project on every commit and has passed cleanly after each task. That is the only working automated gate today.
 
 **Follow-up (out of scope here):** a separate task should restore frontend linting — either by adopting `eslint.config.mjs` (ESLint 9 flat config, which ships with Next 16 scaffolds) or by removing the now-broken `lint` script.
+
+### 4. Hardened identify lifecycle after code review
+
+**What changed (commit `390afc4`):**
+
+- `signin_completed` is gated behind a transition-from-anonymous check (`hadSessionRef`) so Supabase SDK versions that re-emit `SIGNED_IN` on session restore do not over-fire the funnel's first step.
+- `auth_provider` is read from `user.app_metadata.provider` (falling back to `identities[0].provider`, then `"unknown"`) instead of being hardcoded to `"google"`. If a second auth provider is ever added it will label correctly without code changes.
+- On `SIGNED_OUT` the persistence is swapped back to `memory` BEFORE `posthog.reset()` so the reset clears the right storage backend.
+
+**Why these were not in the original design:** the design assumed Supabase only emits `SIGNED_IN` on actual sign-in. In practice the event fires on some session restores too, so a defensive transition guard was added. The provider lookup is a robustness improvement with no current behavioral impact (all production users authenticate via Google today).
+
+### 5. `useAnalytics().track` is now the sole capture path
+
+Previously `useOptimization.ts` imported `posthog` directly and wrapped `posthog.capture()` in manual try/catch. After review it now uses `useAnalytics().track` everywhere, and `track` is memoized via `useRef` so callers can safely include it in `useEffect` dependency arrays. This preserves the `AnalyticsEvent` union as the single source of truth for event names.
 
