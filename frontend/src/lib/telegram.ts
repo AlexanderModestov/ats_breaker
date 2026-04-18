@@ -15,5 +15,6 @@ export function getTelegramUserId(): number | null {
 }
 
 export function isTelegramMiniApp(): boolean {
-  return getTelegramWebApp() !== null;
+  const twa = getTelegramWebApp();
+  return !!twa?.platform && twa.platform !== "unknown";
 }

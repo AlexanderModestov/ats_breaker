@@ -6,8 +6,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { motion } from "@/components/motion";
 import { ArrowRight, FileText, Sparkles, Target } from "lucide-react";
-import { getTelegramUserId } from "@/lib/telegram";
+import { getTelegramUserId, isTelegramMiniApp } from "@/lib/telegram";
 import { linkTelegramId } from "@/lib/api";
+
+const PENDING_TG_ID_KEY = "pending_tg_id";
 
 const features = [
   {
@@ -166,7 +168,13 @@ export default function LoginPage() {
             <Button
               className="group w-full gap-3 py-6 text-base"
               size="lg"
-              onClick={() => signInWithGoogle()}
+              onClick={() => {
+                if (isTelegramMiniApp()) {
+                  const tgId = getTelegramUserId();
+                  if (tgId) localStorage.setItem(PENDING_TG_ID_KEY, String(tgId));
+                }
+                signInWithGoogle();
+              }}
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
