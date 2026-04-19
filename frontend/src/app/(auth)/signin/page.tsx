@@ -8,6 +8,7 @@ import { motion } from "@/components/motion";
 import { ArrowRight, FileText, Sparkles, Target } from "lucide-react";
 import { getTelegramUserId, isTelegramMiniApp } from "@/lib/telegram";
 import { linkTelegramId } from "@/lib/api";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 const PENDING_TG_ID_KEY = "pending_tg_id";
 
@@ -32,6 +33,7 @@ const features = [
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, loading, signInWithGoogle } = useAuth();
+  const { track } = useAnalytics();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -168,12 +170,20 @@ export default function LoginPage() {
             <Button
               className="group w-full gap-3 py-6 text-base"
               size="lg"
-              onClick={() => {
+              onClick={async () => {
                 if (isTelegramMiniApp()) {
                   const tgId = getTelegramUserId();
                   if (tgId) localStorage.setItem(PENDING_TG_ID_KEY, String(tgId));
                 }
-                signInWithGoogle();
+                track("signin_started", { method: "google" });
+                try {
+                  await signInWithGoogle();
+                } catch (err) {
+                  track("signin_failed", {
+                    method: "google",
+                    error: err instanceof Error ? err.message : String(err),
+                  });
+                }
               }}
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">

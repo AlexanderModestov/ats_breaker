@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { History } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { OptimizationCard } from "@/components/OptimizationCard";
 import { motion, StaggerList, StaggerItem, SlideUp } from "@/components/motion";
 import { useOptimizations, useDeleteOptimization } from "@/hooks/useOptimization";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -19,6 +20,11 @@ export default function HistoryPage() {
     error: optimizationsError,
   } = useOptimizations();
   const deleteOptimization = useDeleteOptimization();
+  const { track } = useAnalytics();
+
+  useEffect(() => {
+    track("pdf_history_viewed");
+  }, [track]);
 
   const handleDeleteClick = (id: string) => {
     setDeleteTarget(id);
