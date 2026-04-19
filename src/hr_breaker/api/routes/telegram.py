@@ -7,13 +7,20 @@ import time
 from typing import Annotated
 from urllib.parse import parse_qsl, unquote
 
+import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
-from hr_breaker.config import get_settings
+from hr_breaker.config import get_settings, logger
 
 router = APIRouter()
+
+WELCOME_AFTER_LINK_TEXT = (
+    "✅ You're signed in!\n\n"
+    "Send me a job URL or paste a job description and I'll optimize your resume.\n\n"
+    "Use /help to see all commands."
+)
 
 
 def _validate_init_data(init_data: str) -> dict:
@@ -63,6 +70,42 @@ class TelegramSessionRequest(BaseModel):
     init_data: str
 
 
+class PendingSigninRequest(BaseModel):
+    telegram_id: int
+    chat_id: int
+    message_id: int
+
+
+async def _edit_welcome_message(chat_id: int, message_id: int) -> None:
+    """Edit the bot's "Sign in" message into a welcome message without keyboard.
+
+    Clears the inline keyboard by sending an empty ``inline_keyboard`` — Telegram
+    preserves the existing markup if ``reply_markup`` is omitted, so we must
+    pass it explicitly.
+    """
+    settings = get_settings()
+    if not settings.telegram_bot_token:
+        logger.warning("Cannot edit signin message: telegram_bot_token not set")
+        return
+
+    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/editMessageText"
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": WELCOME_AFTER_LINK_TEXT,
+        "reply_markup": {"inline_keyboard": []},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(url, json=payload)
+            if resp.status_code != 200:
+                logger.warning(
+                    f"Telegram editMessageText failed: {resp.status_code} {resp.text}"
+                )
+    except Exception as e:
+        logger.warning(f"Telegram editMessageText error: {e}")
+
+
 @router.post("/link")
 async def link_telegram(
     body: LinkTelegramRequest,
@@ -71,6 +114,31 @@ async def link_telegram(
 ):
     """Link a Telegram ID to the currently authenticated user."""
     supabase.link_telegram(user_id, body.telegram_id)
+
+    pending = supabase.pop_pending_signin_message(body.telegram_id)
+    if pending:
+        await _edit_welcome_message(
+            chat_id=int(pending["chat_id"]),
+            message_id=int(pending["message_id"]),
+        )
+    return {"ok": True}
+
+
+@router.post("/pending-signin")
+async def register_pending_signin(
+    body: PendingSigninRequest,
+    supabase: SupabaseServiceDep,
+    x_bot_api_key: Annotated[str | None, Header()] = None,
+):
+    """Bot-only: register a sent "Sign in" message for later cleanup."""
+    settings = get_settings()
+    if not x_bot_api_key or x_bot_api_key != settings.bot_api_key:
+        raise HTTPException(status_code=401, detail="Invalid bot API key")
+    supabase.set_pending_signin_message(
+        telegram_id=body.telegram_id,
+        chat_id=body.chat_id,
+        message_id=body.message_id,
+    )
     return {"ok": True}
 
 

@@ -5,13 +5,18 @@ from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from bot.config import get_bot_settings
-from bot.services import signin_tracker
+from bot.services.api_client import APIClient
 
 router = Router()
 
 
 @router.message(CommandStart())
-async def start(message: Message, backend_user: dict | None, **kwargs):
+async def start(
+    message: Message,
+    backend_user: dict | None,
+    api_client: APIClient,
+    **kwargs,
+):
     settings = get_bot_settings()
 
     if backend_user:
@@ -37,4 +42,8 @@ async def start(message: Message, backend_user: dict | None, **kwargs):
         "To get started, sign in with your Google account:",
         reply_markup=keyboard,
     )
-    signin_tracker.remember(message.from_user.id, sent.chat.id, sent.message_id)
+    await api_client.register_signin_message(
+        telegram_id=message.from_user.id,
+        chat_id=sent.chat.id,
+        message_id=sent.message_id,
+    )

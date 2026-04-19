@@ -26,6 +26,26 @@ class APIClient:
             r.raise_for_status()
             return r.json()
 
+    async def register_signin_message(
+        self, telegram_id: int, chat_id: int, message_id: int
+    ) -> None:
+        """Tell backend which "Sign in" message to edit after linking."""
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                r = await client.post(
+                    f"{self._base_url}/api/auth/telegram/pending-signin",
+                    headers=self._headers,
+                    json={
+                        "telegram_id": telegram_id,
+                        "chat_id": chat_id,
+                        "message_id": message_id,
+                    },
+                )
+                r.raise_for_status()
+            except Exception:
+                # Non-fatal: cleanup is best-effort.
+                pass
+
     async def get_cvs(self, telegram_id: int) -> list[dict]:
         async with httpx.AsyncClient() as client:
             r = await client.get(

@@ -552,6 +552,45 @@ class SupabaseService:
         except Exception as e:
             raise SupabaseError(f"Failed to link Telegram: {e}") from e
 
+    def set_pending_signin_message(
+        self, telegram_id: int, chat_id: int, message_id: int
+    ) -> None:
+        """Record the "Sign in" message id so it can be edited after linking."""
+        try:
+            self._client.table("pending_signin_messages").upsert(
+                {
+                    "telegram_id": telegram_id,
+                    "chat_id": chat_id,
+                    "message_id": message_id,
+                },
+                on_conflict="telegram_id",
+            ).execute()
+        except Exception as e:
+            logger.warning(f"Failed to set pending signin message: {e}")
+
+    def pop_pending_signin_message(
+        self, telegram_id: int
+    ) -> dict[str, Any] | None:
+        """Fetch and delete the pending sign-in message for a telegram id."""
+        try:
+            select_result = (
+                self._client.table("pending_signin_messages")
+                .select("telegram_id, chat_id, message_id")
+                .eq("telegram_id", telegram_id)
+                .limit(1)
+                .execute()
+            )
+            if not select_result.data:
+                return None
+            row = select_result.data[0]
+            self._client.table("pending_signin_messages").delete().eq(
+                "telegram_id", telegram_id
+            ).execute()
+            return row
+        except Exception as e:
+            logger.warning(f"Failed to pop pending signin message: {e}")
+            return None
+
     def get_default_cv(self, user_id: str) -> dict[str, Any] | None:
         """Get the user's default CV (most recently uploaded)."""
         try:

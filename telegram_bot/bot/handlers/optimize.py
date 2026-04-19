@@ -13,7 +13,6 @@ from aiogram.types import (
 )
 
 from bot.config import get_bot_settings
-from bot.services import signin_tracker
 from bot.services.api_client import APIClient
 from bot.services.polling import poll_until_done
 
@@ -63,7 +62,11 @@ async def handle_job_input(
             "Please sign in first to use HR-Breaker:",
             reply_markup=_unlinked_keyboard(settings.web_app_url),
         )
-        signin_tracker.remember(message.from_user.id, sent.chat.id, sent.message_id)
+        await api_client.register_signin_message(
+            telegram_id=message.from_user.id,
+            chat_id=sent.chat.id,
+            message_id=sent.message_id,
+        )
         return
 
     telegram_id = message.from_user.id
@@ -130,7 +133,11 @@ async def handle_document(
             "Please sign in first:",
             reply_markup=_unlinked_keyboard(settings.web_app_url),
         )
-        signin_tracker.remember(message.from_user.id, sent.chat.id, sent.message_id)
+        await api_client.register_signin_message(
+            telegram_id=message.from_user.id,
+            chat_id=sent.chat.id,
+            message_id=sent.message_id,
+        )
         return
 
     doc: Document = message.document
