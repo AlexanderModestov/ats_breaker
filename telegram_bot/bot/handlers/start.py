@@ -5,6 +5,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from bot.config import get_bot_settings
+from bot.services import signin_tracker
 
 router = Router()
 
@@ -31,8 +32,9 @@ async def start(message: Message, backend_user: dict | None, **kwargs):
             ]
         ]
     )
-    await message.answer(
+    sent = await message.answer(
         "👋 Welcome to HR-Breaker!\n\n"
         "To get started, sign in with your Google account:",
         reply_markup=keyboard,
     )
+    signin_tracker.remember(message.from_user.id, sent.chat.id, sent.message_id)

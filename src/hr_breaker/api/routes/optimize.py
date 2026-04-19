@@ -16,6 +16,7 @@ from hr_breaker.api.schemas import (
     OptimizationSummary,
     OptimizeRequest,
 )
+from hr_breaker.analytics import capture
 from hr_breaker.config import get_settings, logger
 from hr_breaker.models import ResumeSource
 from hr_breaker.orchestration import optimize_for_job
@@ -107,6 +108,14 @@ async def _run_optimization(
             last_name=last_name,
         )
 
+        capture(user_id, "optimization_started", {
+            "job_title": job.title,
+            "job_company": job.company,
+            "max_iterations": max_iterations,
+            "parallel": parallel,
+            "source": "api",
+        })
+
         # Track feedback from each iteration
         all_feedback: list[dict[str, Any]] = []
 
@@ -149,6 +158,15 @@ async def _run_optimization(
         )
         timing["optimization_loop"] = time.perf_counter() - loop_start
         timing["total"] = time.perf_counter() - total_start
+
+        capture(user_id, "optimization_completed", {
+            "job_title": job.title,
+            "job_company": job.company,
+            "passed": validation.passed,
+            "iterations": len(all_feedback),
+            "duration_seconds": round(timing["total"], 2),
+            "source": "api",
+        })
 
         # Step 6: Save result
         print(f"\n{'='*60}")

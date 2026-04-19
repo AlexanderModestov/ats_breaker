@@ -1,11 +1,13 @@
 """CLI interface for HR-Breaker."""
 
 import asyncio
+import time
 from pathlib import Path
 
 import click
 
 from hr_breaker.agents import extract_name, parse_job_posting, COMPANY_NOT_SPECIFIED
+from hr_breaker.analytics import capture, shutdown
 from hr_breaker.config import get_settings
 from hr_breaker.models import GeneratedPDF, ResumeSource
 from hr_breaker.orchestration import optimize_for_job
@@ -99,10 +101,33 @@ def optimize(
             first_name=first_name,
             last_name=last_name,
         )
+
+        distinct_id = f"{first_name or 'unknown'}_{last_name or 'user'}".lower()
+        capture(distinct_id, "optimization_started", {
+            "job_title": job.title,
+            "job_company": job.company,
+            "mode": mode,
+            "max_iterations": max_iterations,
+            "source": "cli",
+        })
+
+        start_time = time.perf_counter()
         optimized, validation, _ = await optimize_for_job(
             source, max_iterations=max_iterations, on_iteration=on_iteration, job=job,
             parallel=not seq
         )
+        duration = time.perf_counter() - start_time
+
+        capture(distinct_id, "optimization_completed", {
+            "job_title": job.title,
+            "job_company": job.company,
+            "passed": validation.passed,
+            "iterations": sum(1 for _ in validation.results),
+            "duration_seconds": round(duration, 2),
+            "source": "cli",
+        })
+        shutdown()
+
         return first_name, last_name, source, optimized, validation, job
 
     first_name, last_name, source, optimized, validation, job = asyncio.run(
