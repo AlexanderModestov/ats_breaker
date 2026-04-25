@@ -9,6 +9,7 @@ import { ArrowRight, FileText, Sparkles, Target } from "lucide-react";
 import { getTelegramUserId, isTelegramMiniApp } from "@/lib/telegram";
 import { linkTelegramId } from "@/lib/api";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { LINKED_KEY } from "@/hooks/useLinkTelegram";
 
 const PENDING_TG_ID_KEY = "pending_tg_id";
 
@@ -52,6 +53,7 @@ export default function LoginPage() {
     if (tgId && Number.isFinite(tgId)) {
       linkTelegramId(tgId)
         .then(() => {
+          sessionStorage.setItem(LINKED_KEY, "1");
           localStorage.removeItem(PENDING_TG_ID_KEY);
           window.history.replaceState({}, "", "/signin");
           (window as any).Telegram?.WebApp?.close();
