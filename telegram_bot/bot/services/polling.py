@@ -11,7 +11,7 @@ async def poll_until_done(
     elapsed = 0
     while elapsed < timeout:
         status = await client.get_optimization_status(telegram_id, run_id)
-        if status["status"] == "completed":
+        if status["status"] == "complete":
             return status
         if status["status"] == "failed":
             raise RuntimeError(status.get("error", "Optimization failed"))
