@@ -187,3 +187,11 @@ async def handle_document(
     except BackendError:
         logger.exception("CV upload failed")
         await message.answer("❌ Couldn't save your resume. Please try again.")
+
+
+@router.message(F.text & ~F.text.startswith("/"))
+async def fallback_text(message: Message, **kwargs):
+    await message.answer(
+        "Send me a <b>job URL</b> or paste the full job description "
+        "(at least 100 characters).\n\nNeed help? /help"
+    )
