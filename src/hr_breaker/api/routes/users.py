@@ -48,6 +48,7 @@ async def get_current_profile(
         email=profile["email"],
         name=profile.get("name"),
         theme=profile.get("theme", "minimal"),
+        default_cv_id=profile.get("default_cv_id"),
         created_at=profile["created_at"],
     )
 
@@ -72,6 +73,8 @@ async def update_current_profile(
                 detail="Theme must be one of: minimal, professional, bold",
             )
         update_data["theme"] = updates.theme
+    if updates.default_cv_id is not None:
+        update_data["default_cv_id"] = updates.default_cv_id
 
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates provided")
@@ -86,6 +89,7 @@ async def update_current_profile(
             email=profile["email"],
             name=profile.get("name"),
             theme=profile.get("theme", "minimal"),
+            default_cv_id=profile.get("default_cv_id"),
             created_at=profile["created_at"],
         )
     except SupabaseError as e:
