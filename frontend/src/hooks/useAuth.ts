@@ -45,14 +45,15 @@ export function useAuth() {
     };
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async (redirectTo?: string) => {
     const supabase = getSupabaseClient();
     const redirectBase =
       process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL || window.location.origin;
+    const finalRedirect = redirectTo ?? `${redirectBase}/optimize`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${redirectBase}/optimize`,
+        redirectTo: finalRedirect,
       },
     });
     if (error) throw error;
