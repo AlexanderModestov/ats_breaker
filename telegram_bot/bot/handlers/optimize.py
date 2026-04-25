@@ -81,11 +81,11 @@ async def handle_job_input(
         )
         return
 
-    cv_id = cvs[0]["id"]  # default to first (most recent)
-    for cv in cvs:
-        if cv.get("is_default"):
-            cv_id = cv["id"]
-            break
+    default_cv_id = backend_user.get("default_cv_id")
+    cv_id = next(
+        (cv["id"] for cv in cvs if cv["id"] == default_cv_id),
+        cvs[0]["id"],
+    )
 
     status_msg = await message.answer("⏳ Optimizing your resume...")
 

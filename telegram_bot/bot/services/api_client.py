@@ -53,7 +53,7 @@ class APIClient:
                 headers=self._user_headers(telegram_id),
             )
             r.raise_for_status()
-            return r.json()
+            return r.json().get("cvs", [])
 
     async def upload_cv(self, telegram_id: int, filename: str, content: bytes) -> dict:
         async with httpx.AsyncClient() as client:

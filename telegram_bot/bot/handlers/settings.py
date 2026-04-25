@@ -30,9 +30,10 @@ async def settings_cmd(
         await message.answer("You have no resumes uploaded yet. Send a file to add one.")
         return
 
+    default_cv_id = backend_user.get("default_cv_id")
     buttons = [
         [InlineKeyboardButton(
-            text=f"{'✅ ' if cv.get('is_default') else ''}{cv['filename']}",
+            text=f"{'✅ ' if cv['id'] == default_cv_id else ''}{cv['original_filename']}",
             callback_data=f"set_default_cv:{cv['id']}",
         )]
         for cv in cvs
