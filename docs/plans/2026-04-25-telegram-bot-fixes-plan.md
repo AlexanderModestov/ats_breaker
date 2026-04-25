@@ -153,6 +153,63 @@ git commit -m "fix(bot): use /api/users/me instead of deprecated /api/auth/teleg
 
 ---
 
+### Task 2.5: Backend — Add `default_cv_id` to `UserProfile` and `UserProfileUpdate`
+
+The bot reads `backend_user["default_cv_id"]` (in `handlers/optimize.py` and `handlers/settings.py`) to pick the default CV, and PATCHes `/api/users/me` with `{"default_cv_id": cv_id}` (in `api_client.set_default_cv`). The deprecated `/api/auth/telegram/me` returned the raw Supabase profile dict (which has `default_cv_id` as a column). The new `/api/users/me` returns a typed `UserProfile` model that lacks the field, and `update_current_profile` only handles `name` and `theme`. Without this task, removing the duplicate in Task 3 silently breaks the bot's default-CV feature.
+
+**Files:**
+- Modify: `src/hr_breaker/api/schemas.py`
+- Modify: `src/hr_breaker/api/routes/users.py`
+
+**Step 1: Add `default_cv_id` to schemas**
+
+In `src/hr_breaker/api/schemas.py`, add the field to both models:
+
+```python
+class UserProfile(BaseModel):
+    id: str
+    email: str | None = None
+    name: str | None = None
+    theme: str | None = None
+    default_cv_id: str | None = None      # NEW
+    created_at: datetime
+
+
+class UserProfileUpdate(BaseModel):
+    name: str | None = None
+    theme: str | None = None
+    default_cv_id: str | None = None      # NEW
+```
+
+(Match the surrounding style — keep field order consistent with the existing model. The example above shows what the final shape should look like; preserve any existing type unions.)
+
+**Step 2: Populate `default_cv_id` in `GET /api/users/me`**
+
+In `src/hr_breaker/api/routes/users.py`, the `get_current_profile` handler builds a `UserProfile` from the Supabase `profiles` row. Add `default_cv_id=profile.get("default_cv_id")` to that construction.
+
+**Step 3: Handle `default_cv_id` in `PATCH /api/users/me`**
+
+In `update_current_profile`, accept `default_cv_id` from the request body and pass it through to the Supabase update payload (alongside `name` and `theme`). If `default_cv_id` is `None` in the request body **and not explicitly set**, do not overwrite the column. Use `model_dump(exclude_unset=True)` if not already.
+
+**Step 4: Sanity check**
+
+Verify import + basic schema instantiation:
+
+```bash
+source .venv/bin/activate && uv run python -c "from hr_breaker.api.schemas import UserProfile, UserProfileUpdate; print(UserProfile.model_fields.keys()); print(UserProfileUpdate.model_fields.keys())"
+```
+
+Expected: both lists include `default_cv_id`.
+
+**Step 5: Commit**
+
+```bash
+git add src/hr_breaker/api/schemas.py src/hr_breaker/api/routes/users.py
+git commit -m "feat(api): expose default_cv_id on UserProfile + accept in PATCH"
+```
+
+---
+
 ### Task 3: Backend — Remove dead code from `routes/telegram.py`
 
 **Files:**
