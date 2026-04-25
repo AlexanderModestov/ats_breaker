@@ -32,16 +32,25 @@ async def main():
     dp.include_router(optimize.router)
 
     if bot_settings.webhook_url:
+        await bot.set_webhook(
+            url=f"{bot_settings.webhook_url}/webhook",
+            secret_token=bot_settings.webhook_secret or None,
+            drop_pending_updates=True,
+        )
         app = web.Application()
-        handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
-        handler.register(app, path="/webhook")
+        SimpleRequestHandler(
+            dispatcher=dp, bot=bot,
+            secret_token=bot_settings.webhook_secret or None,
+        ).register(app, path="/webhook")
         setup_application(app, dp, bot=bot)
-        await web.TCPSite(
-            web.AppRunner(app), host="0.0.0.0", port=8080
-        ).start()
+
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, host="0.0.0.0", port=8080)
+        await site.start()
         await asyncio.Event().wait()
     else:
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, drop_pending_updates=True)
 
 
 if __name__ == "__main__":
