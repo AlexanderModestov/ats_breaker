@@ -23,7 +23,9 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
-    dp.message.middleware(AuthMiddleware())
+    auth_mw = AuthMiddleware()
+    dp.message.middleware(auth_mw)
+    dp.callback_query.middleware(auth_mw)
     dp.include_router(start.router)
     dp.include_router(optimize.router)
     dp.include_router(settings.router)

@@ -3,7 +3,7 @@
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, Message
+from aiogram.types import CallbackQuery, Message, TelegramObject
 
 from bot.services.api_client import APIClient
 
@@ -17,7 +17,7 @@ class AuthMiddleware(BaseMiddleware):
     ) -> Any:
         client = APIClient()
         user = None
-        if isinstance(event, Message) and event.from_user:
+        if isinstance(event, (Message, CallbackQuery)) and event.from_user:
             user = await client.get_user(event.from_user.id)
         data["api_client"] = client
         data["backend_user"] = user
