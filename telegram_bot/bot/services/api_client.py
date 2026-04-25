@@ -58,7 +58,7 @@ class APIClient:
     async def upload_cv(self, telegram_id: int, filename: str, content: bytes) -> dict:
         async with httpx.AsyncClient() as client:
             r = await client.post(
-                f"{self._base_url}/api/cvs/upload",
+                f"{self._base_url}/api/cvs",
                 headers=self._user_headers(telegram_id),
                 files={"file": (filename, content)},
             )
@@ -70,7 +70,7 @@ class APIClient:
     ) -> dict:
         async with httpx.AsyncClient() as client:
             r = await client.post(
-                f"{self._base_url}/api/optimize/start",
+                f"{self._base_url}/api/optimize",
                 headers=self._user_headers(telegram_id),
                 json={"cv_id": cv_id, "job_input": job_input},
                 timeout=30,
@@ -83,7 +83,7 @@ class APIClient:
     ) -> dict:
         async with httpx.AsyncClient() as client:
             r = await client.get(
-                f"{self._base_url}/api/optimize/{run_id}/status",
+                f"{self._base_url}/api/optimize/{run_id}",
                 headers=self._user_headers(telegram_id),
                 timeout=10,
             )
@@ -114,7 +114,7 @@ class APIClient:
     async def set_default_cv(self, telegram_id: int, cv_id: str) -> None:
         async with httpx.AsyncClient() as client:
             r = await client.patch(
-                f"{self._base_url}/api/users/profile",
+                f"{self._base_url}/api/users/me",
                 headers=self._user_headers(telegram_id),
                 json={"default_cv_id": cv_id},
             )
