@@ -18,7 +18,7 @@ class APIClient:
     async def get_user(self, telegram_id: int) -> dict | None:
         async with httpx.AsyncClient() as client:
             r = await client.get(
-                f"{self._base_url}/api/auth/telegram/me",
+                f"{self._base_url}/api/users/me",
                 headers=self._user_headers(telegram_id),
             )
             if r.status_code == 404:
