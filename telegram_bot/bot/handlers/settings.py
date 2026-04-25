@@ -14,6 +14,18 @@ from bot.services.api_client import APIClient
 router = Router()
 
 
+def _build_cv_keyboard(cvs: list[dict], default_cv_id: str | None) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text=f"{'✅ ' if cv['id'] == default_cv_id else ''}{cv['original_filename']}",
+                callback_data=f"set_default_cv:{cv['id']}",
+            )]
+            for cv in cvs
+        ]
+    )
+
+
 @router.message(Command("settings"))
 async def settings_cmd(
     message: Message,
@@ -30,16 +42,10 @@ async def settings_cmd(
         await message.answer("You have no resumes uploaded yet. Send a file to add one.")
         return
 
-    buttons = [
-        [InlineKeyboardButton(
-            text=f"{'✅ ' if cv.get('is_default') else ''}{cv['filename']}",
-            callback_data=f"set_default_cv:{cv['id']}",
-        )]
-        for cv in cvs
-    ]
+    default_cv_id = backend_user.get("default_cv_id")
     await message.answer(
         "Choose your default resume:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        reply_markup=_build_cv_keyboard(cvs, default_cv_id),
     )
 
 
@@ -52,4 +58,9 @@ async def set_default_cv(
     cv_id = callback.data.split(":", 1)[1]
     await api_client.set_default_cv(callback.from_user.id, cv_id)
     await callback.answer("Default resume updated ✅")
-    await callback.message.delete()
+
+    # Re-render with the new checkmark
+    cvs = await api_client.get_cvs(callback.from_user.id)
+    await callback.message.edit_reply_markup(
+        reply_markup=_build_cv_keyboard(cvs, cv_id),
+    )

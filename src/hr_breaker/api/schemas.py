@@ -14,6 +14,7 @@ class UserProfile(BaseModel):
     email: str
     name: str | None = None
     theme: str = "minimal"
+    default_cv_id: str | None = None
     created_at: datetime
 
 
@@ -22,6 +23,7 @@ class UserProfileUpdate(BaseModel):
 
     name: str | None = None
     theme: str | None = None
+    default_cv_id: str | None = None
 
 
 class AuthVerifyRequest(BaseModel):

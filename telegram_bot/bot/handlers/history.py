@@ -26,7 +26,7 @@ async def history_cmd(
         await message.answer("Sign in first with /start.")
         return
 
-    runs = await api_client.get_recent_runs(message.from_user.id)
+    runs = (await api_client.get_recent_runs(message.from_user.id))[:5]
     if not runs:
         await message.answer("No optimization runs yet. Send a job URL to get started.")
         return

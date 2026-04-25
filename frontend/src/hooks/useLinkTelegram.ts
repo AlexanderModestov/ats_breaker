@@ -5,7 +5,7 @@ import { getTelegramUserId, isTelegramMiniApp } from "@/lib/telegram";
 import { linkTelegramId } from "@/lib/api";
 import { useAuth } from "./useAuth";
 
-const LINKED_KEY = "tg_linked";
+export const LINKED_KEY = "tg_linked";
 const PENDING_TG_ID_KEY = "pending_tg_id";
 
 export function useLinkTelegram() {

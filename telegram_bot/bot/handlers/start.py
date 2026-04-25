@@ -1,7 +1,7 @@
 """Start handler — entry point and auth flow."""
 
 from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from bot.config import get_bot_settings
@@ -46,4 +46,18 @@ async def start(
         telegram_id=message.from_user.id,
         chat_id=sent.chat.id,
         message_id=sent.message_id,
+    )
+
+
+@router.message(Command("help"))
+async def help_cmd(message: Message, **kwargs):
+    await message.answer(
+        "<b>HR-Breaker</b>\n\n"
+        "📎 <b>Send a job URL or description</b> — I'll optimize your default resume\n"
+        "📄 <b>Send a resume file</b> (PDF/DOCX/TXT) — saved as your CV\n\n"
+        "<b>Commands</b>\n"
+        "/start — sign in / welcome\n"
+        "/settings — choose default resume\n"
+        "/history — last 5 optimizations\n"
+        "/help — this message"
     )

@@ -1,5 +1,6 @@
 """Optimization flow handler."""
 
+import logging
 import re
 
 from aiogram import F, Router
@@ -13,8 +14,15 @@ from aiogram.types import (
 )
 
 from bot.config import get_bot_settings
-from bot.services.api_client import APIClient
+from bot.services.api_client import (
+    APIClient,
+    BackendError,
+    JobUnavailableError,
+    QuotaExceededError,
+)
 from bot.services.polling import poll_until_done
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -81,11 +89,11 @@ async def handle_job_input(
         )
         return
 
-    cv_id = cvs[0]["id"]  # default to first (most recent)
-    for cv in cvs:
-        if cv.get("is_default"):
-            cv_id = cv["id"]
-            break
+    default_cv_id = backend_user.get("default_cv_id")
+    cv_id = next(
+        (cv["id"] for cv in cvs if cv["id"] == default_cv_id),
+        cvs[0]["id"],
+    )
 
     status_msg = await message.answer("⏳ Optimizing your resume...")
 
@@ -97,8 +105,10 @@ async def handle_job_input(
 
         pdf_bytes = await api_client.get_optimization_pdf(telegram_id, run_id)
 
-        company = result.get("job_company", "company")
-        title = result.get("job_title", "role")
+        # OptimizationStatus.job_parsed nests title/company — they're NOT top-level
+        job_parsed = result.get("job_parsed") or {}
+        company = job_parsed.get("company") or "company"
+        title = job_parsed.get("title") or "role"
         filename = f"{company}_{title}.pdf".replace(" ", "_")
 
         await status_msg.delete()
@@ -107,15 +117,25 @@ async def handle_job_input(
             caption=f"✅ Resume optimized for <b>{title}</b> at <b>{company}</b>",
             reply_markup=_coach_keyboard(run_id, settings.web_app_url),
         )
+    except QuotaExceededError:
+        await status_msg.edit_text(
+            f"💳 You're out of optimization credits.\n\n"
+            f"Top up at {settings.web_app_url}/pricing"
+        )
+    except JobUnavailableError:
+        await status_msg.edit_text(
+            "❌ Couldn't read the job posting.\n"
+            "Try pasting the job description as text instead of a URL."
+        )
     except TimeoutError:
         await status_msg.edit_text(
             "⏱ This is taking longer than usual. "
             "Use /history to download when ready."
         )
-    except Exception:
+    except (BackendError, Exception):
+        logger.exception("Optimization failed for telegram_id=%s", telegram_id)
         await status_msg.edit_text(
-            "❌ Couldn't optimize your resume for this job.\n"
-            "Try pasting the job description as text if you sent a URL."
+            "❌ Something went wrong on our side. Please try again in a minute."
         )
 
 
@@ -157,9 +177,21 @@ async def handle_document(
     file = await message.bot.get_file(doc.file_id)
     file_bytes = await message.bot.download_file(file.file_path)
 
-    await api_client.upload_cv(
-        message.from_user.id, doc.file_name or "resume.pdf", file_bytes.read()
-    )
+    try:
+        await api_client.upload_cv(
+            message.from_user.id, doc.file_name or "resume.pdf", file_bytes.read()
+        )
+        await message.answer(
+            "✅ Resume saved! Now send me a job URL or job description to optimize it."
+        )
+    except BackendError:
+        logger.exception("CV upload failed")
+        await message.answer("❌ Couldn't save your resume. Please try again.")
+
+
+@router.message(F.text & ~F.text.startswith("/"))
+async def fallback_text(message: Message, **kwargs):
     await message.answer(
-        "✅ Resume saved! Now send me a job URL or job description to optimize it."
+        "Send me a <b>job URL</b> or paste the full job description "
+        "(at least 100 characters).\n\nNeed help? /help"
     )
