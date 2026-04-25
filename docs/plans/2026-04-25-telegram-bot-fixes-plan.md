@@ -383,8 +383,10 @@ try:
 
     pdf_bytes = await api_client.get_optimization_pdf(telegram_id, run_id)
 
-    company = result.get("job_company", "company")
-    title = result.get("job_title", "role")
+    # OptimizationStatus.job_parsed nests title/company — they're NOT top-level
+    job_parsed = result.get("job_parsed") or {}
+    company = job_parsed.get("company") or "company"
+    title = job_parsed.get("title") or "role"
     filename = f"{company}_{title}.pdf".replace(" ", "_")
 
     await status_msg.delete()
@@ -432,11 +434,28 @@ except BackendError:
     await message.answer("❌ Couldn't save your resume. Please try again.")
 ```
 
-**Step 4: Commit**
+**Step 4: Fix `polling.py` status value drift**
+
+The schema `OptimizationStatus.status` documents the terminal value as `"complete"` (no trailing `d`), and the route in `src/hr_breaker/api/routes/optimize.py` uses `"complete"`. The bot's `telegram_bot/bot/services/polling.py` checks for `"completed"` — this means the polling loop never sees completion and always raises `TimeoutError`.
+
+In `telegram_bot/bot/services/polling.py`, change:
+
+```python
+# Was:
+if status["status"] == "completed":
+    return status
+# Becomes:
+if status["status"] == "complete":
+    return status
+```
+
+The `"failed"` check on the next line is correct per the schema — leave it.
+
+**Step 5: Commit**
 
 ```bash
-git add telegram_bot/bot/handlers/optimize.py
-git commit -m "feat(bot): typed error handling and logging in optimize flow"
+git add telegram_bot/bot/handlers/optimize.py telegram_bot/bot/services/polling.py
+git commit -m "feat(bot): typed error handling, logging, and fix job_parsed/status-value drifts"
 ```
 
 ---
