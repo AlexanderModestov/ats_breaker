@@ -36,19 +36,31 @@ export default function LoginPage() {
   const { track } = useAnalytics();
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      const telegramId = getTelegramUserId();
-      if (telegramId) {
-        linkTelegramId(telegramId)
-          .then(() => {
-            (window as any).Telegram?.WebApp?.close();
-          })
-          .catch(() => {
-            // Non-fatal: user is logged in, linking failed silently
-          });
-      }
-      router.push("/optimize");
+    if (loading || !isAuthenticated) return;
+
+    const fromMiniApp = getTelegramUserId();
+    const fromUrl = (() => {
+      const v = new URLSearchParams(window.location.search).get("tg");
+      return v ? Number(v) : null;
+    })();
+    const fromStorage = (() => {
+      const v = localStorage.getItem(PENDING_TG_ID_KEY);
+      return v ? Number(v) : null;
+    })();
+    const tgId = fromMiniApp ?? fromUrl ?? fromStorage;
+
+    if (tgId && Number.isFinite(tgId)) {
+      linkTelegramId(tgId)
+        .then(() => {
+          localStorage.removeItem(PENDING_TG_ID_KEY);
+          window.history.replaceState({}, "", "/signin");
+          (window as any).Telegram?.WebApp?.close();
+        })
+        .catch(() => {
+          // Non-fatal: user is logged in even if linking failed
+        });
     }
+    router.push("/optimize");
   }, [isAuthenticated, loading, router]);
 
   if (loading) {
@@ -171,13 +183,16 @@ export default function LoginPage() {
               className="group w-full gap-3 py-6 text-base"
               size="lg"
               onClick={async () => {
-                if (isTelegramMiniApp()) {
-                  const tgId = getTelegramUserId();
-                  if (tgId) localStorage.setItem(PENDING_TG_ID_KEY, String(tgId));
-                }
+                const tgId = isTelegramMiniApp() ? getTelegramUserId() : null;
+                if (tgId) localStorage.setItem(PENDING_TG_ID_KEY, String(tgId));
+
+                const redirectTo = tgId
+                  ? `${window.location.origin}/signin?tg=${tgId}`
+                  : `${window.location.origin}/signin`;
+
                 track("signin_started", { method: "google" });
                 try {
-                  await signInWithGoogle();
+                  await signInWithGoogle(redirectTo);
                 } catch (err) {
                   track("signin_failed", {
                     method: "google",
