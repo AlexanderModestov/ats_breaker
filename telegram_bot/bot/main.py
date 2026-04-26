@@ -10,7 +10,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from aiohttp import web
 
 from bot.config import get_bot_settings
-from bot.handlers import start, optimize, settings, history
+from bot.handlers import start, optimize, settings, history, coach
 from bot.middlewares.auth import AuthMiddleware
 
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +29,7 @@ async def main():
     dp.include_router(start.router)
     dp.include_router(settings.router)
     dp.include_router(history.router)
+    dp.include_router(coach.router)
     dp.include_router(optimize.router)
 
     if bot_settings.webhook_url:

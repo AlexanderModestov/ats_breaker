@@ -59,5 +59,6 @@ async def help_cmd(message: Message, **kwargs):
         "/start — sign in / welcome\n"
         "/settings — choose default resume\n"
         "/history — last 5 optimizations\n"
+        "/coach — open the interview coach\n"
         "/help — this message"
     )

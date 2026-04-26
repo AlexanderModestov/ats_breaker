@@ -8,10 +8,8 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
-    WebAppInfo,
 )
 
-from bot.config import get_bot_settings
 from bot.services.api_client import APIClient
 
 router = Router()
@@ -19,9 +17,7 @@ router = Router()
 PAGE_SIZE = 5
 
 
-def _history_keyboard(
-    runs: list[dict], page: int, web_app_url: str
-) -> InlineKeyboardMarkup:
+def _history_keyboard(runs: list[dict], page: int) -> InlineKeyboardMarkup:
     start = page * PAGE_SIZE
     end = start + PAGE_SIZE
     page_runs = runs[start:end]
@@ -31,11 +27,7 @@ def _history_keyboard(
             InlineKeyboardButton(
                 text=f"📄 {r.get('job_company', '?')} — {r.get('job_title', '?')}",
                 callback_data=f"dl_pdf:{r['id']}",
-            ),
-            InlineKeyboardButton(
-                text="🎓 Coach",
-                web_app=WebAppInfo(url=f"{web_app_url}/coach?runId={r['id']}"),
-            ),
+            )
         ]
         for r in page_runs
     ]
@@ -69,7 +61,7 @@ async def history_cmd(
 
     await message.answer(
         "Your recent resumes:",
-        reply_markup=_history_keyboard(runs, 0, get_bot_settings().web_app_url),
+        reply_markup=_history_keyboard(runs, 0),
     )
 
 
@@ -87,7 +79,7 @@ async def history_page(
 
     runs = await api_client.get_recent_runs(callback.from_user.id)
     await callback.message.edit_reply_markup(
-        reply_markup=_history_keyboard(runs, page, get_bot_settings().web_app_url),
+        reply_markup=_history_keyboard(runs, page),
     )
     await callback.answer()
 
