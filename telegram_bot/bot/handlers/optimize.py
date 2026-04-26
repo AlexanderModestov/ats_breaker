@@ -20,6 +20,7 @@ from bot.services.api_client import (
     JobUnavailableError,
     QuotaExceededError,
 )
+from bot.services.filename import format_resume_filename
 from bot.services.polling import poll_until_done
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ async def handle_job_input(
         job_parsed = result.get("job_parsed") or {}
         company = job_parsed.get("company") or "company"
         title = job_parsed.get("title") or "role"
-        filename = f"{company}_{title}.pdf".replace(" ", "_")
+        filename = format_resume_filename(result)
 
         await status_msg.delete()
         await message.answer_document(

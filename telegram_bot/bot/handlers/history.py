@@ -11,6 +11,7 @@ from aiogram.types import (
 )
 
 from bot.services.api_client import APIClient
+from bot.services.filename import format_resume_filename
 
 router = Router()
 
@@ -93,9 +94,10 @@ async def download_pdf(
     run_id = callback.data.split(":", 1)[1]
     await callback.answer("Downloading...")
     try:
+        run = await api_client.get_optimization_status(callback.from_user.id, run_id)
         pdf_bytes = await api_client.get_optimization_pdf(callback.from_user.id, run_id)
         await callback.message.answer_document(
-            BufferedInputFile(pdf_bytes, filename=f"resume_{run_id[:8]}.pdf"),
+            BufferedInputFile(pdf_bytes, filename=format_resume_filename(run)),
         )
     except Exception:
         await callback.message.answer("❌ Couldn't fetch the PDF. Try again later.")

@@ -107,6 +107,10 @@ async def _run_optimization(
             first_name=first_name,
             last_name=last_name,
         )
+        supabase.update_optimization_run(run_id, {
+            "first_name": first_name,
+            "last_name": last_name,
+        })
 
         capture(user_id, "optimization_started", {
             "job_title": job.title,
@@ -331,6 +335,8 @@ async def get_optimization_status(
         iterations=run.get("iterations", 0),
         job_parsed=run.get("job_parsed"),
         job_url=job_url,
+        first_name=run.get("first_name"),
+        last_name=run.get("last_name"),
         feedback=run.get("feedback"),
         result_html=run.get("result_html"),
         error=run.get("error"),

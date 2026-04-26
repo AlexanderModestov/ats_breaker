@@ -83,6 +83,8 @@ class OptimizationStatus(BaseModel):
     iterations: int = 0
     job_parsed: dict[str, Any] | None = None
     job_url: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     feedback: list[dict[str, Any]] | None = None
     result_html: str | None = None
     error: str | None = None
