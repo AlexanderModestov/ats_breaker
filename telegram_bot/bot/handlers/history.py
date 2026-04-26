@@ -8,11 +8,47 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
+    WebAppInfo,
 )
 
+from bot.config import get_bot_settings
 from bot.services.api_client import APIClient
 
 router = Router()
+
+PAGE_SIZE = 5
+
+
+def _history_keyboard(
+    runs: list[dict], page: int, web_app_url: str
+) -> InlineKeyboardMarkup:
+    start = page * PAGE_SIZE
+    end = start + PAGE_SIZE
+    page_runs = runs[start:end]
+
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text=f"📄 {r.get('job_company', '?')} — {r.get('job_title', '?')}",
+                callback_data=f"dl_pdf:{r['id']}",
+            ),
+            InlineKeyboardButton(
+                text="🎓 Coach",
+                web_app=WebAppInfo(url=f"{web_app_url}/coach?runId={r['id']}"),
+            ),
+        ]
+        for r in page_runs
+    ]
+
+    nav: list[InlineKeyboardButton] = []
+    if page > 0:
+        nav.append(InlineKeyboardButton(text="◀️ Назад", callback_data=f"hist:{page - 1}"))
+    if end < len(runs):
+        nav.append(InlineKeyboardButton(text="Далее ▶️", callback_data=f"hist:{page + 1}"))
+    if nav:
+        rows.append(nav)
+
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 @router.message(Command("history"))
@@ -26,22 +62,34 @@ async def history_cmd(
         await message.answer("Sign in first with /start.")
         return
 
-    runs = (await api_client.get_recent_runs(message.from_user.id))[:5]
+    runs = await api_client.get_recent_runs(message.from_user.id)
     if not runs:
         await message.answer("No optimization runs yet. Send a job URL to get started.")
         return
 
-    buttons = [
-        [InlineKeyboardButton(
-            text=f"📄 {r.get('job_company', '?')} — {r.get('job_title', '?')}",
-            callback_data=f"dl_pdf:{r['id']}",
-        )]
-        for r in runs
-    ]
     await message.answer(
         "Your recent resumes:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        reply_markup=_history_keyboard(runs, 0, get_bot_settings().web_app_url),
     )
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("hist:"))
+async def history_page(
+    callback: CallbackQuery,
+    api_client: APIClient,
+    **kwargs,
+):
+    try:
+        page = int(callback.data.split(":", 1)[1])
+    except ValueError:
+        await callback.answer()
+        return
+
+    runs = await api_client.get_recent_runs(callback.from_user.id)
+    await callback.message.edit_reply_markup(
+        reply_markup=_history_keyboard(runs, page, get_bot_settings().web_app_url),
+    )
+    await callback.answer()
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("dl_pdf:"))

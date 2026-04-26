@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "@/components/motion";
 import { CoachChat } from "@/components/CoachChat";
 import { StorybankPanel } from "@/components/StorybankPanel";
@@ -12,8 +13,14 @@ import type { OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
 
 export default function CoachPage() {
+  const searchParams = useSearchParams();
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "storybank">("chat");
+
+  useEffect(() => {
+    const runId = searchParams.get("runId");
+    if (runId) setSelectedRunId(runId);
+  }, [searchParams]);
 
   const { data: optimizations = [] } = useQuery<OptimizationSummary[]>({
     queryKey: ["optimizations"],
