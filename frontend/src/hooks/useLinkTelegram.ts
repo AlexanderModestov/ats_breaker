@@ -26,7 +26,9 @@ export function useLinkTelegram() {
       .then(() => {
         sessionStorage.setItem(LINKED_KEY, "1");
         localStorage.removeItem(PENDING_TG_ID_KEY);
-        (window as any).Telegram?.WebApp?.close();
+        // Closing the WebApp belongs to the post-signin flow (handled in
+        // /signin); other protected pages are intentional WebApp launches
+        // (e.g. /coach), so closing here would dismiss them immediately.
       })
       .catch(() => {
         // Non-fatal: user is signed in; bot will show the sign-in button again next time.
