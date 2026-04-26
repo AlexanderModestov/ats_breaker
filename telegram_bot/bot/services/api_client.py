@@ -39,7 +39,7 @@ class APIClient:
         try:
             async with httpx.AsyncClient() as client:
                 r = await client.get(
-                    f"{self._base_url}/api/users/me",
+                    f"{self._base_url}/api/me",
                     headers=self._user_headers(telegram_id),
                 )
                 if r.status_code == 404:
@@ -178,7 +178,7 @@ class APIClient:
         try:
             async with httpx.AsyncClient() as client:
                 r = await client.patch(
-                    f"{self._base_url}/api/users/me",
+                    f"{self._base_url}/api/me",
                     headers=self._user_headers(telegram_id),
                     json={"default_cv_id": cv_id},
                 )
