@@ -49,6 +49,11 @@ export default function LoginPage() {
       return v ? Number(v) : null;
     })();
     const tgId = fromMiniApp ?? fromUrl ?? fromStorage;
+    // ?tg=… is only set by signInWithGoogle's redirectTo, so its presence
+    // distinguishes a fresh post-OAuth landing from an auth-state rehydrate
+    // that bounced an already-signed-in user through /signin (e.g. from
+    // /coach). Only the former should close the WebApp back to the bot.
+    const isPostOAuth = fromUrl !== null;
 
     if (tgId && Number.isFinite(tgId)) {
       linkTelegramId(tgId)
@@ -56,7 +61,9 @@ export default function LoginPage() {
           sessionStorage.setItem(LINKED_KEY, "1");
           localStorage.removeItem(PENDING_TG_ID_KEY);
           window.history.replaceState({}, "", "/signin");
-          (window as any).Telegram?.WebApp?.close();
+          if (isPostOAuth) {
+            (window as any).Telegram?.WebApp?.close();
+          }
         })
         .catch(() => {
           // Non-fatal: user is logged in even if linking failed
