@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { motion } from "@/components/motion";
 import { ArrowRight, FileText, Sparkles, Target } from "lucide-react";
-import { getTelegramUserId, isTelegramMiniApp } from "@/lib/telegram";
+import { getTelegramUserId, isTelegramIOS, isTelegramMiniApp } from "@/lib/telegram";
+import { getSupabaseClient } from "@/lib/supabase";
 import { linkTelegramId } from "@/lib/api";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { LINKED_KEY } from "@/hooks/useLinkTelegram";
@@ -62,7 +63,20 @@ export default function LoginPage() {
           localStorage.removeItem(PENDING_TG_ID_KEY);
           window.history.replaceState({}, "", "/signin");
           if (isPostOAuth) {
-            (window as any).Telegram?.WebApp?.close();
+            if (isTelegramMiniApp()) {
+              // Android WebApp callback: OAuth completed inside Telegram, just close.
+              (window as any).Telegram?.WebApp?.close();
+            } else {
+              // Safari callback after iOS OAuth hop: deep-link back to the bot.
+              const botUsername = process.env.NEXT_PUBLIC_TG_BOT_USERNAME;
+              if (botUsername) {
+                window.location.href = `tg://resolve?domain=${botUsername}`;
+                // Fallback if tg:// doesn't resolve (e.g. Telegram not installed).
+                setTimeout(() => {
+                  window.location.href = `https://t.me/${botUsername}`;
+                }, 1500);
+              }
+            }
           }
         })
         .catch(() => {
@@ -200,6 +214,29 @@ export default function LoginPage() {
                   : `${window.location.origin}/signin`;
 
                 track("signin_started", { method: "google" });
+
+                if (isTelegramMiniApp() && isTelegramIOS()) {
+                  // iOS Telegram WebApp uses WKWebView, which Google blocks for
+                  // OAuth (Error 403: disallowed_useragent). Open the auth URL
+                  // in Safari instead.
+                  const supabase = getSupabaseClient();
+                  const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: { redirectTo, skipBrowserRedirect: true },
+                  });
+                  if (error || !data?.url) {
+                    track("signin_failed", {
+                      method: "google",
+                      error: error?.message ?? "no_url",
+                    });
+                    return;
+                  }
+                  const wa = (window as any).Telegram?.WebApp;
+                  wa?.openLink(data.url, { try_instant_view: false });
+                  wa?.close();
+                  return;
+                }
+
                 try {
                   await signInWithGoogle(redirectTo);
                 } catch (err) {
