@@ -18,3 +18,8 @@ export function isTelegramMiniApp(): boolean {
   const twa = getTelegramWebApp();
   return !!twa?.platform && twa.platform !== "unknown";
 }
+
+export function isTelegramIOS(): boolean {
+  const twa = getTelegramWebApp();
+  return twa?.platform === "ios";
+}
