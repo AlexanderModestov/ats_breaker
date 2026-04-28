@@ -26,7 +26,12 @@ router = APIRouter()
 
 
 def _extract_display_messages(raw_messages: list) -> list[dict]:
-    """Extract user/assistant text messages from Pydantic-AI message format."""
+    """Extract user/assistant text messages from Pydantic-AI message format.
+
+    Consecutive assistant TextParts (across ModelResponses split by tool calls)
+    are merged into one message so the reloaded history matches the streamed
+    bubble, which concatenates all deltas into a single assistant message.
+    """
     from pydantic_ai.messages import (
         ModelRequest,
         ModelResponse,
@@ -48,7 +53,10 @@ def _extract_display_messages(raw_messages: list) -> list[dict]:
         elif isinstance(msg, ModelResponse):
             for part in msg.parts:
                 if isinstance(part, TextPart):
-                    display.append({"role": "assistant", "content": part.content})
+                    if display and display[-1]["role"] == "assistant":
+                        display[-1]["content"] += part.content
+                    else:
+                        display.append({"role": "assistant", "content": part.content})
     return display
 
 

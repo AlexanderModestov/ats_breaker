@@ -1,5 +1,6 @@
 """Optimization flow handler."""
 
+import asyncio
 import logging
 import re
 
@@ -29,6 +30,9 @@ router = Router()
 
 URL_RE = re.compile(r"https?://\S+")
 MIN_JOB_TEXT_LEN = 100
+BACKGROUND_POLL_TIMEOUT = 900
+
+_background_tasks: set[asyncio.Task] = set()
 
 
 def _looks_like_job(text: str) -> bool:
@@ -55,6 +59,46 @@ def _coach_keyboard(run_id: str, web_app_url: str) -> InlineKeyboardMarkup:
             )]
         ]
     )
+
+
+async def _continue_polling_in_background(
+    message: Message,
+    status_msg: Message,
+    api_client: APIClient,
+    telegram_id: int,
+    run_id: str,
+) -> None:
+    """Keep polling after the foreground timeout and notify the user when done."""
+    try:
+        result = await poll_until_done(
+            api_client, telegram_id, run_id, timeout=BACKGROUND_POLL_TIMEOUT
+        )
+        pdf_bytes = await api_client.get_optimization_pdf(telegram_id, run_id)
+
+        job_parsed = result.get("job_parsed") or {}
+        company = job_parsed.get("company") or "company"
+        title = job_parsed.get("title") or "role"
+        filename = format_resume_filename(result)
+
+        await status_msg.edit_text(
+            f"✅ Resume optimized for <b>{title}</b> at <b>{company}</b>"
+        )
+        await message.answer_document(
+            BufferedInputFile(pdf_bytes, filename=filename),
+        )
+    except TimeoutError:
+        await status_msg.edit_text(
+            "⏱ Still working. Use /history to download once it's ready."
+        )
+    except Exception:
+        logger.exception(
+            "Background polling failed for telegram_id=%s run_id=%s",
+            telegram_id,
+            run_id,
+        )
+        await status_msg.edit_text(
+            "❌ Something went wrong. Use /history to check the result."
+        )
 
 
 @router.message(F.text.func(_looks_like_job))
@@ -130,9 +174,19 @@ async def handle_job_input(
         )
     except TimeoutError:
         await status_msg.edit_text(
-            "⏱ This is taking longer than usual. "
-            "Use /history to download when ready."
+            "⏱ Still optimizing — I'll update this message when it's ready."
         )
+        task = asyncio.create_task(
+            _continue_polling_in_background(
+                message=message,
+                status_msg=status_msg,
+                api_client=api_client,
+                telegram_id=telegram_id,
+                run_id=run_id,
+            )
+        )
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
     except (BackendError, Exception):
         logger.exception("Optimization failed for telegram_id=%s", telegram_id)
         await status_msg.edit_text(
