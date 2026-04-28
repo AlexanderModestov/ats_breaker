@@ -71,7 +71,7 @@ export default function CoachPage() {
       className="mx-auto flex h-[calc(100vh-4rem)] max-w-7xl flex-col"
     >
       {/* Header: position selector + tabs */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3 gap-4">
+      <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <select
           value={selectedRunId || ""}
           onChange={(e) => handlePositionChange(e.target.value)}
