@@ -91,6 +91,8 @@ export const t = {
       {
         name: { en: "Starter", ru: "Starter" },
         tagline: { en: "Try it out", ru: "Попробуйте" },
+        price: { en: "Free", ru: "Бесплатно" },
+        priceSuffix: { en: "", ru: "" },
         features: [
           { en: "3 resume optimizations / week", ru: "3 оптимизации резюме / нед" },
           { en: "Basic ATS optimization", ru: "Базовая оптимизация под ATS" },
@@ -103,6 +105,8 @@ export const t = {
       {
         name: { en: "Job Hunter", ru: "Job Hunter" },
         tagline: { en: "Get more interviews", ru: "Больше собеседований" },
+        price: { en: "€19", ru: "€19" },
+        priceSuffix: { en: "/month", ru: "/мес" },
         features: [
           { en: "Everything in Starter +", ru: "Всё из Starter +" },
           { en: "Unlimited resume optimizations", ru: "Безлимитные оптимизации" },
@@ -116,6 +120,8 @@ export const t = {
       {
         name: { en: "Offer Mode", ru: "Offer Mode" },
         tagline: { en: "Get the offer", ru: "Получите оффер" },
+        price: { en: "€29", ru: "€29" },
+        priceSuffix: { en: "/month", ru: "/мес" },
         features: [
           { en: "Everything in Job Hunter +", ru: "Всё из Job Hunter +" },
           { en: "AI interview prep", ru: "AI-подготовка к интервью" },

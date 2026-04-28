@@ -74,6 +74,15 @@ export function PricingSection() {
                   </li>
                 ))}
               </ul>
+
+              <div className="mt-6 pt-6 border-t border-border flex items-baseline gap-1">
+                <span className="text-3xl font-bold">{plan.price[lang]}</span>
+                {plan.priceSuffix[lang] && (
+                  <span className="text-sm text-muted-foreground">
+                    {plan.priceSuffix[lang]}
+                  </span>
+                )}
+              </div>
             </motion.div>
           ))}
         </div>
