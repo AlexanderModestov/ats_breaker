@@ -63,7 +63,20 @@ export default function LoginPage() {
           localStorage.removeItem(PENDING_TG_ID_KEY);
           window.history.replaceState({}, "", "/signin");
           if (isPostOAuth) {
-            (window as any).Telegram?.WebApp?.close();
+            if (isTelegramMiniApp()) {
+              // Android WebApp callback: OAuth completed inside Telegram, just close.
+              (window as any).Telegram?.WebApp?.close();
+            } else {
+              // Safari callback after iOS OAuth hop: deep-link back to the bot.
+              const botUsername = process.env.NEXT_PUBLIC_TG_BOT_USERNAME;
+              if (botUsername) {
+                window.location.href = `tg://resolve?domain=${botUsername}`;
+                // Fallback if tg:// doesn't resolve (e.g. Telegram not installed).
+                setTimeout(() => {
+                  window.location.href = `https://t.me/${botUsername}`;
+                }, 1500);
+              }
+            }
           }
         })
         .catch(() => {
