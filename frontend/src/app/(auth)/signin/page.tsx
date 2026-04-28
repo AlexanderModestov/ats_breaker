@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { motion } from "@/components/motion";
 import { ArrowRight, FileText, Sparkles, Target } from "lucide-react";
-import { getTelegramUserId, isTelegramMiniApp } from "@/lib/telegram";
+import { getTelegramUserId, isTelegramIOS, isTelegramMiniApp } from "@/lib/telegram";
+import { getSupabaseClient } from "@/lib/supabase";
 import { linkTelegramId } from "@/lib/api";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { LINKED_KEY } from "@/hooks/useLinkTelegram";
@@ -200,6 +201,29 @@ export default function LoginPage() {
                   : `${window.location.origin}/signin`;
 
                 track("signin_started", { method: "google" });
+
+                if (isTelegramMiniApp() && isTelegramIOS()) {
+                  // iOS Telegram WebApp uses WKWebView, which Google blocks for
+                  // OAuth (Error 403: disallowed_useragent). Open the auth URL
+                  // in Safari instead.
+                  const supabase = getSupabaseClient();
+                  const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: { redirectTo, skipBrowserRedirect: true },
+                  });
+                  if (error || !data?.url) {
+                    track("signin_failed", {
+                      method: "google",
+                      error: error?.message ?? "no_url",
+                    });
+                    return;
+                  }
+                  const wa = (window as any).Telegram?.WebApp;
+                  wa?.openLink(data.url, { try_instant_view: false });
+                  wa?.close();
+                  return;
+                }
+
                 try {
                   await signInWithGoogle(redirectTo);
                 } catch (err) {
