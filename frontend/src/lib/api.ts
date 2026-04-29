@@ -20,6 +20,17 @@ import type {
   ValidateResponse,
 } from "@/types";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly detail?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -52,8 +63,12 @@ async function fetchWithAuth<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || `Request failed: ${response.status}`);
+    const body = await response.json().catch(() => ({}));
+    const message =
+      typeof body?.detail === "string"
+        ? body.detail
+        : `Request failed: ${response.status}`;
+    throw new ApiError(message, response.status, body?.detail);
   }
 
   return response.json();
@@ -205,32 +220,21 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   return fetchWithAuth<SubscriptionStatus>("/subscription");
 }
 
-export async function createSubscriptionCheckout(
+export async function createCheckout(
+  tier: "job_hunter" | "offer_mode",
   successUrl: string,
-  cancelUrl: string
+  cancelUrl: string,
 ): Promise<CheckoutResponse> {
-  return fetchWithAuth<CheckoutResponse>("/subscription/checkout/subscription", {
+  return fetchWithAuth<CheckoutResponse>("/subscription/checkout", {
     method: "POST",
-    body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
+    body: JSON.stringify({ tier, success_url: successUrl, cancel_url: cancelUrl }),
   });
 }
 
-export async function verifyCheckout(
-  sessionId: string
-): Promise<SubscriptionStatus> {
-  return fetchWithAuth<SubscriptionStatus>("/subscription/verify-checkout", {
+export async function createBillingPortal(returnUrl: string): Promise<CheckoutResponse> {
+  return fetchWithAuth<CheckoutResponse>("/subscription/billing-portal", {
     method: "POST",
-    body: JSON.stringify({ session_id: sessionId }),
-  });
-}
-
-export async function createAddonCheckout(
-  successUrl: string,
-  cancelUrl: string
-): Promise<CheckoutResponse> {
-  return fetchWithAuth<CheckoutResponse>("/subscription/checkout/addon", {
-    method: "POST",
-    body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
+    body: JSON.stringify({ return_url: returnUrl }),
   });
 }
 

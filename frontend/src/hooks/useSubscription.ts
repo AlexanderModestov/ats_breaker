@@ -1,70 +1,46 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   getSubscriptionStatus,
-  createSubscriptionCheckout,
-  createAddonCheckout,
-  verifyCheckout,
+  createCheckout,
+  createBillingPortal,
 } from "@/lib/api";
+import type { Tier } from "@/lib/tiers";
 
 export function useSubscription(options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ["subscription"],
     queryFn: getSubscriptionStatus,
-    staleTime: 30000, // 30 seconds
+    staleTime: 30_000,
     refetchInterval: options?.refetchInterval,
   });
 }
 
-export function useSubscriptionCheckout() {
-  const queryClient = useQueryClient();
-
+export function useCheckout() {
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (tier: Exclude<Tier, "free">) => {
       const baseUrl = window.location.origin;
-      const response = await createSubscriptionCheckout(
-        `${baseUrl}/optimize?success=subscription&session_id={CHECKOUT_SESSION_ID}`,
-        `${baseUrl}/pricing`
+      return createCheckout(
+        tier,
+        `${baseUrl}/dashboard?upgraded=${tier}`,
+        `${baseUrl}/pricing`,
       );
-      return response;
     },
     onSuccess: (data) => {
-      // Redirect to Stripe checkout
       window.location.href = data.checkout_url;
     },
   });
 }
 
-export function useAddonCheckout() {
-  const queryClient = useQueryClient();
-
+export function useBillingPortal() {
   return useMutation({
     mutationFn: async () => {
       const baseUrl = window.location.origin;
-      const response = await createAddonCheckout(
-        `${baseUrl}/optimize?success=addon&session_id={CHECKOUT_SESSION_ID}`,
-        `${baseUrl}/blocked`
-      );
-      return response;
+      return createBillingPortal(`${baseUrl}/dashboard`);
     },
     onSuccess: (data) => {
-      // Redirect to Stripe checkout
       window.location.href = data.checkout_url;
-    },
-  });
-}
-
-export function useVerifyCheckout() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (sessionId: string) => {
-      return verifyCheckout(sessionId);
-    },
-    onSuccess: (data) => {
-      // Replace cached subscription data with verified data from Stripe
-      queryClient.setQueryData(["subscription"], data);
     },
   });
 }

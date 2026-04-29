@@ -1,3 +1,5 @@
+import type { Tier } from "@/lib/tiers";
+
 // User types
 export interface UserProfile {
   id: string;
@@ -127,18 +129,12 @@ export type Theme = "minimal" | "professional" | "bold";
 
 // Subscription types
 export interface SubscriptionStatus {
-  status: "trial" | "active" | "cancelled" | "expired";
-  remaining_requests: number | null;
+  tier: Tier;
+  status: "none" | "active" | "cancelled";
+  remaining: number | null;
   is_unlimited: boolean;
-  is_trial: boolean;
-  can_subscribe: boolean;
-  can_buy_addon: boolean;
-  renewal_date: string | null;
-}
-
-export interface CheckoutRequest {
-  success_url: string;
-  cancel_url: string;
+  weekly_reset_at: string | null;
+  current_period_end: string | null;
 }
 
 export interface CheckoutResponse {
