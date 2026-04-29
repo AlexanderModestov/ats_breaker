@@ -153,6 +153,25 @@ class StripeService:
             f"No current_period_end found on subscription {subscription.get('id')}"
         )
 
+    @staticmethod
+    def tier_from_subscription(subscription) -> str:
+        """Read tier from price.metadata.tier on the first subscription item.
+
+        Returns 'free' as a defensive default if metadata is missing or malformed.
+        """
+        try:
+            items = subscription.get("items", {}).get("data", [])
+            if not items:
+                return "free"
+            price = items[0].get("price", {})
+            metadata = price.get("metadata", {}) if isinstance(price, dict) else getattr(price, "metadata", {}) or {}
+            tier = metadata.get("tier") if isinstance(metadata, dict) else getattr(metadata, "tier", None)
+            if tier in ("job_hunter", "offer_mode"):
+                return tier
+        except (KeyError, AttributeError, TypeError):
+            pass
+        return "free"
+
     def retrieve_checkout_session(self, session_id: str) -> stripe.checkout.Session:
         """Retrieve a checkout session by ID."""
         try:
