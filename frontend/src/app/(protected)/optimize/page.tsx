@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState, Suspense, useEffect } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Rocket, AlertTriangle, CheckCircle, ArrowRight } from "lucide-react";
+import { Rocket, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,28 +12,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CVDropdown } from "@/components/CVDropdown";
 import { JobInput } from "@/components/JobInput";
+import { QuotaBanner } from "@/components/QuotaBanner";
 import { useCVs } from "@/hooks/useCVs";
 import { useStartOptimization } from "@/hooks/useOptimization";
-import { useSubscription, useVerifyCheckout } from "@/hooks/useSubscription";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
+import { ApiError } from "@/lib/api";
+import { TIER_LABEL } from "@/lib/tiers";
 import type { CV } from "@/types";
-
-const CHECKOUT_TS_KEY = "post_checkout_ts";
-const CHECKOUT_GRACE_MS = 60_000; // 60 seconds
-
-function isWithinCheckoutGrace(): boolean {
-  try {
-    const ts = sessionStorage.getItem(CHECKOUT_TS_KEY);
-    if (!ts) return false;
-    return Date.now() - parseInt(ts, 10) < CHECKOUT_GRACE_MS;
-  } catch {
-    return false;
-  }
-}
 
 function OptimizeContent() {
   const router = useRouter();
@@ -43,8 +33,7 @@ function OptimizeContent() {
 
   const { data: cvs, isLoading: loadingCVs } = useCVs();
   const startOptimization = useStartOptimization();
-  const { data: subscription, isLoading: loadingSubscription } = useSubscription();
-  const verifyCheckout = useVerifyCheckout();
+  const { data: subscription } = useSubscription();
   const { track } = useAnalytics();
 
   const [selectedCV, setSelectedCV] = useState<CV | null>(null);
@@ -52,21 +41,20 @@ function OptimizeContent() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cvInitialized, setCvInitialized] = useState(false);
 
-  // Survive component re-mounts by persisting post-checkout flag in sessionStorage
-  const [postCheckout, setPostCheckout] = useState(() => {
-    const hasSuccessParam = !!searchParams.get("success");
-    if (hasSuccessParam) {
-      try { sessionStorage.setItem(CHECKOUT_TS_KEY, String(Date.now())); } catch {}
-      return true;
+  // Show post-checkout welcome message and refresh subscription
+  useEffect(() => {
+    const upgraded = searchParams.get("upgraded");
+    if (upgraded === "job_hunter" || upgraded === "offer_mode") {
+      setSuccessMessage(
+        `Welcome to ${TIER_LABEL[upgraded]}! Your subscription is active.`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      window.history.replaceState({}, "", "/optimize");
     }
-    return isWithinCheckoutGrace();
-  });
-  const clearPostCheckout = useCallback(() => {
-    try { sessionStorage.removeItem(CHECKOUT_TS_KEY); } catch {}
-    setPostCheckout(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle CV selection with localStorage persistence
+  // CV select with localStorage persistence
   const handleCVSelect = useCallback((cv: CV) => {
     setSelectedCV(cv);
     localStorage.setItem("lastSelectedCvId", cv.id);
@@ -76,7 +64,6 @@ function OptimizeContent() {
   useEffect(() => {
     if (!cvs || cvs.length === 0 || cvInitialized) return;
 
-    // Priority 1: URL parameter
     if (initialCvId) {
       const cv = cvs.find((c) => c.id === initialCvId);
       if (cv) {
@@ -87,7 +74,6 @@ function OptimizeContent() {
       }
     }
 
-    // Priority 2: Last used CV from localStorage
     const lastCvId = localStorage.getItem("lastSelectedCvId");
     if (lastCvId) {
       const cv = cvs.find((c) => c.id === lastCvId);
@@ -98,80 +84,10 @@ function OptimizeContent() {
       }
     }
 
-    // Priority 3: First CV in the list
     setSelectedCV(cvs[0]);
     localStorage.setItem("lastSelectedCvId", cvs[0].id);
     setCvInitialized(true);
   }, [cvs, initialCvId, cvInitialized]);
-
-  // Handle post-checkout: verify with Stripe directly, then update subscription cache
-  useEffect(() => {
-    const success = searchParams.get("success");
-    const sessionId = searchParams.get("session_id");
-
-    if (success === "subscription") {
-      setSuccessMessage(
-        "Subscription activated! You now have 50 requests per month."
-      );
-    } else if (success === "addon") {
-      setSuccessMessage(
-        "Add-on pack purchased! 10 requests have been added to your account."
-      );
-    }
-
-    if (success && sessionId) {
-      // Verify checkout directly with Stripe — this updates the DB and returns fresh data
-      verifyCheckout.mutate(sessionId, {
-        onSuccess: () => {
-          clearPostCheckout();
-        },
-        onError: () => {
-          // Verification failed — fall back to polling
-          queryClient.invalidateQueries({ queryKey: ["subscription"] });
-        },
-      });
-    }
-
-    if (success) {
-      window.history.replaceState({}, "", "/optimize");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fallback: if no session_id or verify failed, poll until webhook arrives
-  useEffect(() => {
-    if (!postCheckout || verifyCheckout.isSuccess) return;
-    const interval = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
-    }, 2000);
-    const timeout = setTimeout(() => {
-      clearInterval(interval);
-      clearPostCheckout();
-    }, CHECKOUT_GRACE_MS);
-    return () => { clearInterval(interval); clearTimeout(timeout); };
-  }, [postCheckout, queryClient, clearPostCheckout, verifyCheckout.isSuccess]);
-
-  // Clear post-checkout state once subscription is confirmed active
-  useEffect(() => {
-    if (postCheckout && subscription && !loadingSubscription) {
-      const remaining = subscription.remaining_requests;
-      if (remaining === null || remaining > 0 || subscription.is_unlimited) {
-        clearPostCheckout();
-      }
-    }
-  }, [postCheckout, subscription, loadingSubscription, clearPostCheckout]);
-
-  // Check access and redirect if blocked (skip during post-checkout grace period)
-  useEffect(() => {
-    if (postCheckout) return;
-    if (!loadingSubscription && subscription) {
-      const remaining = subscription.remaining_requests;
-      if (remaining !== null && remaining <= 0 && !subscription.is_unlimited) {
-        const reason = subscription.can_buy_addon ? "quota_exhausted" : "trial_exhausted";
-        router.push(`/blocked?reason=${reason}`);
-      }
-    }
-  }, [subscription, loadingSubscription, router, postCheckout]);
 
   const handleOptimize = useCallback(async () => {
     if (!selectedCV || !jobInput.trim()) return;
@@ -187,11 +103,21 @@ function OptimizeContent() {
       });
       router.push(`/results/${result.run_id}`);
     } catch (err) {
+      // 402 = quota exhausted at the server boundary; refresh banner state
+      if (err instanceof ApiError && err.status === 402) {
+        queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      }
       console.error("Failed to start optimization:", err);
     }
-  }, [selectedCV, jobInput, startOptimization, router, track]);
+  }, [selectedCV, jobInput, startOptimization, router, track, queryClient]);
 
-  const canOptimize = selectedCV && jobInput.trim().length > 0;
+  const quotaExhausted =
+    subscription?.tier === "free" &&
+    !subscription.is_unlimited &&
+    (subscription.remaining ?? 0) <= 0;
+
+  const canOptimize =
+    selectedCV && jobInput.trim().length > 0 && !quotaExhausted;
 
   return (
     <motion.div
@@ -227,6 +153,8 @@ function OptimizeContent() {
 
       {/* Form */}
       <SlideUp delay={0.1} className="mx-auto max-w-2xl space-y-6">
+        <QuotaBanner />
+
         {/* CV Selection */}
         <Card className="border-border/50 shadow-sm transition-shadow hover:shadow-md">
           <CardHeader className="pb-4">
@@ -275,30 +203,6 @@ function OptimizeContent() {
             />
           </CardContent>
         </Card>
-
-        {/* Warning */}
-        <AnimatePresence>
-          {subscription &&
-            !subscription.is_unlimited &&
-            subscription.remaining_requests !== null &&
-            subscription.remaining_requests <= 3 &&
-            subscription.remaining_requests > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-              >
-                <Alert className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <AlertDescription>
-                    You have {subscription.remaining_requests} request
-                    {subscription.remaining_requests === 1 ? "" : "s"} remaining
-                    {subscription.is_trial ? " in your trial" : " this month"}.
-                  </AlertDescription>
-                </Alert>
-              </motion.div>
-            )}
-        </AnimatePresence>
 
         {/* Submit Button */}
         <motion.div
