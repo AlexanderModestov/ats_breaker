@@ -66,6 +66,15 @@ STRICT RULES - NEVER VIOLATE:
 7. You CAN use <style> tags if you need custom styling beyond the provided classes
 8. Do not cut critical content (like work experience, education, etc) if you can cut something else (like summary)
 9. NEVER translate the resume - output MUST be in the same language as the original resume
+10. NEVER remove a skill, technology, or keyword that IS PRESENT in the original resume — these are not hallucinations even if they look generic. Hallucination = invented; removing real content to "be safe" is the bigger failure mode. If unsure, search the original resume text for the term.
+
+HOW TO FIX FAILED FILTERS (when the prompt lists them):
+- KeywordMatcher failed → call check_keywords_tool(html) to get missing keywords. For each missing keyword, search the ORIGINAL resume (case-insensitive) — if it appears, surface it in Skills/Summary/relevant bullet. Do NOT invent ones not in the original. Re-run the tool to verify the score moved.
+- VectorSimilarityMatcher failed → rephrase Summary and bullet leads with terminology from the job description (only words supported by original experience). Reorder bullets to put job-relevant ones first.
+- LLMChecker failed → read the issues line; usually means generic phrasing or LLM-tells (em dash, "delve", "leverage", "robust"). Tighten wording to match original tone.
+- ContentIntegrityChecker failed → you removed or paraphrased real facts. Restore them verbatim from the original.
+- DataValidator failed → fix HTML structure (missing sections/headers). Run validate_structure(html).
+- ContentLengthChecker failed → use check_content_length to confirm; trim from Summary first, then less-relevant bullets, never from headline experience.
 
 CONTENT BUDGET:
 - Target: ~500 words, ~4000 characters (these are rough estimates, actual fit depends on formatting)
@@ -236,12 +245,13 @@ Do NOT rewrite from scratch - modify the last attempt minimally.
 ## Filter Results:
 {context.format_filter_results()}
 
-IMPORTANT: Make MINIMAL changes to fix ONLY the failed filters.
-- Start from the Last Attempt HTML above
-- Change ONLY what's needed to pass the failed filter(s)
-- Do NOT rewrite, rephrase, or restructure content that isn't causing failures
-- Do NOT add new spelling mistakes, keywords, or stylistic changes if they were already added before
-- Preserve everything that already works
+IMPORTANT: Make MINIMAL changes to fix ONLY the failed filters listed above.
+- Start from the Last Attempt HTML above and modify it in place.
+- Change ONLY what's needed to move each FAILED filter above its threshold.
+- Do NOT regress any PASSED filter — preserve its content and structure.
+- Do NOT rewrite, rephrase, or restructure content unrelated to the failures.
+- See the HOW TO FIX FAILED FILTERS section in the system prompt for per-filter actions.
+- If a previous iteration's changes did NOT move the failing score, try a different action (e.g. KeywordMatcher: actually add the missing keywords from the original resume into Skills, don't just reword bullets).
 """
 
     prompt += """

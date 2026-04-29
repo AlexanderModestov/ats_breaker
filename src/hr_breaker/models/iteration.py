@@ -12,18 +12,34 @@ class IterationContext(BaseModel):
     validation: ValidationResult | None = None  # Full filter results with scores
 
     def format_filter_results(self) -> str:
-        """Format filter results for the optimizer prompt."""
+        """Format filter results for the optimizer prompt.
+
+        Failed filters are listed first under a FAILED header so the LLM
+        cannot miss them. Each failed filter shows score vs threshold and
+        the gap (how much it must improve).
+        """
         if not self.validation:
             return ""
 
-        lines = []
-        for r in self.validation.results:
-            status = "PASSED" if r.passed else "FAILED"
-            lines.append(f"[{r.filter_name}] Score: {r.score:.2f}/{r.threshold:.2f} ({status})")
-            if r.issues:
+        failed = [r for r in self.validation.results if not r.passed]
+        passed = [r for r in self.validation.results if r.passed]
+
+        lines: list[str] = []
+        if failed:
+            lines.append(f"FAILED FILTERS ({len(failed)}) — fix these:")
+            for r in failed:
+                gap = r.threshold - r.score
+                lines.append(
+                    f"  ❌ {r.filter_name}: {r.score:.2f} / {r.threshold:.2f} "
+                    f"(needs +{gap:.2f} to pass)"
+                )
                 for issue in r.issues:
-                    lines.append(f"  Issue: {issue}")
-            if r.suggestions:
+                    lines.append(f"     · {issue}")
                 for suggestion in r.suggestions:
-                    lines.append(f"  Suggestion: {suggestion}")
+                    lines.append(f"     → {suggestion}")
+        if passed:
+            lines.append("")
+            lines.append(f"PASSED FILTERS ({len(passed)}) — do NOT regress these:")
+            for r in passed:
+                lines.append(f"  ✅ {r.filter_name}: {r.score:.2f} / {r.threshold:.2f}")
         return "\n".join(lines)

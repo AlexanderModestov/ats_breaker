@@ -10,6 +10,9 @@ from pydantic import BaseModel
 load_dotenv()
 
 
+_NOISY_LOGGERS = ("fontTools", "weasyprint")
+
+
 def setup_logging() -> logging.Logger:
     general_level = os.getenv("LOG_LEVEL_GENERAL", "WARNING").upper()
     project_level = os.getenv("LOG_LEVEL", "WARNING").upper()
@@ -19,6 +22,12 @@ def setup_logging() -> logging.Logger:
         format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
         datefmt="%H:%M:%S",
     )
+
+    # fontTools spams DEBUG per-glyph on every PDF render (hundreds of lines per
+    # iteration), which trips Railway's 500-logs/sec cap and drops real logs.
+    noisy_level = os.getenv("LOG_LEVEL_NOISY", "WARNING").upper()
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(getattr(logging, noisy_level, logging.WARNING))
 
     project_logger = logging.getLogger("hr_breaker")
     project_logger.setLevel(getattr(logging, project_level, logging.WARNING))

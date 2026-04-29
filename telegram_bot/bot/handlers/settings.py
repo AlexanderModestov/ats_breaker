@@ -14,15 +14,31 @@ from bot.services.api_client import APIClient
 router = Router()
 
 
-def _build_cv_keyboard(cvs: list[dict], default_cv_id: str | None) -> InlineKeyboardMarkup:
+def _effective_default_id(cvs: list[dict], default_cv_id: str | None) -> str:
+    """Mirror the /optimize fallback: stored default if it still exists, else first CV."""
+    if default_cv_id and any(cv["id"] == default_cv_id for cv in cvs):
+        return default_cv_id
+    return cvs[0]["id"]
+
+
+def _build_cv_keyboard(cvs: list[dict], effective_default_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text=f"{'✅ ' if cv['id'] == default_cv_id else ''}{cv['original_filename']}",
+                text=f"{'✅ ' if cv['id'] == effective_default_id else ''}{cv['original_filename']}",
                 callback_data=f"set_default_cv:{cv['id']}",
             )]
             for cv in cvs
         ]
+    )
+
+
+def _settings_text(cvs: list[dict], effective_default_id: str) -> str:
+    default_cv = next(cv for cv in cvs if cv["id"] == effective_default_id)
+    return (
+        f"<b>Default resume for optimization:</b>\n"
+        f"📄 {default_cv['original_filename']}\n\n"
+        f"Tap another resume below to change it."
     )
 
 
@@ -42,10 +58,10 @@ async def settings_cmd(
         await message.answer("You have no resumes uploaded yet. Send a file to add one.")
         return
 
-    default_cv_id = backend_user.get("default_cv_id")
+    effective_default_id = _effective_default_id(cvs, backend_user.get("default_cv_id"))
     await message.answer(
-        "Choose your default resume:",
-        reply_markup=_build_cv_keyboard(cvs, default_cv_id),
+        _settings_text(cvs, effective_default_id),
+        reply_markup=_build_cv_keyboard(cvs, effective_default_id),
     )
 
 
@@ -59,8 +75,8 @@ async def set_default_cv(
     await api_client.set_default_cv(callback.from_user.id, cv_id)
     await callback.answer("Default resume updated ✅")
 
-    # Re-render with the new checkmark
     cvs = await api_client.get_cvs(callback.from_user.id)
-    await callback.message.edit_reply_markup(
+    await callback.message.edit_text(
+        _settings_text(cvs, cv_id),
         reply_markup=_build_cv_keyboard(cvs, cv_id),
     )

@@ -12,7 +12,11 @@ import {
 import { useAnalytics } from "@/hooks/useAnalytics";
 import type { OptimizationStatus, OptimizationSummary, OptimizeRequest } from "@/types";
 
-const POLL_INTERVAL = 2000; // 2 seconds
+// Optimization runs ~3-5 minutes. Poll fast at the start so early status
+// transitions feel responsive, then back off to reduce backend load.
+const POLL_INTERVAL_FAST = 2000; // first 20s
+const POLL_INTERVAL_SLOW = 5000; // after that
+const POLL_FAST_DURATION_MS = 20_000;
 const ERROR_MESSAGE_MAX_LEN = 120;
 
 export function useOptimizations() {
@@ -37,19 +41,19 @@ export function useOptimizationStatus(runId: string | null) {
   const [status, setStatus] = useState<OptimizationStatus | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const startedAtRef = useRef<number>(0);
   const terminalFiredRef = useRef<boolean>(false);
 
   const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
   }, []);
 
-  const fetchStatus = useCallback(async () => {
-    if (!runId) return;
+  const fetchStatus = useCallback(async (): Promise<boolean> => {
+    if (!runId) return true;
     try {
       const data = await getOptimizationStatus(runId);
       setStatus(data);
@@ -73,14 +77,12 @@ export function useOptimizationStatus(runId: string | null) {
           });
         }
       }
-      if (isTerminal) {
-        stopPolling();
-      }
+      return isTerminal;
     } catch (e) {
       setError(e instanceof Error ? e : new Error("Failed to fetch status"));
-      stopPolling();
+      return true;
     }
-  }, [runId, stopPolling, track]);
+  }, [runId, track]);
 
   useEffect(() => {
     if (!runId) {
@@ -95,11 +97,30 @@ export function useOptimizationStatus(runId: string | null) {
     setLoading(true);
     terminalFiredRef.current = false;
     startedAtRef.current = Date.now();
-    fetchStatus().then(() => setLoading(false));
+    let cancelled = false;
 
-    intervalRef.current = setInterval(fetchStatus, POLL_INTERVAL);
+    const schedule = (delay: number) => {
+      timeoutRef.current = setTimeout(async () => {
+        if (cancelled) return;
+        const done = await fetchStatus();
+        if (cancelled || done) return;
+        const elapsed = Date.now() - startedAtRef.current;
+        const next = elapsed < POLL_FAST_DURATION_MS
+          ? POLL_INTERVAL_FAST
+          : POLL_INTERVAL_SLOW;
+        schedule(next);
+      }, delay);
+    };
 
-    return () => stopPolling();
+    fetchStatus().then((done) => {
+      setLoading(false);
+      if (!cancelled && !done) schedule(POLL_INTERVAL_FAST);
+    });
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
   }, [runId, fetchStatus, stopPolling]);
 
   return { status, error, loading, refetch: fetchStatus };
