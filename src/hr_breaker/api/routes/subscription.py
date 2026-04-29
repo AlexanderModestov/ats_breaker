@@ -10,7 +10,7 @@ from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
 from hr_breaker.config import get_settings, logger
 from hr_breaker.services.stripe_service import StripeService, StripeError
 from hr_breaker.services.supabase import SupabaseError
-from hr_breaker.services.access_control import check_access
+from hr_breaker.services.access_control import check_quota
 
 router = APIRouter()
 
@@ -58,15 +58,16 @@ async def get_subscription_status(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    access = check_access(user_email or "", profile)
+    access = check_quota(user_email or "", profile)
+    sub_status = profile.get("subscription_status", "none")
 
     return SubscriptionStatusResponse(
-        status=profile.get("subscription_status", "trial"),
+        status=sub_status,
         remaining_requests=access.remaining,
         is_unlimited=access.unlimited,
-        is_trial=access.is_trial,
-        can_subscribe=access.can_subscribe,
-        can_buy_addon=access.can_buy_addon,
+        is_trial=False,
+        can_subscribe=sub_status != "active",
+        can_buy_addon=sub_status == "active",
         renewal_date=access.renewal_date.isoformat() if access.renewal_date else None,
     )
 
@@ -137,15 +138,16 @@ async def verify_checkout(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    access = check_access(user_email or "", profile)
+    access = check_quota(user_email or "", profile)
+    sub_status = profile.get("subscription_status", "none")
 
     return SubscriptionStatusResponse(
-        status=profile.get("subscription_status", "trial"),
+        status=sub_status,
         remaining_requests=access.remaining,
         is_unlimited=access.unlimited,
-        is_trial=access.is_trial,
-        can_subscribe=access.can_subscribe,
-        can_buy_addon=access.can_buy_addon,
+        is_trial=False,
+        can_subscribe=sub_status != "active",
+        can_buy_addon=sub_status == "active",
         renewal_date=access.renewal_date.isoformat() if access.renewal_date else None,
     )
 

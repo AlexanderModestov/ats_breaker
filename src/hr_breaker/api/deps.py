@@ -6,7 +6,9 @@ from fastapi import Depends, Header, HTTPException
 
 from hr_breaker.api.auth import AuthError, get_user_id_from_token, get_email_from_token
 from hr_breaker.config import get_settings
+from hr_breaker.services.access_control import check_feature_access
 from hr_breaker.services.supabase import SupabaseService
+from hr_breaker.services.tiers import Feature
 
 
 def get_supabase_service() -> SupabaseService:
@@ -113,3 +115,26 @@ async def get_current_user_email(
 CurrentUser = Annotated[str, Depends(get_current_user)]
 CurrentUserWithEmail = Annotated[tuple[str, str | None], Depends(get_current_user_email)]
 SupabaseServiceDep = Annotated[SupabaseService, Depends(get_supabase_service)]
+
+
+def require_feature(feature: Feature):
+    """FastAPI dependency factory: enforces tier requirement, raises 402 otherwise.
+
+    Usage:
+        @router.post("/sessions")
+        async def x(user = Depends(require_feature(Feature.COACH))):
+            ...
+    """
+    def _dep(
+        user: CurrentUserWithEmail,
+        supabase: SupabaseServiceDep,
+    ) -> tuple[str, str | None]:
+        user_id, user_email = user
+        profile = supabase.get_profile(user_id)
+        if not profile:
+            raise HTTPException(404, "Profile not found")
+        result = check_feature_access(feature, user_email or "", profile)
+        if not result.allowed:
+            raise HTTPException(402, detail=result.to_dict())
+        return user
+    return _dep

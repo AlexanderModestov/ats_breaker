@@ -4,11 +4,12 @@ import asyncio
 import time
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response
 
-from hr_breaker.api.deps import CurrentUser, CurrentUserWithEmail, SupabaseServiceDep
-from hr_breaker.services.access_control import check_access
+from hr_breaker.api.deps import CurrentUser, CurrentUserWithEmail, SupabaseServiceDep, require_feature
+from hr_breaker.services.access_control import check_quota, consume_request
+from hr_breaker.services.tiers import Feature
 from hr_breaker.api.schemas import (
     OptimizationListResponse,
     OptimizationStartResponse,
@@ -24,7 +25,7 @@ from hr_breaker.services import scrape_job_posting, CloudflareBlockedError
 from hr_breaker.services.supabase import SupabaseError, SupabaseService
 from hr_breaker.agents import parse_job_posting, extract_name
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature(Feature.OPTIMIZE))])
 
 
 async def _run_optimization(
@@ -246,25 +247,13 @@ async def start_optimization(
     """Start a new optimization run."""
     user_id, user_email = user
 
-    # Check access before starting
     profile = supabase.get_profile(user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    access = check_access(user_email or "", profile)
-    if not access.allowed:
-        if access.reason == "trial_exhausted":
-            raise HTTPException(
-                status_code=402,
-                detail="Trial exhausted. Please subscribe to continue."
-            )
-        elif access.reason == "quota_exhausted":
-            raise HTTPException(
-                status_code=402,
-                detail="Monthly quota exhausted. Purchase an add-on pack or wait for renewal."
-            )
-        else:
-            raise HTTPException(status_code=402, detail="Access denied")
+    quota = check_quota(user_email or "", profile)
+    if not quota.allowed:
+        raise HTTPException(status_code=402, detail=quota.to_dict())
 
     # Verify CV exists and belongs to user
     cv = supabase.get_cv(request.cv_id, user_id)
@@ -283,17 +272,10 @@ async def start_optimization(
             job_input=request.job_input,
         )
 
-        # Consume a request atomically (skip for unlimited users)
-        if not access.unlimited:
-            is_subscriber = profile.get("subscription_status") == "active"
-            settings = get_settings()
-            consumed = supabase.consume_request_atomic(
-                user_id=user_id,
-                is_subscriber=is_subscriber,
-                subscription_limit=settings.subscription_request_limit,
-            )
-            if not consumed:
-                raise HTTPException(status_code=402, detail="Failed to consume request")
+        # Consume a Free-tier request (no-op for paid/admin users)
+        consume_updates = consume_request(user_email or "", profile)
+        if consume_updates:
+            supabase.update_profile(user_id, consume_updates)
 
         # Start background task
         background_tasks.add_task(

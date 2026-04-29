@@ -5,13 +5,13 @@ import json
 import logging
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic_ai import ModelMessagesTypeAdapter
 from pydantic_core import to_jsonable_python
 
 from hr_breaker.agents.coach import CoachDeps, create_coach_agent
-from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
+from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep, require_feature
 from hr_breaker.api.schemas import (
     CoachChatRequest,
     CoachMessageResponse,
@@ -19,10 +19,11 @@ from hr_breaker.api.schemas import (
     StorybankEntryRequest,
     StorybankEntryResponse,
 )
+from hr_breaker.services.tiers import Feature
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature(Feature.COACH))])
 
 
 def _extract_display_messages(raw_messages: list) -> list[dict]:
