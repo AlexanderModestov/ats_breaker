@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "@/components/motion";
 import { CoachChat } from "@/components/CoachChat";
 import { StorybankPanel } from "@/components/StorybankPanel";
+import { UpgradeOverlay } from "@/components/UpgradeOverlay";
 import { useCoachChat, useCoachMessages } from "@/hooks/useCoach";
 import { useStorybank } from "@/hooks/useStorybank";
 import { useQuery } from "@tanstack/react-query";
@@ -65,6 +66,7 @@ export default function CoachPage() {
   };
 
   return (
+    <UpgradeOverlay feature="coach">
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -140,5 +142,6 @@ export default function CoachPage() {
         )}
       </div>
     </motion.div>
+    </UpgradeOverlay>
   );
 }
