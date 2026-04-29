@@ -1,49 +1,40 @@
-"""Subscription API routes."""
+"""Subscription API routes — tier checkout, billing portal, status."""
 
-from datetime import datetime, timezone
-from typing import Any
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
-from hr_breaker.config import get_settings, logger
-from hr_breaker.services.stripe_service import StripeService, StripeError
-from hr_breaker.services.supabase import SupabaseError
+from hr_breaker.config import logger
 from hr_breaker.services.access_control import check_quota
+from hr_breaker.services.stripe_service import StripeService, StripeError
+from hr_breaker.services.tiers import effective_tier
 
 router = APIRouter()
 
 
 class CheckoutRequest(BaseModel):
-    """Request to create checkout session."""
-
+    tier: Literal["job_hunter", "offer_mode"]
     success_url: str
     cancel_url: str
 
 
 class CheckoutResponse(BaseModel):
-    """Response with checkout URL."""
-
     checkout_url: str
 
 
-class VerifyCheckoutRequest(BaseModel):
-    """Request to verify a completed checkout session."""
-
-    session_id: str
+class PortalRequest(BaseModel):
+    return_url: str
 
 
 class SubscriptionStatusResponse(BaseModel):
-    """User's subscription status."""
-
-    status: str  # trial, active, cancelled, expired
-    remaining_requests: int | None
+    tier: str  # "free" | "job_hunter" | "offer_mode"
+    status: str  # "none" | "active" | "cancelled"
+    remaining: int | None  # None for paid/unlimited
     is_unlimited: bool
-    is_trial: bool
-    can_subscribe: bool
-    can_buy_addon: bool
-    renewal_date: str | None
+    weekly_reset_at: str | None
+    current_period_end: str | None
 
 
 @router.get("", response_model=SubscriptionStatusResponse)
@@ -51,173 +42,72 @@ async def get_subscription_status(
     user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
 ) -> SubscriptionStatusResponse:
-    """Get the current user's subscription status."""
+    """Return the current user's tier, status, and quota."""
     user_id, user_email = user
 
     profile = supabase.get_profile(user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    access = check_quota(user_email or "", profile)
-    sub_status = profile.get("subscription_status", "none")
-
+    quota = check_quota(user_email or "", profile)
     return SubscriptionStatusResponse(
-        status=sub_status,
-        remaining_requests=access.remaining,
-        is_unlimited=access.unlimited,
-        is_trial=False,
-        can_subscribe=sub_status != "active",
-        can_buy_addon=sub_status == "active",
-        renewal_date=access.renewal_date.isoformat() if access.renewal_date else None,
+        tier=effective_tier(profile),
+        status=profile.get("subscription_status", "none"),
+        remaining=None if quota.unlimited else quota.remaining,
+        is_unlimited=quota.unlimited,
+        weekly_reset_at=profile.get("weekly_reset_at"),
+        current_period_end=profile.get("current_period_end"),
     )
 
 
-@router.post("/verify-checkout", response_model=SubscriptionStatusResponse)
-async def verify_checkout(
-    request: VerifyCheckoutRequest,
-    user: CurrentUserWithEmail,
-    supabase: SupabaseServiceDep,
-) -> SubscriptionStatusResponse:
-    """
-    Verify a completed Stripe checkout session and activate the subscription.
-
-    Called by the frontend after returning from Stripe checkout. Directly
-    verifies the session with Stripe and updates the DB, bypassing webhooks.
-    """
-    user_id, user_email = user
-
-    try:
-        stripe_service = StripeService()
-        session = stripe_service.retrieve_checkout_session(request.session_id)
-    except StripeError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid session: {e}") from e
-
-    # Verify session belongs to this user
-    session_user_id = session.metadata.get("user_id") if session.metadata else None
-    if session_user_id != user_id:
-        raise HTTPException(status_code=403, detail="Session does not belong to this user")
-
-    # Verify session is complete
-    if session.status != "complete":
-        raise HTTPException(status_code=400, detail=f"Checkout not complete: {session.status}")
-
-    if session.mode == "subscription" and session.subscription:
-        try:
-            subscription = stripe_service.get_subscription(session.subscription)
-            period_end = datetime.fromtimestamp(
-                stripe_service.get_period_end(subscription), tz=timezone.utc
-            )
-        except StripeError as e:
-            logger.error(f"Failed to retrieve subscription via verify: {e}")
-            raise HTTPException(status_code=502, detail=f"Failed to verify with Stripe: {e}") from e
-
-        try:
-            supabase.update_profile(user_id, {
-                "subscription_status": "active",
-                "subscription_id": session.subscription,
-                "stripe_customer_id": session.customer,
-                "current_period_end": period_end.isoformat(),
-                "period_request_count": 0,
-            })
-            logger.info(f"Verified and activated subscription for user {user_id}")
-        except SupabaseError as e:
-            logger.error(f"Failed to activate subscription via verify: {e}")
-            raise HTTPException(status_code=500, detail="Failed to update subscription") from e
-
-    elif session.metadata and session.metadata.get("type") == "addon":
-        settings = get_settings()
-        try:
-            supabase.add_addon_credits_atomic(user_id, settings.addon_request_count)
-            logger.info(f"Verified and added addon credits for user {user_id}")
-        except SupabaseError as e:
-            logger.error(f"Failed to add addon credits via verify: {e}")
-            raise HTTPException(status_code=500, detail="Failed to add credits") from e
-
-    # Return updated subscription status
-    profile = supabase.get_profile(user_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
-    access = check_quota(user_email or "", profile)
-    sub_status = profile.get("subscription_status", "none")
-
-    return SubscriptionStatusResponse(
-        status=sub_status,
-        remaining_requests=access.remaining,
-        is_unlimited=access.unlimited,
-        is_trial=False,
-        can_subscribe=sub_status != "active",
-        can_buy_addon=sub_status == "active",
-        renewal_date=access.renewal_date.isoformat() if access.renewal_date else None,
-    )
-
-
-@router.post("/checkout/subscription", response_model=CheckoutResponse)
-async def create_subscription_checkout(
-    request: CheckoutRequest,
+@router.post("/checkout", response_model=CheckoutResponse)
+async def create_checkout(
+    body: CheckoutRequest,
     user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
 ) -> CheckoutResponse:
-    """Create a Stripe checkout session for subscription."""
+    """Create a Stripe checkout session for the requested tier."""
     user_id, user_email = user
-
     if not user_email:
         raise HTTPException(status_code=400, detail="User email required")
 
-    profile = supabase.get_profile(user_id)
-    stripe_customer_id = profile.get("stripe_customer_id") if profile else None
+    profile = supabase.get_profile(user_id) or {}
+    stripe_customer_id = profile.get("stripe_customer_id")
 
     try:
-        stripe_service = StripeService()
-        checkout_url = stripe_service.create_checkout_session_subscription(
+        url = StripeService().create_checkout_session_for_tier(
+            tier=body.tier,
             user_id=user_id,
             user_email=user_email,
-            success_url=request.success_url,
-            cancel_url=request.cancel_url,
+            success_url=body.success_url,
+            cancel_url=body.cancel_url,
             stripe_customer_id=stripe_customer_id,
         )
-        return CheckoutResponse(checkout_url=checkout_url)
-
+        return CheckoutResponse(checkout_url=url)
     except StripeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/checkout/addon", response_model=CheckoutResponse)
-async def create_addon_checkout(
-    request: CheckoutRequest,
+@router.post("/billing-portal", response_model=CheckoutResponse)
+async def billing_portal(
+    body: PortalRequest,
     user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
 ) -> CheckoutResponse:
-    """Create a Stripe checkout session for add-on pack."""
-    user_id, user_email = user
-
-    profile = supabase.get_profile(user_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
-    # Only active subscribers can buy add-ons
-    if profile.get("subscription_status") != "active":
-        raise HTTPException(
-            status_code=403,
-            detail="Only active subscribers can purchase add-on packs"
-        )
-
-    stripe_customer_id = profile.get("stripe_customer_id")
-    if not stripe_customer_id:
+    """Create a Stripe Billing Portal session for plan management."""
+    user_id, _ = user
+    profile = supabase.get_profile(user_id) or {}
+    customer_id = profile.get("stripe_customer_id")
+    if not customer_id:
         raise HTTPException(
             status_code=400,
-            detail="No Stripe customer ID found"
+            detail="No Stripe customer found; subscribe first",
         )
-
     try:
-        stripe_service = StripeService()
-        checkout_url = stripe_service.create_checkout_session_addon(
-            user_id=user_id,
-            stripe_customer_id=stripe_customer_id,
-            success_url=request.success_url,
-            cancel_url=request.cancel_url,
+        url = StripeService().create_billing_portal_session(
+            customer_id=customer_id,
+            return_url=body.return_url,
         )
-        return CheckoutResponse(checkout_url=checkout_url)
-
+        return CheckoutResponse(checkout_url=url)
     except StripeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e

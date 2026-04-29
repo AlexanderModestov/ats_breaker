@@ -60,14 +60,11 @@ class Settings(BaseModel):
     # Stripe settings
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
-    stripe_price_id_subscription: str = ""
-    stripe_price_id_addon: str = ""
+    stripe_price_job_hunter: str = ""
+    stripe_price_offer_mode: str = ""
 
     # Paywall settings
     unlimited_users: list[str] = []
-    trial_request_limit: int = 3
-    subscription_request_limit: int = 50
-    addon_request_count: int = 10
 
     # Telegram bot settings
     bot_api_key: str = ""
@@ -165,13 +162,10 @@ def get_settings() -> Settings:
         # Stripe settings
         stripe_secret_key=os.getenv("STRIPE_SECRET_KEY", ""),
         stripe_webhook_secret=os.getenv("STRIPE_WEBHOOK_SECRET", ""),
-        stripe_price_id_subscription=os.getenv("STRIPE_PRICE_ID_SUBSCRIPTION", ""),
-        stripe_price_id_addon=os.getenv("STRIPE_PRICE_ID_ADDON", ""),
+        stripe_price_job_hunter=os.getenv("STRIPE_PRICE_JOB_HUNTER", ""),
+        stripe_price_offer_mode=os.getenv("STRIPE_PRICE_OFFER_MODE", ""),
         # Paywall settings
         unlimited_users=_parse_unlimited_users(os.getenv("UNLIMITED_USERS", "")),
-        trial_request_limit=int(os.getenv("TRIAL_REQUEST_LIMIT", "3")),
-        subscription_request_limit=int(os.getenv("SUBSCRIPTION_REQUEST_LIMIT", "50")),
-        addon_request_count=int(os.getenv("ADDON_REQUEST_COUNT", "10")),
         # Telegram bot settings
         bot_api_key=os.getenv("BOT_API_KEY", ""),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),

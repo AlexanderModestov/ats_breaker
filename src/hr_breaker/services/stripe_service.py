@@ -23,37 +23,34 @@ class StripeService:
         stripe.api_key = settings.stripe_secret_key
         self._webhook_secret = settings.stripe_webhook_secret
 
-    def create_checkout_session_subscription(
+    def create_checkout_session_for_tier(
         self,
+        *,
+        tier: str,
         user_id: str,
         user_email: str,
         success_url: str,
         cancel_url: str,
         stripe_customer_id: str | None = None,
     ) -> str:
-        """
-        Create a Stripe checkout session for subscription.
-
-        Returns:
-            The checkout session URL
-        """
+        """Create a subscription checkout session for the given tier."""
         settings = get_settings()
+        price_id = {
+            "job_hunter": settings.stripe_price_job_hunter,
+            "offer_mode": settings.stripe_price_offer_mode,
+        }.get(tier)
+        if not price_id:
+            raise StripeError(f"Unknown tier: {tier}")
 
         try:
             session_params: dict[str, Any] = {
                 "mode": "subscription",
-                "line_items": [
-                    {
-                        "price": settings.stripe_price_id_subscription,
-                        "quantity": 1,
-                    }
-                ],
+                "line_items": [{"price": price_id, "quantity": 1}],
                 "success_url": success_url,
                 "cancel_url": cancel_url,
-                "metadata": {"user_id": user_id},
-                "subscription_data": {"metadata": {"user_id": user_id}},
+                "metadata": {"user_id": user_id, "tier": tier},
+                "subscription_data": {"metadata": {"user_id": user_id, "tier": tier}},
             }
-
             if stripe_customer_id:
                 session_params["customer"] = stripe_customer_id
             else:
@@ -61,48 +58,26 @@ class StripeService:
 
             session = stripe.checkout.Session.create(**session_params)
             return session.url
-
         except stripe.StripeError as e:
             logger.error(f"Stripe checkout session creation failed: {e}")
             raise StripeError(f"Failed to create checkout session: {e}") from e
 
-    def create_checkout_session_addon(
+    def create_billing_portal_session(
         self,
-        user_id: str,
-        stripe_customer_id: str,
-        success_url: str,
-        cancel_url: str,
+        *,
+        customer_id: str,
+        return_url: str,
     ) -> str:
-        """
-        Create a Stripe checkout session for add-on pack.
-
-        Returns:
-            The checkout session URL
-        """
-        settings = get_settings()
-
-        if not stripe_customer_id:
-            raise StripeError("Customer ID required for add-on purchase")
-
+        """Create a Stripe Billing Portal session for self-service plan management."""
         try:
-            session = stripe.checkout.Session.create(
-                mode="payment",
-                customer=stripe_customer_id,
-                line_items=[
-                    {
-                        "price": settings.stripe_price_id_addon,
-                        "quantity": 1,
-                    }
-                ],
-                success_url=success_url,
-                cancel_url=cancel_url,
-                metadata={"user_id": user_id, "type": "addon"},
+            session = stripe.billing_portal.Session.create(
+                customer=customer_id,
+                return_url=return_url,
             )
             return session.url
-
         except stripe.StripeError as e:
-            logger.error(f"Stripe addon checkout session creation failed: {e}")
-            raise StripeError(f"Failed to create checkout session: {e}") from e
+            logger.error(f"Stripe billing portal session creation failed: {e}")
+            raise StripeError(f"Failed to create billing portal session: {e}") from e
 
     def construct_webhook_event(self, payload: bytes, sig_header: str) -> stripe.Event:
         """
