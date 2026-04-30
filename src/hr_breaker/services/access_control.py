@@ -74,10 +74,21 @@ def check_quota(email: str, profile: dict) -> AccessResult:
 
 
 def consume_request(email: str, profile: dict) -> dict:
-    """Return profile field updates after a successful optimization. Only Free counts."""
+    """Return profile field updates after a successful optimization. Only Free counts.
+
+    If the weekly window has rolled over, persist the new window alongside the
+    increment — otherwise the lazy-reset is in-memory only and the user gets
+    unlimited Free use after the first window expires.
+    """
     if _is_unlimited(email):
         return {}
     if effective_tier(profile) != "free":
         return {}
-    used = profile.get("period_request_count", 0)
-    return {"period_request_count": used + 1}
+
+    fresh = maybe_reset_weekly_window(profile)
+    used = fresh.get("period_request_count", 0)
+    updates: dict = {"period_request_count": used + 1}
+    if fresh is not profile:
+        # maybe_reset_weekly_window returned a new dict → window rolled over
+        updates["weekly_reset_at"] = fresh["weekly_reset_at"]
+    return updates

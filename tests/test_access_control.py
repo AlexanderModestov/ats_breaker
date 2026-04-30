@@ -124,3 +124,16 @@ class TestConsumeRequest:
             mock.return_value.unlimited_users = ["a@test.com"]
             updates = consume_request("a@test.com", _profile())
         assert updates == {}
+
+    def test_free_user_with_expired_window_persists_reset(self):
+        """Regression: without persisting the reset, the user gets unlimited
+        free use after the first window expires."""
+        with patch("hr_breaker.services.access_control.get_settings") as mock:
+            mock.return_value.unlimited_users = []
+            past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+            p = _profile(period_request_count=FREE_WEEKLY_LIMIT, weekly_reset_at=past)
+            updates = consume_request("u@test.com", p)
+        assert updates["period_request_count"] == 1  # counted from fresh window, not 4
+        assert "weekly_reset_at" in updates  # new window persisted
+        new_reset = datetime.fromisoformat(updates["weekly_reset_at"])
+        assert new_reset > datetime.now(timezone.utc) + timedelta(days=6)

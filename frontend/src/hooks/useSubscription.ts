@@ -23,7 +23,7 @@ export function useCheckout() {
       const baseUrl = window.location.origin;
       return createCheckout(
         tier,
-        `${baseUrl}/dashboard?upgraded=${tier}`,
+        `${baseUrl}/optimize?upgraded=${tier}`,
         `${baseUrl}/pricing`,
       );
     },
@@ -37,7 +37,7 @@ export function useBillingPortal() {
   return useMutation({
     mutationFn: async () => {
       const baseUrl = window.location.origin;
-      return createBillingPortal(`${baseUrl}/dashboard`);
+      return createBillingPortal(`${baseUrl}/optimize`);
     },
     onSuccess: (data) => {
       window.location.href = data.checkout_url;
