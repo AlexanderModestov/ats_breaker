@@ -134,17 +134,38 @@ class StripeService:
 
         Returns 'free' as a defensive default if metadata is missing or malformed.
         """
+        sub_id = None
         try:
+            sub_id = getattr(subscription, "id", None) or (
+                subscription.get("id") if hasattr(subscription, "get") else None
+            )
+            sub_metadata = getattr(subscription, "metadata", None)
+            sub_metadata_dict = dict(sub_metadata) if sub_metadata else None
+            logger.info(
+                f"[tier-debug] sub.id={sub_id} sub.metadata={sub_metadata_dict}"
+            )
+
             items = subscription.get("items", {}).get("data", [])
+            logger.info(f"[tier-debug] items_count={len(items)}")
             if not items:
                 return "free"
             price = items[0].get("price", {})
+            price_id = price.get("id", None) if isinstance(price, dict) else getattr(price, "id", None)
+            price_type = type(price).__name__
             metadata = price.get("metadata", {}) if isinstance(price, dict) else getattr(price, "metadata", {}) or {}
+            metadata_dict = dict(metadata) if metadata else None
+            logger.info(
+                f"[tier-debug] price.id={price_id} price_type={price_type} "
+                f"price.metadata={metadata_dict}"
+            )
             tier = metadata.get("tier") if isinstance(metadata, dict) else getattr(metadata, "tier", None)
+            logger.info(f"[tier-debug] resolved tier from price.metadata={tier!r}")
             if tier in ("job_hunter", "offer_mode"):
                 return tier
-        except (KeyError, AttributeError, TypeError):
-            pass
+        except (KeyError, AttributeError, TypeError) as e:
+            logger.warning(f"[tier-debug] parse error for sub {sub_id}: {e}")
+
+        logger.warning(f"[tier-debug] falling back to 'free' for sub {sub_id}")
         return "free"
 
     def retrieve_checkout_session(self, session_id: str) -> stripe.checkout.Session:

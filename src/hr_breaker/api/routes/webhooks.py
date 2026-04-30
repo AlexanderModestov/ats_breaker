@@ -35,8 +35,19 @@ async def handle_stripe_webhook(
     try:
         if event.type == "checkout.session.completed":
             session = event.data.object
+            logger.info(
+                f"[webhook-debug] checkout.session.completed event={event.id} "
+                f"session.id={getattr(session, 'id', None)} mode={getattr(session, 'mode', None)} "
+                f"subscription={getattr(session, 'subscription', None)} "
+                f"customer={getattr(session, 'customer', None)} "
+                f"metadata={dict(session.metadata) if session.metadata else None}"
+            )
             user_id = session.metadata.get("user_id") if session.metadata else None
             if not user_id or session.mode != "subscription":
+                logger.warning(
+                    f"[webhook-debug] checkout.session.completed early-return: "
+                    f"user_id={user_id} mode={getattr(session, 'mode', None)}"
+                )
                 return {"status": "ok"}
 
             subscription = stripe_service.get_subscription(session.subscription)
@@ -55,8 +66,16 @@ async def handle_stripe_webhook(
 
         elif event.type == "customer.subscription.updated":
             subscription = event.data.object
+            logger.info(
+                f"[webhook-debug] customer.subscription.updated event={event.id} "
+                f"sub.id={getattr(subscription, 'id', None)} "
+                f"metadata={dict(subscription.metadata) if subscription.metadata else None}"
+            )
             user_id = subscription.metadata.get("user_id") if subscription.metadata else None
             if not user_id:
+                logger.warning(
+                    f"[webhook-debug] customer.subscription.updated early-return: no user_id in metadata"
+                )
                 return {"status": "ok"}
 
             tier = stripe_service.tier_from_subscription(subscription)
