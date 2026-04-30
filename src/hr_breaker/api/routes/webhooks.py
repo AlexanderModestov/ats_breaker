@@ -64,17 +64,18 @@ async def handle_stripe_webhook(
             })
             logger.info(f"Activated {tier} subscription for user {user_id}")
 
-        elif event.type == "customer.subscription.updated":
+        elif event.type in ("customer.subscription.created", "customer.subscription.updated"):
             subscription = event.data.object
             logger.info(
-                f"[webhook-debug] customer.subscription.updated event={event.id} "
+                f"[webhook-debug] {event.type} event={event.id} "
                 f"sub.id={getattr(subscription, 'id', None)} "
+                f"customer={getattr(subscription, 'customer', None)} "
                 f"metadata={dict(subscription.metadata) if subscription.metadata else None}"
             )
             user_id = subscription.metadata.get("user_id") if subscription.metadata else None
             if not user_id:
                 logger.warning(
-                    f"[webhook-debug] customer.subscription.updated early-return: no user_id in metadata"
+                    f"[webhook-debug] {event.type} early-return: no user_id in metadata"
                 )
                 return {"status": "ok"}
 
@@ -88,9 +89,14 @@ async def handle_stripe_webhook(
             supabase.update_profile(user_id, {
                 "subscription_tier": tier,
                 "subscription_status": db_status,
+                "subscription_id": getattr(subscription, "id", None),
+                "stripe_customer_id": getattr(subscription, "customer", None),
                 "current_period_end": period_end.isoformat(),
             })
-            logger.info(f"Updated subscription for user {user_id}: tier={tier} status={db_status}")
+            logger.info(
+                f"Synced subscription for user {user_id} from {event.type}: "
+                f"tier={tier} status={db_status}"
+            )
 
         elif event.type == "customer.subscription.deleted":
             subscription = event.data.object
