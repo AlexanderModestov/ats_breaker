@@ -64,11 +64,20 @@ async function fetchWithAuth<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    const message =
-      typeof body?.detail === "string"
-        ? body.detail
-        : `Request failed: ${response.status}`;
-    throw new ApiError(message, response.status, body?.detail);
+    const detail = body?.detail;
+    let message: string;
+    if (typeof detail === "string") {
+      message = detail;
+    } else if (
+      detail &&
+      typeof detail === "object" &&
+      typeof (detail as { reason?: unknown }).reason === "string"
+    ) {
+      message = (detail as { reason: string }).reason;
+    } else {
+      message = `Request failed: ${response.status}`;
+    }
+    throw new ApiError(message, response.status, detail);
   }
 
   return response.json();

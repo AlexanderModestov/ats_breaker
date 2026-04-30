@@ -70,7 +70,7 @@ export default function CoachPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="mx-auto flex h-[calc(100vh-4rem)] max-w-7xl flex-col"
+      className="mx-auto flex h-[calc(100vh-8rem)] max-w-7xl flex-col"
     >
       {/* Header: position selector + tabs */}
       <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">

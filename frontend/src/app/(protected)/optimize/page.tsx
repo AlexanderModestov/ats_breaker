@@ -103,9 +103,10 @@ function OptimizeContent() {
       });
       router.push(`/results/${result.run_id}`);
     } catch (err) {
-      // 402 = quota exhausted at the server boundary; refresh banner state
       if (err instanceof ApiError && err.status === 402) {
         queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        router.push("/pricing");
+        return;
       }
       console.error("Failed to start optimization:", err);
     }
