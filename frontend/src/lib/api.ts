@@ -320,6 +320,25 @@ export async function linkTelegramId(telegramId: number): Promise<void> {
   });
 }
 
+export async function exchangeTelegramInitData(
+  initData: string
+): Promise<{ token_hash: string; email: string }> {
+  const response = await fetch(`${API_BASE}/auth/telegram/exchange`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ init_data: initData }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new ApiError(
+      typeof body?.detail === "string" ? body.detail : `Exchange failed: ${response.status}`,
+      response.status,
+      body?.detail,
+    );
+  }
+  return response.json();
+}
+
 // Storybank API
 export async function listStorybank(): Promise<StorybankEntry[]> {
   return fetchWithAuth<StorybankEntry[]>("/coach/storybank");
