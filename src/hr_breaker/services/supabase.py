@@ -552,6 +552,22 @@ class SupabaseService:
         except Exception as e:
             raise SupabaseError(f"Failed to link Telegram: {e}") from e
 
+    def generate_magiclink(self, email: str) -> str:
+        """Generate a Supabase magic-link token_hash for the given email.
+
+        The frontend exchanges this hash via ``supabase.auth.verifyOtp`` to set
+        a real Supabase session. Used for trusted server-side login (e.g. after
+        validating Telegram WebApp initData).
+        """
+        try:
+            response = self._client.auth.admin.generate_link(
+                {"type": "magiclink", "email": email}
+            )
+            return response.properties.hashed_token
+        except Exception as e:
+            logger.error(f"Failed to generate magic link: {e}")
+            raise SupabaseError(f"Failed to generate magic link: {e}") from e
+
     def set_pending_signin_message(
         self, telegram_id: int, chat_id: int, message_id: int
     ) -> None:
