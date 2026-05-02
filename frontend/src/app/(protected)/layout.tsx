@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLinkTelegram } from "@/hooks/useLinkTelegram";
+import { useTelegramAutoLogin } from "@/hooks/useTelegramAutoLogin";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 
@@ -14,16 +15,17 @@ export default function ProtectedLayout({
 }) {
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
+  const { attempting } = useTelegramAutoLogin();
 
   useLinkTelegram();
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !attempting && !isAuthenticated) {
       router.push("/signin");
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading, attempting, router]);
 
-  if (loading) {
+  if (loading || attempting) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <motion.div
