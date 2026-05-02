@@ -6,6 +6,10 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
+from hr_breaker.api.auth_telegram import (
+    InitDataError,
+    parse_and_validate_init_data,
+)
 from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
 from hr_breaker.config import get_settings, logger
 
@@ -26,6 +30,13 @@ class PendingSigninRequest(BaseModel):
     telegram_id: int
     chat_id: int
     message_id: int
+
+
+class ExchangeRequest(BaseModel):
+    init_data: str
+
+
+INIT_DATA_MAX_AGE_SECONDS = 3600
 
 
 async def _edit_welcome_message(chat_id: int, message_id: int) -> None:
@@ -92,3 +103,37 @@ async def register_pending_signin(
         message_id=body.message_id,
     )
     return {"ok": True}
+
+
+@router.post("/exchange")
+async def exchange_init_data(
+    body: ExchangeRequest,
+    supabase: SupabaseServiceDep,
+):
+    """Exchange a signed Telegram WebApp initData payload for a Supabase
+    magic-link token_hash. Used by the Mini App to silently re-authenticate
+    a previously-linked user without re-running Google OAuth.
+    """
+    settings = get_settings()
+    if not settings.telegram_bot_token:
+        raise HTTPException(500, "Server is missing telegram_bot_token")
+
+    try:
+        validated = parse_and_validate_init_data(
+            body.init_data,
+            settings.telegram_bot_token,
+            max_age_seconds=INIT_DATA_MAX_AGE_SECONDS,
+        )
+    except InitDataError as e:
+        raise HTTPException(401, str(e)) from e
+
+    profile = supabase.get_profile_by_telegram_id(validated.telegram_id)
+    if not profile:
+        raise HTTPException(404, "Telegram user not linked")
+
+    email = profile.get("email")
+    if not email:
+        raise HTTPException(409, "Profile has no email")
+
+    token_hash = supabase.generate_magiclink(email)
+    return {"token_hash": token_hash, "email": email}
