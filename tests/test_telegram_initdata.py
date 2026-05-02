@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import json
 import time
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode
 
 import pytest
 
@@ -42,8 +42,27 @@ def test_valid_init_data_returns_telegram_id():
 def test_invalid_hash_raises():
     user = json.dumps({"id": 12345})
     init_data = _sign({"auth_date": str(int(time.time())), "user": user})
-    tampered = init_data.replace("12345", "99999")
+    # Parse, flip a byte of the signed hash, re-encode — guarantees hash mismatch.
+    pairs = dict(parse_qsl(init_data))
+    pairs["hash"] = "0" * 64 if pairs["hash"][0] != "0" else "f" * 64
+    tampered = urlencode(pairs)
 
+    with pytest.raises(InitDataError, match="signature"):
+        parse_and_validate_init_data(tampered, BOT_TOKEN, max_age_seconds=3600)
+
+
+def test_tampered_auth_date_fails_with_signature_error_not_expired():
+    """Hash check must run first: tampering auth_date should surface as a
+    signature error, not an 'expired' error (otherwise the validator leaks
+    information about which fields are checked)."""
+    user = json.dumps({"id": 12345})
+    init_data = _sign({"auth_date": str(int(time.time())), "user": user})
+    pairs = dict(parse_qsl(init_data))
+    pairs["auth_date"] = str(int(time.time()) - 7200)  # rewrite to "expired"
+    tampered = urlencode(pairs)
+
+    # The hash was computed against the original auth_date, so the signature
+    # is now invalid. Validator must report "signature", not "expired".
     with pytest.raises(InitDataError, match="signature"):
         parse_and_validate_init_data(tampered, BOT_TOKEN, max_age_seconds=3600)
 
