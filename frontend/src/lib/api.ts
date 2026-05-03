@@ -252,30 +252,49 @@ export async function listCoachSessions(): Promise<CoachSession[]> {
   return fetchWithAuth<CoachSession[]>("/coach/sessions");
 }
 
-export async function getCoachMessages(sessionId: string): Promise<CoachMessage[]> {
-  return fetchWithAuth<CoachMessage[]>(`/coach/sessions/${sessionId}/messages`);
+export async function getCoachMessages(threadId: string): Promise<CoachMessage[]> {
+  return fetchWithAuth<CoachMessage[]>(`/coach/sessions/${threadId}/messages`);
+}
+
+export async function createCoachThread(
+  optimizationRunId: string,
+): Promise<CoachSession> {
+  return fetchWithAuth<CoachSession>("/coach/sessions", {
+    method: "POST",
+    body: JSON.stringify({ optimization_run_id: optimizationRunId }),
+  });
+}
+
+export async function renameCoachThread(
+  threadId: string,
+  title: string | null,
+): Promise<CoachSession> {
+  return fetchWithAuth<CoachSession>(`/coach/sessions/${threadId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteCoachThread(threadId: string): Promise<void> {
+  await fetchWithAuth(`/coach/sessions/${threadId}`, { method: "DELETE" });
 }
 
 export async function streamCoachChat(
-  optimizationRunId: string,
+  args: { threadId: string } | { optimizationRunId: string },
   message: string,
-  sessionId?: string,
   onDelta: (text: string) => void = () => {},
-  onDone: (sessionId: string) => void = () => {},
+  onDone: (threadId: string) => void = () => {},
   onError: (error: string) => void = () => {},
 ): Promise<void> {
   const headers = await getAuthHeaders();
+  const body: Record<string, unknown> = { message };
+  if ("threadId" in args) body.thread_id = args.threadId;
+  else body.optimization_run_id = args.optimizationRunId;
+
   const response = await fetch(`${API_BASE}/coach/chat`, {
     method: "POST",
-    headers: {
-      ...headers,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      optimization_run_id: optimizationRunId,
-      message,
-      session_id: sessionId,
-    }),
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -288,25 +307,21 @@ export async function streamCoachChat(
 
   const decoder = new TextDecoder();
   let buffer = "";
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
-
     for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        try {
-          const event = JSON.parse(line.slice(6));
-          if (event.type === "delta") onDelta(event.content || "");
-          else if (event.type === "done") onDone(event.session_id || "");
-          else if (event.type === "error") onError(event.content || "Unknown error");
-        } catch {
-          // skip malformed events
-        }
+      if (!line.startsWith("data: ")) continue;
+      try {
+        const event = JSON.parse(line.slice(6));
+        if (event.type === "delta") onDelta(event.content || "");
+        else if (event.type === "done") onDone(event.thread_id || "");
+        else if (event.type === "error") onError(event.content || "Unknown error");
+      } catch {
+        /* skip malformed events */
       }
     }
   }

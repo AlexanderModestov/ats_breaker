@@ -145,6 +145,10 @@ export interface CheckoutResponse {
 export interface CoachSession {
   id: string;
   optimization_run_id: string;
+  title: string | null;
+  last_message_at: string | null;
+  message_count: number;
+  preview: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -155,15 +159,15 @@ export interface CoachMessage {
 }
 
 export interface CoachChatRequest {
-  optimization_run_id: string;
   message: string;
-  session_id?: string;
+  thread_id?: string;
+  optimization_run_id?: string;
 }
 
 export interface CoachSSEEvent {
   type: "delta" | "done" | "error";
   content?: string;
-  session_id?: string;
+  thread_id?: string;
 }
 
 // Storybank types
