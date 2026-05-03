@@ -96,3 +96,26 @@ def test_create_thread_404_when_optimization_run_missing(client, fake_supabase):
     r = client.post("/api/coach/sessions", json={"optimization_run_id": "missing"})
     assert r.status_code == 404
     fake_supabase.create_coach_session.assert_not_called()
+
+
+def test_rename_thread_updates_title(client, fake_supabase):
+    fake_supabase.update_coach_session_title.return_value = {
+        "id": "s1",
+        "optimization_run_id": "r1",
+        "title": "STAR conflict story",
+        "last_message_at": "2026-05-03T10:00:00Z",
+        "created_at": "2026-05-01T10:00:00Z",
+        "updated_at": "2026-05-03T10:05:00Z",
+    }
+    r = client.patch("/api/coach/sessions/s1", json={"title": "STAR conflict story"})
+    assert r.status_code == 200
+    assert r.json()["title"] == "STAR conflict story"
+    fake_supabase.update_coach_session_title.assert_called_once_with(
+        "s1", USER, "STAR conflict story"
+    )
+
+
+def test_rename_other_users_thread_returns_404(client, fake_supabase):
+    fake_supabase.update_coach_session_title.return_value = None
+    r = client.patch("/api/coach/sessions/foreign", json={"title": "x"})
+    assert r.status_code == 404

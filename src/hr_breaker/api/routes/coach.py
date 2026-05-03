@@ -17,6 +17,7 @@ from hr_breaker.api.schemas import (
     CoachMessageResponse,
     CoachSessionResponse,
     CoachThreadCreateRequest,
+    CoachThreadUpdateRequest,
     StorybankEntryRequest,
     StorybankEntryResponse,
 )
@@ -93,6 +94,22 @@ async def create_thread(
         raise HTTPException(status_code=404, detail="Optimization run not found")
     session = supabase.create_coach_session(user_id, body.optimization_run_id)
     return {**session, "preview": None, "message_count": 0}
+
+
+@router.patch("/sessions/{session_id}", response_model=CoachSessionResponse)
+async def rename_thread(
+    session_id: str,
+    body: CoachThreadUpdateRequest,
+    user_id: CurrentUser,
+    supabase: SupabaseServiceDep,
+):
+    """Update thread title. Returns the updated session shape with stale
+    preview/count fields — caller should invalidate the sessions list to
+    refresh those values."""
+    updated = supabase.update_coach_session_title(session_id, user_id, body.title)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    return {**updated, "preview": None, "message_count": 0}
 
 
 @router.post("/chat")
