@@ -159,17 +159,17 @@ export default function CoachPage() {
           {sidebar}
         </SidebarDrawer>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <button
               type="button"
-              className="md:hidden p-1"
+              className="md:hidden shrink-0 p-1"
               onClick={() => setDrawerOpen(true)}
               aria-label="Open thread list"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="flex-1 truncate text-sm font-medium">{headerLabel}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{headerLabel}</span>
             <div className="flex rounded-lg border border-border bg-muted p-0.5 text-sm shrink-0">
               <button
                 className={cn(
