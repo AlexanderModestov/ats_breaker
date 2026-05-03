@@ -1,147 +1,234 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Menu } from "lucide-react";
 import { motion } from "@/components/motion";
 import { CoachChat } from "@/components/CoachChat";
 import { StorybankPanel } from "@/components/StorybankPanel";
 import { UpgradeOverlay } from "@/components/UpgradeOverlay";
-import { useCoachChat, useCoachMessages } from "@/hooks/useCoach";
+import { CoachSidebar } from "@/components/coach/CoachSidebar";
+import { SidebarDrawer } from "@/components/coach/SidebarDrawer";
+import { AddPositionDialog } from "@/components/coach/AddPositionDialog";
+import {
+  useCoachChat,
+  useCoachMessages,
+  useCoachSessions,
+  useCreateThread,
+  useDeleteThread,
+  useRenameThread,
+} from "@/hooks/useCoach";
 import { useStorybank } from "@/hooks/useStorybank";
 import { useQuery } from "@tanstack/react-query";
 import { listOptimizations } from "@/lib/api";
 import type { OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
 
-export default function CoachPage() {
-  const searchParams = useSearchParams();
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"chat" | "storybank">("chat");
+const LAST_THREAD_KEY = "coach.lastThreadId";
 
-  useEffect(() => {
-    const runId = searchParams.get("runId");
-    if (runId) setSelectedRunId(runId);
-  }, [searchParams]);
+export default function CoachPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const threadId = searchParams.get("threadId");
+  const [activeTab, setActiveTab] = useState<"chat" | "storybank">("chat");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const { data: optimizations = [] } = useQuery<OptimizationSummary[]>({
     queryKey: ["optimizations"],
     queryFn: listOptimizations,
     staleTime: 60_000,
   });
+  const { data: sessions = [] } = useCoachSessions();
+  const { data: history = [] } = useCoachMessages(threadId);
+  const { data: stories = [] } = useStorybank();
 
-  // Only completed optimizations with parsed job data
-  const positions = optimizations.filter(
-    (o) => o.status === "complete" && o.job_title
+  const createThread = useCreateThread();
+  const renameThread = useRenameThread();
+  const deleteThread = useDeleteThread();
+
+  const activeSession = useMemo(
+    () => sessions.find((s) => s.id === threadId) ?? null,
+    [sessions, threadId],
+  );
+  const activeRunId = activeSession?.optimization_run_id ?? null;
+
+  const setActiveThreadId = (id: string | null) => {
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    if (id) params.set("threadId", id);
+    else params.delete("threadId");
+    router.replace(`/coach${params.toString() ? `?${params.toString()}` : ""}`);
+  };
+
+  // Bootstrap from localStorage on first load.
+  useEffect(() => {
+    if (threadId || sessions.length === 0) return;
+    const last = typeof window !== "undefined" ? localStorage.getItem(LAST_THREAD_KEY) : null;
+    if (last && sessions.some((s) => s.id === last)) {
+      setActiveThreadId(last);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, threadId]);
+
+  // Persist last viewed thread.
+  useEffect(() => {
+    if (threadId && typeof window !== "undefined") {
+      localStorage.setItem(LAST_THREAD_KEY, threadId);
+    }
+  }, [threadId]);
+
+  const { streamingMessages, isStreaming, sendMessage } = useCoachChat({
+    threadId,
+    optimizationRunId: activeRunId,
+    onThreadCreated: (newId) => setActiveThreadId(newId),
+  });
+
+  const messages = streamingMessages ?? history;
+
+  const existingPositionIds = useMemo(
+    () => new Set(sessions.map((s) => s.optimization_run_id)),
+    [sessions],
   );
 
-  const { data: stories = [] } = useStorybank();
-  const storybankCount = stories.length;
+  const handleAddPosition = (runId: string) => {
+    createThread.mutate(runId, {
+      onSuccess: (created) => setActiveThreadId(created.id),
+    });
+  };
 
-  const {
-    messages,
-    isStreaming,
-    sessionId,
-    sendMessage,
-    loadHistory,
-    resetChat,
-  } = useCoachChat();
-
-  // Load existing messages when session changes
-  const { data: history } = useCoachMessages(sessionId);
-  useEffect(() => {
-    if (history && history.length > 0) {
-      loadHistory(history);
+  const handleNewThreadInPosition = (runId: string) => {
+    // If there's already an empty thread in this position, reuse it.
+    const empty = sessions.find(
+      (s) => s.optimization_run_id === runId && s.message_count === 0,
+    );
+    if (empty) {
+      setActiveThreadId(empty.id);
+      return;
     }
-  }, [history, loadHistory]);
+    createThread.mutate(runId, {
+      onSuccess: (created) => setActiveThreadId(created.id),
+    });
+  };
 
-  // Reset chat when position changes
-  const handlePositionChange = (runId: string) => {
-    setSelectedRunId(runId);
-    resetChat();
+  const handleDelete = (id: string) => {
+    deleteThread.mutate(id, {
+      onSuccess: () => {
+        if (id === threadId) {
+          // Pick fallback: another thread in same position, else any, else null.
+          const sameGroup = sessions.find(
+            (s) => s.id !== id && s.optimization_run_id === activeRunId,
+          );
+          const anyOther = sessions.find((s) => s.id !== id);
+          setActiveThreadId((sameGroup ?? anyOther)?.id ?? null);
+        }
+      },
+    });
   };
 
   const handleSend = (content: string) => {
-    if (!selectedRunId) return;
-    sendMessage(selectedRunId, content);
+    if (!threadId && !activeRunId) return;
+    sendMessage(content, history);
   };
+
+  const sidebar = (
+    <CoachSidebar
+      sessions={sessions}
+      positions={optimizations}
+      activeThreadId={threadId}
+      onSelectThread={(id) => {
+        setActiveThreadId(id);
+        setDrawerOpen(false);
+      }}
+      onCreateThreadInPosition={handleNewThreadInPosition}
+      onAddPosition={() => setPickerOpen(true)}
+      onRenameThread={(id, title) => renameThread.mutate({ threadId: id, title })}
+      onDeleteThread={handleDelete}
+    />
+  );
+
+  const headerLabel = activeSession
+    ? activeSession.title ?? activeSession.preview ?? "New thread"
+    : "Coach";
 
   return (
     <UpgradeOverlay feature="coach">
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="mx-auto flex h-[calc(100vh-8rem)] max-w-7xl flex-col"
-    >
-      {/* Header: position selector + tabs */}
-      <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <select
-          value={selectedRunId || ""}
-          onChange={(e) => handlePositionChange(e.target.value)}
-          className="flex-1 max-w-md rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          <option value="" disabled>
-            Select a position...
-          </option>
-          {positions.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.job_company} — {p.job_title}
-            </option>
-          ))}
-        </select>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="mx-auto flex h-[calc(100vh-8rem)] max-w-7xl"
+      >
+        {/* Web: persistent sidebar */}
+        <div className="hidden md:block w-[280px] shrink-0">{sidebar}</div>
 
-        {/* Tab switcher */}
-        <div className="flex rounded-lg border border-border bg-muted p-0.5 text-sm shrink-0">
-          <button
-            type="button"
-            className={cn(
-              "rounded-md px-4 py-1.5 font-medium transition-colors",
-              activeTab === "chat"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => setActiveTab("chat")}
-          >
-            Chat
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-4 py-1.5 font-medium transition-colors",
-              activeTab === "storybank"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => setActiveTab("storybank")}
-          >
-            Storybank
-            {storybankCount > 0 && (
-              <span className="flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                {storybankCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+        {/* Mobile: drawer */}
+        <SidebarDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+          {sidebar}
+        </SidebarDrawer>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
-        {activeTab === "chat" ? (
-          selectedRunId ? (
-            <CoachChat
-              messages={messages}
-              isStreaming={isStreaming}
-              onSend={handleSend}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              <p className="text-sm">Select a position to start coaching</p>
+        <div className="flex flex-1 flex-col">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <button
+              type="button"
+              className="md:hidden p-1"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open thread list"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <span className="flex-1 truncate text-sm font-medium">{headerLabel}</span>
+            <div className="flex rounded-lg border border-border bg-muted p-0.5 text-sm shrink-0">
+              <button
+                className={cn(
+                  "rounded-md px-3 py-1 font-medium",
+                  activeTab === "chat"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground",
+                )}
+                onClick={() => setActiveTab("chat")}
+              >
+                Chat
+              </button>
+              <button
+                className={cn(
+                  "rounded-md px-3 py-1 font-medium",
+                  activeTab === "storybank"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground",
+                )}
+                onClick={() => setActiveTab("storybank")}
+              >
+                Storybank ({stories.length})
+              </button>
             </div>
-          )
-        ) : (
-          <StorybankPanel />
-        )}
-      </div>
-    </motion.div>
+          </div>
+
+          <div className="flex-1 overflow-hidden">
+            {activeTab === "chat" ? (
+              threadId || activeRunId ? (
+                <CoachChat
+                  messages={messages}
+                  isStreaming={isStreaming}
+                  onSend={handleSend}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  <p className="text-sm">Pick a thread or add a position to start.</p>
+                </div>
+              )
+            ) : (
+              <StorybankPanel />
+            )}
+          </div>
+        </div>
+
+        <AddPositionDialog
+          open={pickerOpen}
+          positions={optimizations}
+          existingPositionIds={existingPositionIds}
+          onPick={handleAddPosition}
+          onClose={() => setPickerOpen(false)}
+        />
+      </motion.div>
     </UpgradeOverlay>
   );
 }
