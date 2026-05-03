@@ -98,6 +98,7 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Satoshi', system-ui, -apple-system, sans-serif;
     font-feature-settings: 'ss01' on, 'cv01' on;
+    overflow-x: hidden;
   }
 
   /* Smooth focus states */

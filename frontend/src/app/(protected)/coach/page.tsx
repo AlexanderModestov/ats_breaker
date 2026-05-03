@@ -149,7 +149,7 @@ export default function CoachPage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="mx-auto flex h-[calc(100vh-8rem)] max-w-7xl"
+        className="mx-auto flex h-[calc(100dvh-8rem)] max-w-7xl"
       >
         {/* Web: persistent sidebar */}
         <div className="hidden md:block w-[280px] shrink-0">{sidebar}</div>
