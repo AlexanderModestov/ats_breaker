@@ -97,7 +97,7 @@ export const t = {
           { en: "3 resume optimizations / week", ru: "3 оптимизации резюме / нед" },
           { en: "Basic ATS optimization", ru: "Базовая оптимизация под ATS" },
           { en: "Keyword highlights", ru: "Подсветка ключевых слов" },
-          { en: "Resume preview", ru: "Предпросмотр резюме" },
+          { en: "AI Interview Prep (limited)", ru: "AI-подготовка к интервью (ограниченно)" },
           { en: "PDF download", ru: "Скачивание в PDF" },
         ],
         highlighted: false,

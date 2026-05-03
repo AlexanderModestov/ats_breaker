@@ -424,6 +424,8 @@ class SupabaseService:
                 self._client.table("coach_sessions")
                 .select("id, optimization_run_id, title, last_message_at, created_at, updated_at")
                 .eq("user_id", user_id)
+                # nullsfirst=False: active threads first by default for non-frontend
+                # consumers. Frontend re-sorts to put empty (null) threads first.
                 .order("last_message_at", desc=True, nullsfirst=False)
                 .execute()
             ).data
