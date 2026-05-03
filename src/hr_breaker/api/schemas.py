@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # User schemas
@@ -144,25 +144,48 @@ class HealthResponse(BaseModel):
 
 
 class CoachChatRequest(BaseModel):
-    """Request to send a message to the coach."""
+    """Send a message to the coach. Provide either thread_id (existing) or
+    optimization_run_id (lazy-create new thread)."""
 
-    session_id: str | None = None
-    optimization_run_id: str
+    thread_id: str | None = None
+    optimization_run_id: str | None = None
     message: str
+
+    @model_validator(mode="after")
+    def _exactly_one_target(self):
+        has_thread = self.thread_id is not None
+        has_run = self.optimization_run_id is not None
+        if has_thread == has_run:
+            raise ValueError("Provide exactly one of thread_id or optimization_run_id")
+        return self
+
+
+class CoachThreadCreateRequest(BaseModel):
+    """Create an empty thread for a position."""
+
+    optimization_run_id: str
+
+
+class CoachThreadUpdateRequest(BaseModel):
+    """Rename a thread. title=None clears the manual title."""
+
+    title: str | None = None
 
 
 class CoachSessionResponse(BaseModel):
-    """Coach session info."""
+    """Coach session info for the sidebar."""
 
     id: str
     optimization_run_id: str
+    title: str | None = None
+    last_message_at: str | None = None
+    message_count: int = 0
+    preview: str | None = None
     created_at: str
     updated_at: str
 
 
 class CoachMessageResponse(BaseModel):
-    """Coach message for display."""
-
     role: str
     content: str
 
