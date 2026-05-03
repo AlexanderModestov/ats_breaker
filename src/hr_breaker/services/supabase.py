@@ -15,6 +15,34 @@ class SupabaseError(Exception):
     pass
 
 
+def _preview_and_count(raw_messages: list) -> tuple[str | None, int]:
+    """Return (first user message preview, total user+assistant count)."""
+    from pydantic_ai import ModelMessagesTypeAdapter
+    from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserPromptPart
+
+    if not raw_messages:
+        return None, 0
+    try:
+        messages = ModelMessagesTypeAdapter.validate_python(raw_messages)
+    except Exception:
+        return None, 0
+
+    preview = None
+    count = 0
+    for msg in messages:
+        if isinstance(msg, ModelRequest):
+            for part in msg.parts:
+                if isinstance(part, UserPromptPart):
+                    count += 1
+                    if preview is None:
+                        text = part.content if isinstance(part.content, str) else str(part.content)
+                        preview = text.strip()[:80] or None
+        elif isinstance(msg, ModelResponse):
+            if any(isinstance(p, TextPart) for p in msg.parts):
+                count += 1
+    return preview, count
+
+
 class SupabaseService:
     """Wrapper for Supabase database and storage operations."""
 
@@ -317,23 +345,13 @@ class SupabaseService:
             raise SupabaseError(f"Failed to delete optimization run: {e}") from e
 
     # Coach session operations
-    def get_or_create_coach_session(
-        self, user_id: str, optimization_run_id: str
+    def create_coach_session(
+        self,
+        user_id: str,
+        optimization_run_id: str,
     ) -> dict[str, Any]:
-        """Get existing coach session or create a new one."""
+        """Create a new coach session (thread)."""
         try:
-            result = (
-                self._client.table("coach_sessions")
-                .select("*")
-                .eq("user_id", user_id)
-                .eq("optimization_run_id", optimization_run_id)
-                .limit(1)
-                .execute()
-            )
-            if result.data:
-                return result.data[0]
-
-            # Create new session
             session_id = str(uuid4())
             result = (
                 self._client.table("coach_sessions")
@@ -346,20 +364,89 @@ class SupabaseService:
             )
             return result.data[0]
         except Exception as e:
-            logger.error(f"Failed to get or create coach session: {e}")
-            raise SupabaseError(f"Failed to get or create coach session: {e}") from e
+            logger.error(f"Failed to create coach session: {e}")
+            raise SupabaseError(f"Failed to create coach session: {e}") from e
 
-    def list_coach_sessions(self, user_id: str) -> list[dict[str, Any]]:
-        """List all coach sessions for a user."""
+    def get_coach_session(
+        self, session_id: str, user_id: str
+    ) -> dict[str, Any] | None:
+        """Return coach session if it belongs to user, else None."""
         try:
             result = (
                 self._client.table("coach_sessions")
                 .select("*")
+                .eq("id", session_id)
                 .eq("user_id", user_id)
-                .order("updated_at", desc=True)
+                .limit(1)
                 .execute()
             )
-            return result.data
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Failed to get coach session: {e}")
+            raise SupabaseError(f"Failed to get coach session: {e}") from e
+
+    def update_coach_session_title(
+        self, session_id: str, user_id: str, title: str | None
+    ) -> dict[str, Any] | None:
+        """Update session title with ownership check."""
+        try:
+            result = (
+                self._client.table("coach_sessions")
+                .update({"title": title})
+                .eq("id", session_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Failed to update coach session: {e}")
+            raise SupabaseError(f"Failed to update coach session: {e}") from e
+
+    def delete_coach_session(self, session_id: str, user_id: str) -> bool:
+        """Delete coach session (cascades to messages). Returns True if removed."""
+        try:
+            result = (
+                self._client.table("coach_sessions")
+                .delete()
+                .eq("id", session_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return bool(result.data)
+        except Exception as e:
+            logger.error(f"Failed to delete coach session: {e}")
+            raise SupabaseError(f"Failed to delete coach session: {e}") from e
+
+    def list_coach_sessions(self, user_id: str) -> list[dict[str, Any]]:
+        """List all coach sessions for a user with preview + message_count."""
+        try:
+            sessions = (
+                self._client.table("coach_sessions")
+                .select("id, optimization_run_id, title, last_message_at, created_at, updated_at")
+                .eq("user_id", user_id)
+                .order("last_message_at", desc=True, nullsfirst=False)
+                .execute()
+            ).data
+
+            if not sessions:
+                return []
+
+            # Bulk-fetch messages for all sessions in one round-trip.
+            ids = [s["id"] for s in sessions]
+            msg_rows = (
+                self._client.table("coach_messages")
+                .select("session_id, messages")
+                .in_("session_id", ids)
+                .execute()
+            ).data
+            by_session = {row["session_id"]: row.get("messages") or [] for row in msg_rows}
+
+            for s in sessions:
+                raw = by_session.get(s["id"], [])
+                preview, count = _preview_and_count(raw)
+                s["preview"] = preview
+                s["message_count"] = count
+            return sessions
         except Exception as e:
             logger.error(f"Failed to list coach sessions: {e}")
             raise SupabaseError(f"Failed to list coach sessions: {e}") from e
@@ -396,9 +483,9 @@ class SupabaseService:
                 on_conflict="session_id",
             ).execute()
 
-            # Touch coach_sessions.updated_at
+            # Touch coach_sessions.updated_at and last_message_at
             self._client.table("coach_sessions").update(
-                {"updated_at": now}
+                {"updated_at": now, "last_message_at": now}
             ).eq("id", session_id).execute()
         except Exception as e:
             logger.error(f"Failed to save coach messages: {e}")
