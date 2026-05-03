@@ -132,3 +132,15 @@ def test_delete_other_users_thread_returns_404(client, fake_supabase):
     fake_supabase.delete_coach_session.return_value = False
     r = client.delete("/api/coach/sessions/foreign")
     assert r.status_code == 404
+
+
+def test_chat_validates_exactly_one_target(client):
+    # Both → 422
+    r = client.post(
+        "/api/coach/chat",
+        json={"thread_id": "t", "optimization_run_id": "r", "message": "hi"},
+    )
+    assert r.status_code == 422
+    # Neither → 422
+    r = client.post("/api/coach/chat", json={"message": "hi"})
+    assert r.status_code == 422

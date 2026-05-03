@@ -129,13 +129,29 @@ async def chat(
     user_id: CurrentUser,
     supabase: SupabaseServiceDep,
 ):
-    """Stream a coach response via SSE."""
-    # Get or create session
-    session = supabase.get_or_create_coach_session(user_id, body.optimization_run_id)
+    """Stream a coach response via SSE.
+
+    Accepts either body.thread_id (existing thread) or body.optimization_run_id
+    (lazy-create new thread). Schema validator enforces exactly-one-of.
+    """
+    # Resolve thread.
+    if body.thread_id:
+        session = supabase.get_coach_session(body.thread_id, user_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        optimization_run_id = session["optimization_run_id"]
+    else:
+        # Lazy create: ensure the run is owned by the user before creating.
+        check_run = supabase.get_optimization_run(body.optimization_run_id, user_id)
+        if not check_run:
+            raise HTTPException(status_code=404, detail="Optimization run not found")
+        session = supabase.create_coach_session(user_id, body.optimization_run_id)
+        optimization_run_id = body.optimization_run_id
+
     session_id = session["id"]
 
-    # Load optimization run for context
-    run = supabase.get_optimization_run(body.optimization_run_id, user_id)
+    # Load optimization run for context (already verified above for lazy path).
+    run = supabase.get_optimization_run(optimization_run_id, user_id)
     if not run:
         raise HTTPException(status_code=404, detail="Optimization run not found")
 
@@ -192,8 +208,8 @@ async def chat(
                 serialized = to_jsonable_python(all_messages)
                 await asyncio.to_thread(supabase.save_coach_messages, session_id, serialized)
 
-                # Send done event with session_id
-                done = json.dumps({"type": "done", "session_id": session_id})
+                # Send done event with thread_id
+                done = json.dumps({"type": "done", "thread_id": session_id})
                 yield f"data: {done}\n\n"
 
         except Exception as e:
