@@ -90,12 +90,6 @@ export default function CoachPage() {
     [sessions],
   );
 
-  const handleAddPosition = (runId: string) => {
-    createThread.mutate(runId, {
-      onSuccess: (created) => setActiveThreadId(created.id),
-    });
-  };
-
   const handleNewThreadInPosition = (runId: string) => {
     // If there's already an empty thread in this position, reuse it.
     const empty = sessions.find(
@@ -225,7 +219,7 @@ export default function CoachPage() {
           open={pickerOpen}
           positions={optimizations}
           existingPositionIds={existingPositionIds}
-          onPick={handleAddPosition}
+          onPick={handleNewThreadInPosition}
           onClose={() => setPickerOpen(false)}
         />
       </motion.div>

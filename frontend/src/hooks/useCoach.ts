@@ -127,6 +127,8 @@ export function useCoachChat({
           },
           (err) => {
             setIsStreaming(false);
+            const currentInFlight = inFlightThreadIdRef.current;
+            if (threadId && currentInFlight !== threadId) return;
             setStreamingMessages((prev) => {
               if (!prev) return prev;
               const updated = [...prev];
@@ -137,6 +139,8 @@ export function useCoachChat({
         );
       } catch (e) {
         setIsStreaming(false);
+        const currentInFlight = inFlightThreadIdRef.current;
+        if (threadId && currentInFlight !== threadId) return;
         const msg = e instanceof Error ? e.message : "Unknown error";
         setStreamingMessages((prev) => {
           if (!prev) return prev;
