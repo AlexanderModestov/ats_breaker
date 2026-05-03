@@ -14,11 +14,41 @@ export const t = {
       en: "Tailor your resume for any job description, pass ATS systems, and practice real interview questions with an AI coach — all in one place",
       ru: "Адаптируйте резюме под любое описание вакансии, проходите ATS-системы и тренируйтесь отвечать на реальные вопросы с AI-коучем — всё в одном месте",
     },
-    cta: { en: "Get Started", ru: "Начать" },
+    cta: { en: "Start Getting Offers", ru: "Начните получать офферы" },
     ctaSub: {
       en: "Free to try. No credit card required.",
       ru: "Попробуйте бесплатно. Карта не нужна.",
     },
+  },
+  applicationToOffer: {
+    heading: {
+      en: "How You Go from Application to Offer",
+      ru: "Как пройти путь от отклика до оффера",
+    },
+    subheading: {
+      en: "Everything you need to go from application to offer:",
+      ru: "Всё, что нужно, чтобы пройти путь от отклика до оффера:",
+    },
+    cards: [
+      {
+        title: { en: "Optimize Your Resume for ATS", ru: "Оптимизируйте резюме под ATS" },
+        description: {
+          en: "Automatically match keywords and requirements from any job description",
+          ru: "Автоматически подбирайте ключевые слова и требования из любой вакансии",
+        },
+      },
+      {
+        title: {
+          en: "Practice real interview questions with AI",
+          ru: "Тренируйтесь на реальных вопросах с AI",
+        },
+        description: {
+          en: "Present your experience clearly and confidently",
+          ru: "Презентуйте свой опыт ясно и уверенно",
+        },
+      },
+    ],
+    cta: { en: "Get Interview-Ready", ru: "Готовьтесь к собеседованию" },
   },
   howItWorks: {
     heading: { en: "How It Works", ru: "Как это работает" },

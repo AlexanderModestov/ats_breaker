@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LangProvider } from "./_lib/LangContext";
 import { LandingHeader } from "./_components/LandingHeader";
 import { HeroSection } from "./_components/HeroSection";
+import { ApplicationToOfferSection } from "./_components/ApplicationToOfferSection";
 import { HowItWorksSection } from "./_components/HowItWorksSection";
 import { FeaturesSection } from "./_components/FeaturesSection";
 import { PricingSection } from "./_components/PricingSection";
@@ -41,6 +42,7 @@ export default function LandingPage() {
         <LandingHeader />
         <main>
           <HeroSection />
+          <ApplicationToOfferSection />
           <HowItWorksSection />
           <FeaturesSection />
           <PricingSection />
