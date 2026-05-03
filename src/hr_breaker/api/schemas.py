@@ -149,7 +149,7 @@ class CoachChatRequest(BaseModel):
 
     thread_id: str | None = None
     optimization_run_id: str | None = None
-    message: str
+    message: str = Field(..., min_length=1)
 
     @model_validator(mode="after")
     def _exactly_one_target(self):
