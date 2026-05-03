@@ -16,6 +16,7 @@ from hr_breaker.api.schemas import (
     CoachChatRequest,
     CoachMessageResponse,
     CoachSessionResponse,
+    CoachThreadCreateRequest,
     StorybankEntryRequest,
     StorybankEntryResponse,
 )
@@ -78,6 +79,20 @@ async def get_session_messages(
         raise HTTPException(status_code=404, detail="Session not found")
     raw = supabase.get_coach_messages(session_id)
     return _extract_display_messages(raw)
+
+
+@router.post("/sessions", response_model=CoachSessionResponse, status_code=201)
+async def create_thread(
+    body: CoachThreadCreateRequest,
+    user_id: CurrentUser,
+    supabase: SupabaseServiceDep,
+):
+    """Create an empty coach thread for a position."""
+    run = supabase.get_optimization_run(body.optimization_run_id, user_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Optimization run not found")
+    session = supabase.create_coach_session(user_id, body.optimization_run_id)
+    return {**session, "preview": None, "message_count": 0}
 
 
 @router.post("/chat")

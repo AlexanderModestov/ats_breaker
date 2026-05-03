@@ -7,8 +7,8 @@ export const t = {
   },
   hero: {
     heading: {
-      en: "Stop getting filtered out. Start getting interviews.",
-      ru: "Хватит терять отклики. Начните получать собеседования.",
+      en: "Get more Job Offers with AI: optimize your resume & prepare for Interviews",
+      ru: "Получайте больше офферов с AI: оптимизируйте резюме и готовьтесь к собеседованиям",
     },
     subheading: {
       en: "Optimize your resume for any job posting. Pass ATS filters with confidence.",

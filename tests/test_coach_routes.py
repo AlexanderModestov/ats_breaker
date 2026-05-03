@@ -66,3 +66,33 @@ def test_list_sessions_returns_preview_and_counts(client, fake_supabase):
     assert body[0]["message_count"] == 4
     assert body[0]["title"] is None
     fake_supabase.list_coach_sessions.assert_called_once_with(USER)
+
+
+def test_create_thread_returns_session(client, fake_supabase):
+    fake_supabase.get_optimization_run.return_value = {
+        "id": "r1",
+        "user_id": USER,
+        "job_parsed": {"title": "PM", "company": "Acme"},
+    }
+    fake_supabase.create_coach_session.return_value = {
+        "id": "new-id",
+        "optimization_run_id": "r1",
+        "title": None,
+        "last_message_at": None,
+        "created_at": "2026-05-03T10:00:00Z",
+        "updated_at": "2026-05-03T10:00:00Z",
+    }
+    r = client.post("/api/coach/sessions", json={"optimization_run_id": "r1"})
+    assert r.status_code == 201
+    body = r.json()
+    assert body["id"] == "new-id"
+    assert body["message_count"] == 0
+    assert body["preview"] is None
+    fake_supabase.create_coach_session.assert_called_once_with(USER, "r1")
+
+
+def test_create_thread_404_when_optimization_run_missing(client, fake_supabase):
+    fake_supabase.get_optimization_run.return_value = None
+    r = client.post("/api/coach/sessions", json={"optimization_run_id": "missing"})
+    assert r.status_code == 404
+    fake_supabase.create_coach_session.assert_not_called()
