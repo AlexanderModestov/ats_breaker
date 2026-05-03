@@ -74,6 +74,16 @@ export const t = {
           ru: "Получите адаптированное PDF-резюме, готовое к ATS, за секунды.",
         },
       },
+      {
+        title: {
+          en: "Practice Interviews with AI Coach",
+          ru: "Тренируйтесь на собеседованиях с AI-коучем",
+        },
+        description: {
+          en: "Train answers, improve clarity, and get instant feedback.",
+          ru: "Тренируйте ответы, улучшайте ясность и получайте мгновенный фидбек.",
+        },
+      },
     ],
   },
   features: {

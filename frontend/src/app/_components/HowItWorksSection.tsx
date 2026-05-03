@@ -1,12 +1,12 @@
 "use client";
 
-import { FileUp, Link as LinkIcon, Download } from "lucide-react";
+import { FileUp, Link as LinkIcon, Download, MessagesSquare } from "lucide-react";
 import { motion, staggerContainer, staggerItem } from "@/components/motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLang } from "../_lib/LangContext";
 import { t } from "../_lib/translations";
 
-const icons = [FileUp, LinkIcon, Download];
+const icons = [FileUp, LinkIcon, Download, MessagesSquare];
 
 export function HowItWorksSection() {
   const { lang } = useLang();
@@ -23,7 +23,7 @@ export function HowItWorksSection() {
           whileInView="animate"
           viewport={{ once: true, margin: "-100px" }}
           variants={staggerContainer}
-          className="mt-12 grid gap-6 sm:grid-cols-3"
+          className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
         >
           {t.howItWorks.steps.map((step, i) => {
             const Icon = icons[i];
