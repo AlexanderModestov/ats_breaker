@@ -119,3 +119,16 @@ def test_rename_other_users_thread_returns_404(client, fake_supabase):
     fake_supabase.update_coach_session_title.return_value = None
     r = client.patch("/api/coach/sessions/foreign", json={"title": "x"})
     assert r.status_code == 404
+
+
+def test_delete_thread_returns_204(client, fake_supabase):
+    fake_supabase.delete_coach_session.return_value = True
+    r = client.delete("/api/coach/sessions/s1")
+    assert r.status_code == 204
+    fake_supabase.delete_coach_session.assert_called_once_with("s1", USER)
+
+
+def test_delete_other_users_thread_returns_404(client, fake_supabase):
+    fake_supabase.delete_coach_session.return_value = False
+    r = client.delete("/api/coach/sessions/foreign")
+    assert r.status_code == 404

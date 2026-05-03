@@ -112,6 +112,17 @@ async def rename_thread(
     return {**updated, "preview": None, "message_count": 0}
 
 
+@router.delete("/sessions/{session_id}", status_code=204)
+async def delete_thread(
+    session_id: str,
+    user_id: CurrentUser,
+    supabase: SupabaseServiceDep,
+):
+    """Delete a coach thread (cascades to messages)."""
+    if not supabase.delete_coach_session(session_id, user_id):
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+
 @router.post("/chat")
 async def chat(
     body: CoachChatRequest,
