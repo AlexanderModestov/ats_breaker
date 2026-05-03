@@ -11,8 +11,8 @@ export const t = {
       ru: "Получайте больше офферов с AI: оптимизируйте резюме и готовьтесь к собеседованиям",
     },
     subheading: {
-      en: "Optimize your resume for any job posting. Pass ATS filters with confidence.",
-      ru: "Адаптируйте резюме под любую вакансию. Пройдите ATS-фильтры уверенно.",
+      en: "Tailor your resume for any job description, pass ATS systems, and practice real interview questions with an AI coach — all in one place",
+      ru: "Адаптируйте резюме под любое описание вакансии, проходите ATS-системы и тренируйтесь отвечать на реальные вопросы с AI-коучем — всё в одном месте",
     },
     cta: { en: "Get Started", ru: "Начать" },
     ctaSub: {
