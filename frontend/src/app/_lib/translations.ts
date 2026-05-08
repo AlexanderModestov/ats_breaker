@@ -85,6 +85,49 @@ export const t = {
         },
       },
     ],
+    cta: { en: "Get Me More Interviews", ru: "Хочу больше собеседований" },
+  },
+  aiCoach: {
+    heading: {
+      en: "AI Interview Coach That Actually Prepares You",
+      ru: "AI-коуч, который реально готовит к собеседованию",
+    },
+    intro: {
+      en: "Practice answering real interview questions based on your resume and target job.",
+      ru: "Отвечайте на реальные вопросы собеседований на основе вашего резюме и желаемой вакансии.",
+    },
+    feedbackHeading: {
+      en: "Get feedback on:",
+      ru: "Получайте обратную связь по:",
+    },
+    feedbackItems: [
+      {
+        title: { en: "Clarity and structure", ru: "Ясности и структуре" },
+        description: {
+          en: "Make every answer easy to follow.",
+          ru: "Каждый ответ — лёгкий для восприятия.",
+        },
+      },
+      {
+        title: { en: "Relevance to the role", ru: "Соответствию роли" },
+        description: {
+          en: "Stay focused on what the hiring manager cares about.",
+          ru: "Фокус на том, что важно для нанимающего менеджера.",
+        },
+      },
+      {
+        title: { en: "Impact of your answers", ru: "Силе ваших ответов" },
+        description: {
+          en: "Highlight outcomes, not just responsibilities.",
+          ru: "Подчёркивайте результаты, а не только обязанности.",
+        },
+      },
+    ],
+    outro: {
+      en: "Turn your experience into strong, confident stories that hiring managers understand.",
+      ru: "Превратите свой опыт в сильные, уверенные истории, понятные нанимающим менеджерам.",
+    },
+    cta: { en: "Start Interview Training", ru: "Начать тренировку собеседований" },
   },
   features: {
     heading: { en: "Why HR-Breaker", ru: "Почему HR-Breaker" },

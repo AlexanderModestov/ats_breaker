@@ -8,6 +8,7 @@ import { LandingHeader } from "./_components/LandingHeader";
 import { HeroSection } from "./_components/HeroSection";
 import { ApplicationToOfferSection } from "./_components/ApplicationToOfferSection";
 import { HowItWorksSection } from "./_components/HowItWorksSection";
+import { AICoachSection } from "./_components/AICoachSection";
 import { FeaturesSection } from "./_components/FeaturesSection";
 import { PricingSection } from "./_components/PricingSection";
 import { FAQSection } from "./_components/FAQSection";
@@ -44,6 +45,7 @@ export default function LandingPage() {
           <HeroSection />
           <ApplicationToOfferSection />
           <HowItWorksSection />
+          <AICoachSection />
           <FeaturesSection />
           <PricingSection />
           <FAQSection />

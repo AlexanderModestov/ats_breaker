@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { FileUp, Link as LinkIcon, Download, MessagesSquare } from "lucide-react";
 import { motion, staggerContainer, staggerItem } from "@/components/motion";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLang } from "../_lib/LangContext";
 import { t } from "../_lib/translations";
@@ -49,6 +51,14 @@ export function HowItWorksSection() {
             );
           })}
         </motion.div>
+
+        <div className="mt-12 flex justify-center">
+          <Link href="/signin">
+            <Button variant="accent" size="lg" className="text-base px-8">
+              {t.howItWorks.cta[lang]}
+            </Button>
+          </Link>
+        </div>
       </div>
     </section>
   );
