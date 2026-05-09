@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -19,7 +18,6 @@ import {
   createBillingPortal,
   getProfile,
   getSubscriptionStatus,
-  updateProfile,
 } from "@/lib/api";
 import { TIER_LABEL } from "@/lib/tiers";
 import type { SubscriptionStatus, UserProfile } from "@/types";
@@ -180,41 +178,10 @@ function SubscriptionCard() {
 }
 
 export default function SettingsPage() {
-  const queryClient = useQueryClient();
-
   const { data: profile, isLoading } = useQuery<UserProfile>({
     queryKey: ["profile"],
     queryFn: getProfile,
   });
-
-  const [name, setName] = useState("");
-  const [hasChanges, setHasChanges] = useState(false);
-
-  useEffect(() => {
-    if (profile) {
-      setName(profile.name || "");
-    }
-  }, [profile]);
-
-  useEffect(() => {
-    if (profile) {
-      setHasChanges(name !== (profile.name || ""));
-    }
-  }, [name, profile]);
-
-  const updateMutation = useMutation({
-    mutationFn: updateProfile,
-    onSuccess: (updated) => {
-      queryClient.setQueryData(["profile"], updated);
-      setHasChanges(false);
-    },
-  });
-
-  const handleSave = () => {
-    if (name !== (profile?.name || "")) {
-      updateMutation.mutate({ name });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -233,26 +200,9 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Your personal information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input value={profile?.email || ""} disabled />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Name</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <p className="text-sm text-muted-foreground">
+        Signed in as <span className="font-medium text-foreground">{profile?.email}</span>
+      </p>
 
       <SubscriptionCard />
 
@@ -269,32 +219,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
       */}
-
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          disabled={!hasChanges}
-          onClick={() => {
-            if (profile) {
-              setName(profile.name || "");
-            }
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          disabled={!hasChanges || updateMutation.isPending}
-          onClick={handleSave}
-        >
-          {updateMutation.isPending ? "Saving..." : "Save Changes"}
-        </Button>
-      </div>
-
-      {updateMutation.error && (
-        <p className="text-center text-sm text-destructive">
-          Failed to save: {updateMutation.error.message}
-        </p>
-      )}
     </div>
   );
 }
