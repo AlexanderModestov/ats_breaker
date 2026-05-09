@@ -70,6 +70,11 @@ class Settings(BaseModel):
     bot_api_key: str = ""
     telegram_bot_token: str = ""
 
+    # Feedback / Resend settings
+    resend_api_key: str = ""
+    support_email_to: str = ""
+    support_email_from: str = ""
+
     # Scraper settings
     scraper_httpx_timeout: float = 30.0
     scraper_wayback_timeout: float = 15.0
@@ -169,6 +174,10 @@ def get_settings() -> Settings:
         # Telegram bot settings
         bot_api_key=os.getenv("BOT_API_KEY", ""),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
+        # Feedback / Resend settings
+        resend_api_key=os.getenv("RESEND_API_KEY", ""),
+        support_email_to=os.getenv("SUPPORT_EMAIL_TO", ""),
+        support_email_from=os.getenv("SUPPORT_EMAIL_FROM", ""),
     )
 
 
