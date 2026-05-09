@@ -13,6 +13,8 @@ import type {
   RequirementsResponse,
   StorybankEntry,
   StorybankEntryRequest,
+  FeedbackRequest,
+  FeedbackResponse,
   UserProfile,
   UserProfileUpdate,
   SubscriptionStatus,
@@ -375,4 +377,14 @@ export async function updateStorybankEntry(id: string, data: StorybankEntryReque
 
 export async function deleteStorybankEntry(id: string): Promise<void> {
   await fetchWithAuth(`/coach/storybank/${id}`, { method: "DELETE" });
+}
+
+// Feedback API
+export async function submitFeedback(
+  body: FeedbackRequest,
+): Promise<FeedbackResponse> {
+  return fetchWithAuth<FeedbackResponse>("/feedback", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }

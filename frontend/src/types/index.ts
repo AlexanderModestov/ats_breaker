@@ -193,3 +193,14 @@ export interface StorybankEntryRequest {
   tags?: string[];
   rating?: number | null;
 }
+
+export type FeedbackType = "refund" | "bug" | "idea";
+
+export interface FeedbackRequest {
+  type: FeedbackType;
+  message: string;
+}
+
+export interface FeedbackResponse {
+  ok: boolean;
+}
