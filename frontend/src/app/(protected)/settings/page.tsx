@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { TIER_LABEL } from "@/lib/tiers";
 import type { SubscriptionStatus, UserProfile } from "@/types";
+import { SupportCard } from "./_components/SupportCard";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -254,6 +255,8 @@ export default function SettingsPage() {
       </Card>
 
       <SubscriptionCard />
+
+      <SupportCard />
 
       {/* TODO: re-enable when theme switching is implemented
       <Card>
