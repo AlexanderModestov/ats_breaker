@@ -3,6 +3,7 @@
 from .coach import router as coach_router
 from .cvs import router as cvs_router
 from .editor import router as editor_router
+from .feedback import router as feedback_router
 from .optimize import router as optimize_router
 from .subscription import router as subscription_router
 from .telegram import router as telegram_router
@@ -13,6 +14,7 @@ __all__ = [
     "coach_router",
     "cvs_router",
     "editor_router",
+    "feedback_router",
     "optimize_router",
     "subscription_router",
     "telegram_router",

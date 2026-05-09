@@ -7,6 +7,7 @@ from hr_breaker.api.routes import (
     coach_router,
     cvs_router,
     editor_router,
+    feedback_router,
     optimize_router,
     subscription_router,
     telegram_router,
@@ -39,6 +40,7 @@ app.include_router(cvs_router, prefix="/api/cvs", tags=["cvs"])
 app.include_router(optimize_router, prefix="/api/optimize", tags=["optimize"])
 app.include_router(editor_router, prefix="/api/optimize", tags=["editor"])
 app.include_router(subscription_router, prefix="/api/subscription", tags=["subscription"])
+app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
 app.include_router(coach_router, prefix="/api/coach", tags=["coach"])
 app.include_router(telegram_router, prefix="/api/auth/telegram", tags=["telegram"])
