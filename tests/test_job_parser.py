@@ -109,3 +109,87 @@ class TestIsGrounded:
             "Работаем в компании Ромашка уже 10 лет",
             is_company=True,
         ) is True
+
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from hr_breaker.agents.job_parser import parse_job_posting
+from hr_breaker.models import JobPosting
+
+
+def _mock_agent_returning(job: JobPosting):
+    """Build a mock pydantic-ai Agent whose .run() returns the given JobPosting."""
+    fake_result = MagicMock()
+    fake_result.output = job
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(return_value=fake_result)
+    return mock_agent
+
+
+@pytest.mark.asyncio
+class TestParseJobPostingMerge:
+    async def test_no_url_keeps_llm_value_when_grounded(self):
+        llm_job = JobPosting(title="Backend Eng", company="Podcastle Inc.")
+        text = "Podcastle is hiring a Backend Eng."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job = await parse_job_posting(text)
+        assert job.company == "Podcastle Inc."
+
+    async def test_no_url_replaces_with_not_specified_when_ungrounded(self):
+        llm_job = JobPosting(title="Backend Eng", company="Microsoft")
+        text = "Podcastle is hiring a Backend Eng."  # Microsoft not in text
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job = await parse_job_posting(text)
+        assert job.company == COMPANY_NOT_SPECIFIED
+
+    async def test_url_fills_in_when_llm_ungrounded(self):
+        llm_job = JobPosting(title="Backend Eng", company="Microsoft")
+        text = "Looking for a Backend Eng."  # neither company appears
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job = await parse_job_posting(
+                text, url="https://podcastle.bamboohr.com/careers/56"
+            )
+        assert job.company == "podcastle"
+
+    async def test_url_keeps_llm_canonical_when_agreeing(self):
+        llm_job = JobPosting(title="Backend Eng", company="Podcastle Inc.")
+        text = "Podcastle is hiring a Backend Eng."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job = await parse_job_posting(
+                text, url="https://podcastle.bamboohr.com/careers/56"
+            )
+        assert job.company == "Podcastle Inc."  # LLM canonical wins on agreement
+
+    async def test_url_overrides_on_conflict(self):
+        llm_job = JobPosting(title="Backend Eng", company="Acme Corp")
+        text = "Acme Corp posted: Backend Eng."  # LLM grounded but URL says podcastle
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job = await parse_job_posting(
+                text, url="https://podcastle.bamboohr.com/careers/56"
+            )
+        assert job.company == "podcastle"
+
+    async def test_url_with_unknown_host_is_noop(self):
+        llm_job = JobPosting(title="Backend Eng", company="Acme Corp")
+        text = "Acme Corp posted: Backend Eng."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job = await parse_job_posting(text, url="https://t.me/rfoundersjobs/639")
+        assert job.company == "Acme Corp"

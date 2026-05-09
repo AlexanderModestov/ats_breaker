@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from pydantic_ai import Agent
 
+from hr_breaker.agents.url_company_extractor import extract_company_from_url
 from hr_breaker.config import get_model_settings, get_settings, logger
 from hr_breaker.models import JobPosting
 
@@ -97,16 +98,40 @@ def _is_grounded(value: str, text: str, *, is_company: bool = False) -> bool:
     return all(w in norm_text for w in norm_value.split())
 
 
-async def parse_job_posting(text: str) -> JobPosting:
-    """Parse job posting text into structured data."""
+def _company_matches(llm_value: str, url_value: str) -> bool:
+    """LLM and URL agree if one contains the other after normalization."""
+    llm_norm = _normalize(_strip_corp_suffix(llm_value))
+    url_norm = _normalize(url_value)
+    if not llm_norm or not url_norm:
+        return False
+    return url_norm in llm_norm or llm_norm in url_norm
+
+
+async def parse_job_posting(text: str, url: str | None = None) -> JobPosting:
+    """Parse job posting text into structured data.
+
+    If `url` is provided and matches a known ATS pattern, the URL-derived
+    company slug is used as a strong signal: it fills in when the LLM
+    extraction fails grounding, and overrides the LLM on conflict.
+    """
     agent = get_job_parser_agent()
     result = await agent.run(f"Parse this job posting:\n\n{text}")
     job = result.output
 
-    warnings = []
-    if not _is_grounded(job.company, text, is_company=True):
+    url_company = extract_company_from_url(url) if url else None
+    warnings: list[str] = []
+
+    if _is_grounded(job.company, text, is_company=True):
+        if url_company and not _company_matches(job.company, url_company):
+            warnings.append(
+                f"URL says '{url_company}' but LLM extracted '{job.company}' — trusting URL"
+            )
+            job.company = url_company
+        # else: LLM agrees with URL (or no URL hint) → keep LLM canonical form
+    else:
         warnings.append(f"company '{job.company}' not found in posting text")
-        job.company = COMPANY_NOT_SPECIFIED
+        job.company = url_company or COMPANY_NOT_SPECIFIED
+
     if not _is_grounded(job.title, text):
         warnings.append(f"title '{job.title}' not found in posting text")
 
