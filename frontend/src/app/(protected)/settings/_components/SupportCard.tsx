@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import {
   Card,
@@ -10,36 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { submitFeedback, getSubscriptionStatus } from "@/lib/api";
-import type { FeedbackType, SubscriptionStatus } from "@/types";
-
-const PLACEHOLDERS: Record<FeedbackType, string> = {
-  refund: "Reason for refund + which payment...",
-  bug: "What happened? Steps to reproduce...",
-  idea: "What would make HR-Breaker better for you?",
-};
+import { submitFeedback } from "@/lib/api";
 
 const MAX_LEN = 4000;
 const MIN_LEN = 10;
 
-function formatPeriodEnd(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(
-    new Date(iso),
-  );
-}
-
 export function SupportCard() {
-  const [type, setType] = useState<FeedbackType>("refund");
   const [message, setMessage] = useState("");
   const [justSent, setJustSent] = useState(false);
-
-  const { data: subscription } = useQuery<SubscriptionStatus>({
-    queryKey: ["subscription"],
-    queryFn: getSubscriptionStatus,
-  });
 
   const mutation = useMutation({
     mutationFn: submitFeedback,
@@ -55,50 +34,23 @@ export function SupportCard() {
   const disabled = !valid || mutation.isPending || justSent;
 
   const handleSubmit = () => {
-    mutation.mutate({ type, message: trimmed });
+    mutation.mutate({ type: "idea", message: trimmed });
   };
-
-  const periodEnd = formatPeriodEnd(subscription?.current_period_end ?? null);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Support / Feedback</CardTitle>
         <CardDescription>
-          Refund requests, bug reports, and ideas — we read every one.
+          Tell us anything — bugs, ideas, refunds. We read every message.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Tabs
-          value={type}
-          onValueChange={(v) => setType(v as FeedbackType)}
-        >
-          <TabsList className="flex w-full">
-            <TabsTrigger value="refund" className="flex-1">
-              Refund
-            </TabsTrigger>
-            <TabsTrigger value="bug" className="flex-1">
-              Bug
-            </TabsTrigger>
-            <TabsTrigger value="idea" className="flex-1">
-              Idea
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {type === "refund" && subscription && (
-          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-            Current plan:{" "}
-            <span className="font-medium">{subscription.tier}</span>
-            {periodEnd && <> · renews {periodEnd}</>}
-          </div>
-        )}
-
         <div className="space-y-1">
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder={PLACEHOLDERS[type]}
+            placeholder="What's on your mind?"
             maxLength={MAX_LEN}
             rows={5}
             className="flex w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
