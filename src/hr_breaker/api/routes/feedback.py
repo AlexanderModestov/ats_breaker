@@ -3,32 +3,35 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
 from hr_breaker.config import logger
-from hr_breaker.services.email_service import EmailService, EmailServiceError
+from hr_breaker.services.email_service import (
+    EmailService,
+    EmailServiceError,
+    FeedbackType,
+)
 
 router = APIRouter()
 
 RATE_LIMIT_WINDOW = timedelta(hours=1)
 RATE_LIMIT_MAX = 5
+FEEDBACK_TABLE = "user_feedback"
 
 
 class FeedbackRequest(BaseModel):
-    type: Literal["refund", "bug", "idea"]
+    type: FeedbackType
+    # Strip whitespace before length validation so an all-spaces message
+    # doesn't squeak past min_length.
     message: str = Field(min_length=10, max_length=4000)
 
-    @field_validator("message")
+    @field_validator("message", mode="before")
     @classmethod
-    def _strip(cls, v: str) -> str:
-        v = v.strip()
-        if len(v) < 10:
-            raise ValueError("Message must be at least 10 characters")
-        return v
+    def _strip(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
 
 
 class FeedbackResponse(BaseModel):
@@ -52,11 +55,11 @@ async def submit_feedback(
     supabase: SupabaseServiceDep,
 ) -> FeedbackResponse:
     user_id, user_email = user
+    feedback_table = supabase.client.table(FEEDBACK_TABLE)
 
     window_start = (datetime.now(timezone.utc) - RATE_LIMIT_WINDOW).isoformat()
     recent = (
-        supabase.client.table("user_feedback")
-        .select("id", count="exact")
+        feedback_table.select("id", count="exact")
         .eq("user_id", user_id)
         .gte("created_at", window_start)
         .execute()
@@ -70,18 +73,14 @@ async def submit_feedback(
     profile = supabase.get_profile(user_id) or {}
     context = _build_context(profile, user_email)
 
-    insert_result = (
-        supabase.client.table("user_feedback")
-        .insert(
-            {
-                "user_id": user_id,
-                "type": body.type,
-                "message": body.message,
-                "context": context,
-            }
-        )
-        .execute()
-    )
+    insert_result = feedback_table.insert(
+        {
+            "user_id": user_id,
+            "type": body.type,
+            "message": body.message,
+            "context": context,
+        }
+    ).execute()
     feedback_id = insert_result.data[0]["id"]
 
     try:
@@ -92,7 +91,7 @@ async def submit_feedback(
             message=body.message,
             context=context,
         )
-        supabase.client.table("user_feedback").update(
+        feedback_table.update(
             {"email_sent_at": datetime.now(timezone.utc).isoformat()}
         ).eq("id", feedback_id).execute()
     except EmailServiceError as e:

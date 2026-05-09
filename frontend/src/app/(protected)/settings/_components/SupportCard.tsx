@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import {
@@ -15,23 +15,26 @@ import { submitFeedback } from "@/lib/api";
 
 const MAX_LEN = 4000;
 const MIN_LEN = 10;
+const RESET_AFTER_MS = 30_000;
 
 export function SupportCard() {
   const [message, setMessage] = useState("");
-  const [justSent, setJustSent] = useState(false);
 
   const mutation = useMutation({
     mutationFn: submitFeedback,
-    onSuccess: () => {
-      setMessage("");
-      setJustSent(true);
-      setTimeout(() => setJustSent(false), 30_000);
-    },
+    onSuccess: () => setMessage(""),
   });
 
+  // Auto-clear the success state so the form unlocks again after a cooldown.
+  useEffect(() => {
+    if (!mutation.isSuccess) return;
+    const t = setTimeout(() => mutation.reset(), RESET_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [mutation]);
+
   const trimmed = message.trim();
-  const valid = trimmed.length >= MIN_LEN && trimmed.length <= MAX_LEN;
-  const disabled = !valid || mutation.isPending || justSent;
+  const disabled =
+    trimmed.length < MIN_LEN || mutation.isPending || mutation.isSuccess;
 
   const handleSubmit = () => {
     mutation.mutate({ type: "idea", message: trimmed });
@@ -54,7 +57,7 @@ export function SupportCard() {
             maxLength={MAX_LEN}
             rows={5}
             className="flex w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={mutation.isPending || justSent}
+            disabled={mutation.isPending || mutation.isSuccess}
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{trimmed.length < MIN_LEN ? `Min ${MIN_LEN} chars` : ""}</span>
@@ -75,7 +78,7 @@ export function SupportCard() {
         )}
 
         <div className="flex items-center justify-end gap-3">
-          {justSent && (
+          {mutation.isSuccess && (
             <span className="flex items-center gap-1 text-sm text-muted-foreground">
               <Check className="h-4 w-4 text-green-600" />
               Sent — we&apos;ll reach out via email

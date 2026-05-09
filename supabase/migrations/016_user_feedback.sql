@@ -7,8 +7,8 @@ CREATE TABLE public.user_feedback (
     user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     type        feedback_type NOT NULL,
     message     text NOT NULL CHECK (char_length(message) BETWEEN 10 AND 4000),
-    -- Snapshot at submission time: tier, status, current_period_end,
-    -- stripe_customer_id, user_email. Captured server-side, not from client.
+    -- Snapshot of subscription state at submission time. Captured server-side
+    -- (not from the client) so the team has trustworthy billing context.
     context     jsonb NOT NULL DEFAULT '{}'::jsonb,
     email_sent_at timestamptz,
     created_at  timestamptz NOT NULL DEFAULT now()
