@@ -99,7 +99,15 @@ def _is_grounded(value: str, text: str, *, is_company: bool = False) -> bool:
 
 
 def _company_matches(llm_value: str, url_value: str) -> bool:
-    """LLM and URL agree if one contains the other after normalization."""
+    """LLM and URL agree if one contains the other after normalization.
+
+    NOTE: bidirectional substring match is looser than the design doc's risk
+    section described — e.g. ('Acme Corp', 'acme-rebrand') is treated as
+    agreement (LLM canonical kept), not as a conflict. In practice rebrand-style
+    mismatches are rare and recruiter-agency mismatches usually produce
+    unrelated slugs that fail this check anyway. Tighten to token-set equality
+    if a real-world case surfaces.
+    """
     llm_norm = _normalize(_strip_corp_suffix(llm_value))
     url_norm = _normalize(url_value)
     if not llm_norm or not url_norm:

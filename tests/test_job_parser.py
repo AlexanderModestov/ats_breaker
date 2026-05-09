@@ -1,5 +1,7 @@
 """Tests for job_parser grounding helpers and merge logic."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from hr_breaker.agents.job_parser import (
@@ -7,7 +9,9 @@ from hr_breaker.agents.job_parser import (
     _normalize,
     _strip_corp_suffix,
     _is_grounded,
+    parse_job_posting,
 )
+from hr_breaker.models import JobPosting
 
 
 class TestNormalize:
@@ -109,12 +113,6 @@ class TestIsGrounded:
             "Работаем в компании Ромашка уже 10 лет",
             is_company=True,
         ) is True
-
-
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from hr_breaker.agents.job_parser import parse_job_posting
-from hr_breaker.models import JobPosting
 
 
 def _mock_agent_returning(job: JobPosting):
