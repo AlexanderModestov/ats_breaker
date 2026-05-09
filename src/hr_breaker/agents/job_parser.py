@@ -1,3 +1,5 @@
+import re
+import unicodedata
 from functools import lru_cache
 
 from pydantic_ai import Agent
@@ -36,18 +38,63 @@ def get_job_parser_agent() -> Agent:
     )
 
 
-def _is_grounded(value: str, text: str) -> bool:
-    """Check if extracted value actually appears in the source text."""
-    text_lower = text.lower()
-    value_lower = value.lower().strip()
-    if not value_lower or value_lower in ("unknown", COMPANY_NOT_SPECIFIED.lower()):
+# Separators replaced with space during normalization.
+# NOTE: hyphen-minus "-" is intentionally NOT included (compound words like Coca-Cola).
+_SEP_RE = re.compile(r"[·—–,;/|]+")
+_WS_RE = re.compile(r"\s+")
+
+# Trailing corporate suffixes — only stripped when checking *company* field.
+# Anchored to end-of-string with a leading separator (space/comma/period).
+_CORP_SUFFIX_RE = re.compile(
+    r"[\s,.]+"
+    r"(?:Inc\.?|LLC|L\.L\.C\.|Ltd\.?|Limited|Corp\.?|Corporation|"
+    r"Co\.?|Company|GmbH|AG|S\.A\.?|B\.V\.?|N\.V\.?|"
+    r"Pte\.?|Pvt\.?|Group|Holdings|"
+    r"ООО|ОАО|АО|ПАО|ЗАО)"
+    r"\s*$",
+    re.IGNORECASE,
+)
+
+
+def _normalize(s: str) -> str:
+    """NFC + separator-to-space + whitespace collapse + lowercase."""
+    s = unicodedata.normalize("NFC", s)
+    s = _SEP_RE.sub(" ", s)
+    s = _WS_RE.sub(" ", s).strip().lower()
+    return s
+
+
+def _strip_corp_suffix(s: str) -> str:
+    """Strip trailing corporate suffixes (Inc., LLC, ООО, ...) repeatedly."""
+    prev = None
+    while prev != s:
+        prev = s
+        s = _CORP_SUFFIX_RE.sub("", s).strip(" ,.")
+    return s
+
+
+def _is_grounded(value: str, text: str, *, is_company: bool = False) -> bool:
+    """Check if extracted value actually appears in the source text.
+
+    Softens strict substring matching by:
+      - NFC-normalizing both sides
+      - Collapsing common separators to spaces
+      - Stripping trailing corporate suffixes (when is_company=True)
+    """
+    if not value:
         return True
-    # Exact substring match
-    if value_lower in text_lower:
+    if value.strip().lower() in ("unknown", COMPANY_NOT_SPECIFIED.lower()):
         return True
-    # Check if all words from the value appear in the text
-    words = value_lower.split()
-    return all(w in text_lower for w in words)
+
+    norm_value = _strip_corp_suffix(value) if is_company else value
+    norm_value = _normalize(norm_value)
+    norm_text = _normalize(text)
+
+    if not norm_value:
+        return True
+    if norm_value in norm_text:
+        return True
+    return all(w in norm_text for w in norm_value.split())
 
 
 async def parse_job_posting(text: str) -> JobPosting:
@@ -57,7 +104,7 @@ async def parse_job_posting(text: str) -> JobPosting:
     job = result.output
 
     warnings = []
-    if not _is_grounded(job.company, text):
+    if not _is_grounded(job.company, text, is_company=True):
         warnings.append(f"company '{job.company}' not found in posting text")
         job.company = COMPANY_NOT_SPECIFIED
     if not _is_grounded(job.title, text):
