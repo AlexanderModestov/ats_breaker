@@ -14,6 +14,7 @@ import {
   useDownloadPDF,
   useUpdateOptimizationJob,
 } from "@/hooks/useOptimization";
+import type { JobParsed, OptimizationStatus } from "@/types";
 
 type EditingField = "title" | "company" | null;
 
@@ -24,21 +25,15 @@ function JobInfoHeader({
   isFailed,
 }: {
   runId: string;
-  status: import("@/types").OptimizationStatus;
+  status: OptimizationStatus;
   isComplete: boolean;
   isFailed: boolean;
 }) {
   const [editing, setEditing] = useState<EditingField>(null);
   const [popupPos, setPopupPos] = useState({ top: 0, left: 0 });
-  const [localStatus, setLocalStatus] = useState(status);
+  const [localJob, setLocalJob] = useState<JobParsed | null>(null);
   const update = useUpdateOptimizationJob(runId);
-
-  const current = localStatus.job_parsed?.title === status.job_parsed?.title &&
-    localStatus.job_parsed?.company === status.job_parsed?.company
-    ? status
-    : localStatus;
-
-  const job = current.job_parsed;
+  const job = localJob ?? status.job_parsed;
   const needsReview = new Set(job?.needs_review ?? []);
 
   const openEditor = (field: "title" | "company", e: React.MouseEvent) => {
@@ -56,7 +51,7 @@ function JobInfoHeader({
     }
     try {
       const updated = await update.mutateAsync({ [editing]: trimmed });
-      setLocalStatus(updated);
+      setLocalJob(updated.job_parsed);
     } catch (err) {
       console.error("Failed to save job edit:", err);
     } finally {
