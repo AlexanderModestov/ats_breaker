@@ -8,6 +8,7 @@ import {
   getOptimizationStatus,
   listOptimizations,
   startOptimization,
+  updateOptimizationJob,
 } from "@/lib/api";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import type { OptimizationStatus, OptimizationSummary, OptimizeRequest } from "@/types";
@@ -157,6 +158,18 @@ export function useDeleteOptimization() {
   return useMutation({
     mutationFn: (runId: string) => deleteOptimization(runId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["optimizations"] });
+    },
+  });
+}
+
+export function useUpdateOptimizationJob(runId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: { title?: string; company?: string }) =>
+      updateOptimizationJob(runId, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["optimization", runId] });
       queryClient.invalidateQueries({ queryKey: ["optimizations"] });
     },
   });
