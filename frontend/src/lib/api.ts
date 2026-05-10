@@ -175,6 +175,16 @@ export async function deleteOptimization(runId: string): Promise<void> {
   await fetchWithAuth(`/optimize/${runId}`, { method: "DELETE" });
 }
 
+export async function updateOptimizationJob(
+  runId: string,
+  patch: { title?: string; company?: string }
+): Promise<OptimizationStatus> {
+  return fetchWithAuth<OptimizationStatus>(`/optimize/${runId}/job`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
 // Editor API
 export async function getRequirements(
   runId: string

@@ -42,6 +42,7 @@ export interface JobParsed {
   requirements: string[];
   responsibilities: string[];
   keywords: string[];
+  needs_review?: string[];
 }
 
 export interface FilterResult {
