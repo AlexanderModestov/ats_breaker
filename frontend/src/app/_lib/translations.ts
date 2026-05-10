@@ -19,6 +19,11 @@ export const t = {
       en: "Free to try. No credit card required.",
       ru: "Попробуйте бесплатно. Карта не нужна.",
     },
+    telegramCta: { en: "Open in Telegram", ru: "Открыть в Telegram" },
+    telegramCtaSub: {
+      en: "Use HR Breaker directly in Telegram — faster access, notifications, and quick candidate workflows without opening the web app",
+      ru: "Используйте HR Breaker прямо в Telegram — быстрый доступ, уведомления и удобные рабочие процессы без открытия веб-приложения",
+    },
   },
   applicationToOffer: {
     heading: {
