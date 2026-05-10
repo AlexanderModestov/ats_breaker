@@ -54,9 +54,14 @@ function JobInfoHeader({
       setEditing(null);
       return;
     }
-    const updated = await update.mutateAsync({ [editing]: trimmed });
-    setLocalStatus(updated);
-    setEditing(null);
+    try {
+      const updated = await update.mutateAsync({ [editing]: trimmed });
+      setLocalStatus(updated);
+    } catch (err) {
+      console.error("Failed to save job edit:", err);
+    } finally {
+      setEditing(null);
+    }
   };
 
   return (
@@ -66,11 +71,12 @@ function JobInfoHeader({
           <span className="text-muted-foreground">Optimization in Progress</span>
         ) : needsReview.has("title") ? (
           <button
+            type="button"
             onClick={(e) => openEditor("title", e)}
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <span className="italic">Position not detected — click to set</span>
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4" aria-hidden="true" />
           </button>
         ) : (
           job.title
@@ -82,11 +88,12 @@ function JobInfoHeader({
             <Building2 className="h-4 w-4" />
             {needsReview.has("company") ? (
               <button
+                type="button"
                 onClick={(e) => openEditor("company", e)}
                 className="inline-flex items-center gap-1.5 italic hover:text-foreground"
               >
                 Company not detected — click to set
-                <Pencil className="h-3.5 w-3.5" />
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             ) : (
               <span>{job.company}</span>
