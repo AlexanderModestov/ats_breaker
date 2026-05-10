@@ -11,6 +11,7 @@ from hr_breaker.api.deps import CurrentUser, CurrentUserWithEmail, SupabaseServi
 from hr_breaker.services.access_control import check_quota, consume_request
 from hr_breaker.services.tiers import Feature
 from hr_breaker.api.schemas import (
+    JobPatchRequest,
     OptimizationListResponse,
     OptimizationStartResponse,
     OptimizationStatus,
@@ -389,3 +390,58 @@ async def delete_optimization(
         return {"success": True}
     except SupabaseError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.patch("/{run_id}/job", response_model=OptimizationStatus)
+async def update_optimization_job(
+    run_id: str,
+    request: JobPatchRequest,
+    user_id: CurrentUser,
+    supabase: SupabaseServiceDep,
+) -> OptimizationStatus:
+    """Manually fix parsed title/company when the parser failed.
+
+    Updates only labels in `job_parsed` — does not re-run optimization.
+    """
+    run = supabase.get_optimization_run(run_id, user_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Optimization run not found")
+
+    if run["status"] in ("pending", "parse_job"):
+        raise HTTPException(
+            status_code=409, detail="Job is still being parsed; try again shortly"
+        )
+
+    job_parsed = dict(run.get("job_parsed") or {})
+    needs_review = list(job_parsed.get("needs_review") or [])
+
+    if request.title is not None:
+        job_parsed["title"] = request.title
+        if "title" in needs_review:
+            needs_review.remove("title")
+    if request.company is not None:
+        job_parsed["company"] = request.company
+        if "company" in needs_review:
+            needs_review.remove("company")
+
+    job_parsed["needs_review"] = needs_review
+    supabase.update_optimization_run(run_id, {"job_parsed": job_parsed})
+
+    job_input = run.get("job_input") or ""
+    job_url = job_input if job_input.startswith(("http://", "https://")) else None
+
+    return OptimizationStatus(
+        id=run["id"],
+        status=run["status"],
+        current_step=run.get("current_step"),
+        iterations=run.get("iterations", 0),
+        job_parsed=job_parsed,
+        job_url=job_url,
+        first_name=run.get("first_name"),
+        last_name=run.get("last_name"),
+        feedback=run.get("feedback"),
+        result_html=run.get("result_html"),
+        error=run.get("error"),
+        timing=run.get("timing"),
+        created_at=run["created_at"],
+    )

@@ -99,6 +99,26 @@ class OptimizationStartResponse(BaseModel):
     status: str
 
 
+class JobPatchRequest(BaseModel):
+    """Update title/company of a parsed job. At least one field required."""
+
+    title: str | None = Field(default=None, max_length=200)
+    company: str | None = Field(default=None, max_length=200)
+
+    @model_validator(mode="after")
+    def _at_least_one_and_nonempty(self):
+        if self.title is None and self.company is None:
+            raise ValueError("Provide at least one of title or company")
+        for name in ("title", "company"):
+            value = getattr(self, name)
+            if value is not None:
+                stripped = value.strip()
+                if not stripped:
+                    raise ValueError(f"{name} must be non-empty")
+                setattr(self, name, stripped)
+        return self
+
+
 class OptimizationSummary(BaseModel):
     """Summary of an optimization run for listing."""
 
