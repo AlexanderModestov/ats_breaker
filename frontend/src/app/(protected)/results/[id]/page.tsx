@@ -1,17 +1,131 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Download, Building2, MapPin, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResumePreview } from "@/components/ResumePreview";
+import EditPopup from "@/components/EditPopup";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import {
   useOptimizationStatus,
   useDownloadPDF,
+  useUpdateOptimizationJob,
 } from "@/hooks/useOptimization";
+
+type EditingField = "title" | "company" | null;
+
+function JobInfoHeader({
+  runId,
+  status,
+  isComplete,
+  isFailed,
+}: {
+  runId: string;
+  status: import("@/types").OptimizationStatus;
+  isComplete: boolean;
+  isFailed: boolean;
+}) {
+  const [editing, setEditing] = useState<EditingField>(null);
+  const [popupPos, setPopupPos] = useState({ top: 0, left: 0 });
+  const [localStatus, setLocalStatus] = useState(status);
+  const update = useUpdateOptimizationJob(runId);
+
+  const current = localStatus.job_parsed?.title === status.job_parsed?.title &&
+    localStatus.job_parsed?.company === status.job_parsed?.company
+    ? status
+    : localStatus;
+
+  const job = current.job_parsed;
+  const needsReview = new Set(job?.needs_review ?? []);
+
+  const openEditor = (field: "title" | "company", e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setPopupPos({ top: rect.bottom + 4, left: rect.left });
+    setEditing(field);
+  };
+
+  const handleSave = async (newText: string) => {
+    if (!editing) return;
+    const trimmed = newText.trim();
+    if (!trimmed) {
+      setEditing(null);
+      return;
+    }
+    const updated = await update.mutateAsync({ [editing]: trimmed });
+    setLocalStatus(updated);
+    setEditing(null);
+  };
+
+  return (
+    <div className="space-y-2">
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        {!job ? (
+          <span className="text-muted-foreground">Optimization in Progress</span>
+        ) : needsReview.has("title") ? (
+          <button
+            onClick={(e) => openEditor("title", e)}
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <span className="italic">Position not detected — click to set</span>
+            <Pencil className="h-4 w-4" />
+          </button>
+        ) : (
+          job.title
+        )}
+      </h1>
+      {job && (
+        <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <Building2 className="h-4 w-4" />
+            {needsReview.has("company") ? (
+              <button
+                onClick={(e) => openEditor("company", e)}
+                className="inline-flex items-center gap-1.5 italic hover:text-foreground"
+              >
+                Company not detected — click to set
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <span>{job.company}</span>
+            )}
+          </div>
+          {job.location && (
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4" />
+              <span>{job.location}</span>
+            </div>
+          )}
+        </div>
+      )}
+      {!isComplete && (
+        <p className="text-muted-foreground">
+          {isFailed
+            ? "Optimization failed"
+            : "Please wait while we optimize your resume"}
+        </p>
+      )}
+      {editing && job && (
+        <EditPopup
+          text={
+            editing === "title"
+              ? needsReview.has("title")
+                ? ""
+                : job.title
+              : needsReview.has("company")
+              ? ""
+              : job.company
+          }
+          position={popupPos}
+          onSave={handleSave}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function ResultsPage({
   params,
@@ -154,36 +268,12 @@ export default function ResultsPage({
 
       {/* Job info */}
       <SlideUp delay={0.1}>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {status.job_parsed ? (
-              status.job_parsed.title
-            ) : (
-              <span className="text-muted-foreground">Optimization in Progress</span>
-            )}
-          </h1>
-          {status.job_parsed && (
-            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Building2 className="h-4 w-4" />
-                <span>{status.job_parsed.company}</span>
-              </div>
-              {status.job_parsed.location && (
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  <span>{status.job_parsed.location}</span>
-                </div>
-              )}
-            </div>
-          )}
-          {!isComplete && (
-            <p className="text-muted-foreground">
-              {isFailed
-                ? "Optimization failed"
-                : "Please wait while we optimize your resume"}
-            </p>
-          )}
-        </div>
+        <JobInfoHeader
+          runId={id}
+          status={status}
+          isComplete={isComplete}
+          isFailed={isFailed}
+        />
       </SlideUp>
 
       {/* Processing indicator */}
