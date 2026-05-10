@@ -1,4 +1,4 @@
-"""Coach API routes — chat streaming + storybank CRUD."""
+"""Coach API routes — chat streaming."""
 
 import asyncio
 import json
@@ -18,8 +18,6 @@ from hr_breaker.api.schemas import (
     CoachSessionResponse,
     CoachThreadCreateRequest,
     CoachThreadUpdateRequest,
-    StorybankEntryRequest,
-    StorybankEntryResponse,
 )
 from hr_breaker.services.tiers import Feature
 
@@ -164,19 +162,12 @@ async def chat(
         if cv:
             cv_text = cv.get("content_text", "") or ""
 
-    # Load storybank
-    storybank = supabase.list_storybank(user_id)
-
     # Load message history
     raw_history = supabase.get_coach_messages(session_id)
     if raw_history:
         message_history = ModelMessagesTypeAdapter.validate_python(raw_history)
     else:
         message_history = None
-
-    # Create save callback
-    async def on_save_story(data: dict):
-        return supabase.create_storybank_entry(user_id, data)
 
     deps = CoachDeps(
         user_id=user_id,
@@ -185,8 +176,6 @@ async def chat(
         job_company=job_parsed.get("company", "Unknown"),
         job_requirements=job_parsed.get("requirements", []),
         job_keywords=job_parsed.get("keywords", []),
-        storybank=storybank,
-        on_save_story=on_save_story,
     )
 
     agent = create_coach_agent()
@@ -226,45 +215,3 @@ async def chat(
             "X-Accel-Buffering": "no",
         },
     )
-
-
-# Storybank CRUD
-@router.get("/storybank", response_model=list[StorybankEntryResponse])
-async def list_storybank(user_id: CurrentUser, supabase: SupabaseServiceDep):
-    """List all storybank entries."""
-    return supabase.list_storybank(user_id)
-
-
-@router.post("/storybank", response_model=StorybankEntryResponse, status_code=201)
-async def create_storybank_entry(
-    body: StorybankEntryRequest,
-    user_id: CurrentUser,
-    supabase: SupabaseServiceDep,
-):
-    """Create a new storybank entry."""
-    return supabase.create_storybank_entry(user_id, body.model_dump())
-
-
-@router.put("/storybank/{entry_id}", response_model=StorybankEntryResponse)
-async def update_storybank_entry(
-    entry_id: str,
-    body: StorybankEntryRequest,
-    user_id: CurrentUser,
-    supabase: SupabaseServiceDep,
-):
-    """Update a storybank entry."""
-    result = supabase.update_storybank_entry(entry_id, user_id, body.model_dump())
-    if not result:
-        raise HTTPException(status_code=404, detail="Storybank entry not found")
-    return result
-
-
-@router.delete("/storybank/{entry_id}", status_code=204)
-async def delete_storybank_entry(
-    entry_id: str,
-    user_id: CurrentUser,
-    supabase: SupabaseServiceDep,
-):
-    """Delete a storybank entry."""
-    if not supabase.delete_storybank_entry(entry_id, user_id):
-        raise HTTPException(status_code=404, detail="Storybank entry not found")

@@ -161,7 +161,6 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
                   "Practice answering interview questions",
                   "Get feedback on your STAR stories",
                   "Understand what the role really needs",
-                  "Save your best stories to Storybank",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <span className="mt-0.5 text-primary">•</span>

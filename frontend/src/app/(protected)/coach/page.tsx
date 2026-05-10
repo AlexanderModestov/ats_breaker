@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Menu } from "lucide-react";
 import { motion } from "@/components/motion";
 import { CoachChat } from "@/components/CoachChat";
-import { StorybankPanel } from "@/components/StorybankPanel";
 import { UpgradeOverlay } from "@/components/UpgradeOverlay";
 import { CoachSidebar } from "@/components/coach/CoachSidebar";
 import { SidebarDrawer } from "@/components/coach/SidebarDrawer";
@@ -18,11 +17,9 @@ import {
   useDeleteThread,
   useRenameThread,
 } from "@/hooks/useCoach";
-import { useStorybank } from "@/hooks/useStorybank";
 import { useQuery } from "@tanstack/react-query";
 import { listOptimizations } from "@/lib/api";
 import type { OptimizationSummary } from "@/types";
-import { cn } from "@/lib/utils";
 
 const LAST_THREAD_KEY = "coach.lastThreadId";
 
@@ -30,7 +27,6 @@ export default function CoachPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const threadId = searchParams.get("threadId");
-  const [activeTab, setActiveTab] = useState<"chat" | "storybank">("chat");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -41,7 +37,6 @@ export default function CoachPage() {
   });
   const { data: sessions = [] } = useCoachSessions();
   const { data: history = [] } = useCoachMessages(threadId);
-  const { data: stories = [] } = useStorybank();
 
   const createThread = useCreateThread();
   const renameThread = useRenameThread();
@@ -170,47 +165,19 @@ export default function CoachPage() {
               <Menu className="h-5 w-5" />
             </button>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{headerLabel}</span>
-            <div className="flex rounded-lg border border-border bg-muted p-0.5 text-sm shrink-0">
-              <button
-                className={cn(
-                  "rounded-md px-3 py-1 font-medium",
-                  activeTab === "chat"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground",
-                )}
-                onClick={() => setActiveTab("chat")}
-              >
-                Chat
-              </button>
-              <button
-                className={cn(
-                  "rounded-md px-3 py-1 font-medium",
-                  activeTab === "storybank"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground",
-                )}
-                onClick={() => setActiveTab("storybank")}
-              >
-                Storybank ({stories.length})
-              </button>
-            </div>
           </div>
 
           <div className="flex-1 overflow-hidden">
-            {activeTab === "chat" ? (
-              threadId || activeRunId ? (
-                <CoachChat
-                  messages={messages}
-                  isStreaming={isStreaming}
-                  onSend={handleSend}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  <p className="text-sm">Pick a thread or add a position to start.</p>
-                </div>
-              )
+            {threadId || activeRunId ? (
+              <CoachChat
+                messages={messages}
+                isStreaming={isStreaming}
+                onSend={handleSend}
+              />
             ) : (
-              <StorybankPanel />
+              <div className="flex h-full items-center justify-center text-muted-foreground">
+                <p className="text-sm">Pick a thread or add a position to start.</p>
+              </div>
             )}
           </div>
         </div>

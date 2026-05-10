@@ -208,30 +208,3 @@ class CoachSessionResponse(BaseModel):
 class CoachMessageResponse(BaseModel):
     role: str
     content: str
-
-
-class StorybankEntryRequest(BaseModel):
-    """Request to create/update a storybank entry."""
-
-    title: str
-    situation: str = ""
-    task: str = ""
-    action: str = ""
-    result: str = ""
-    tags: list[str] = []
-    rating: int | None = None
-
-
-class StorybankEntryResponse(BaseModel):
-    """Storybank entry."""
-
-    id: str
-    title: str
-    situation: str
-    task: str
-    action: str
-    result: str
-    tags: list[str]
-    rating: int | None
-    created_at: str
-    updated_at: str

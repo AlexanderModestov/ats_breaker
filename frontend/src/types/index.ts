@@ -171,30 +171,6 @@ export interface CoachSSEEvent {
   thread_id?: string;
 }
 
-// Storybank types
-export interface StorybankEntry {
-  id: string;
-  title: string;
-  situation: string;
-  task: string;
-  action: string;
-  result: string;
-  tags: string[];
-  rating: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StorybankEntryRequest {
-  title: string;
-  situation?: string;
-  task?: string;
-  action?: string;
-  result?: string;
-  tags?: string[];
-  rating?: number | null;
-}
-
 export type FeedbackType = "refund" | "bug" | "idea";
 
 export interface FeedbackRequest {

@@ -11,8 +11,6 @@ import type {
   OptimizationSummary,
   OptimizeRequest,
   RequirementsResponse,
-  StorybankEntry,
-  StorybankEntryRequest,
   FeedbackRequest,
   FeedbackResponse,
   UserProfile,
@@ -364,29 +362,6 @@ export async function exchangeTelegramInitData(
     );
   }
   return response.json();
-}
-
-// Storybank API
-export async function listStorybank(): Promise<StorybankEntry[]> {
-  return fetchWithAuth<StorybankEntry[]>("/coach/storybank");
-}
-
-export async function createStorybankEntry(data: StorybankEntryRequest): Promise<StorybankEntry> {
-  return fetchWithAuth<StorybankEntry>("/coach/storybank", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateStorybankEntry(id: string, data: StorybankEntryRequest): Promise<StorybankEntry> {
-  return fetchWithAuth<StorybankEntry>(`/coach/storybank/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteStorybankEntry(id: string): Promise<void> {
-  await fetchWithAuth(`/coach/storybank/${id}`, { method: "DELETE" });
 }
 
 // Feedback API
