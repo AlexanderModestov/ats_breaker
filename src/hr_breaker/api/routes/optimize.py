@@ -83,7 +83,7 @@ async def _run_optimization(
         # Parse job posting
         parse_start = time.perf_counter()
         print(f"📋 Parsing job posting...")
-        job = await parse_job_posting(job_text, url=job_url)
+        job, needs_review = await parse_job_posting(job_text, url=job_url)
         timing["parse_job"] = time.perf_counter() - parse_start
         print(f"⏱️  Parse job: {timing['parse_job']:.2f}s - {job.title} at {job.company}")
         logger.info(f"[{run_id}] Job parsed: {job.title} at {job.company}")
@@ -94,6 +94,7 @@ async def _run_optimization(
             "requirements": job.requirements,
             "responsibilities": job.responsibilities,
             "keywords": job.keywords,
+            "needs_review": needs_review,
         }
 
         supabase.update_optimization_run(run_id, {
