@@ -133,7 +133,7 @@ class TestParseJobPostingMerge:
             "hr_breaker.agents.job_parser.get_job_parser_agent",
             return_value=_mock_agent_returning(llm_job),
         ):
-            job = await parse_job_posting(text)
+            job, _ = await parse_job_posting(text)
         assert job.company == "Podcastle Inc."
 
     async def test_no_url_replaces_with_not_specified_when_ungrounded(self):
@@ -143,7 +143,7 @@ class TestParseJobPostingMerge:
             "hr_breaker.agents.job_parser.get_job_parser_agent",
             return_value=_mock_agent_returning(llm_job),
         ):
-            job = await parse_job_posting(text)
+            job, _ = await parse_job_posting(text)
         assert job.company == COMPANY_NOT_SPECIFIED
 
     async def test_url_fills_in_when_llm_ungrounded(self):
@@ -153,7 +153,7 @@ class TestParseJobPostingMerge:
             "hr_breaker.agents.job_parser.get_job_parser_agent",
             return_value=_mock_agent_returning(llm_job),
         ):
-            job = await parse_job_posting(
+            job, _ = await parse_job_posting(
                 text, url="https://podcastle.bamboohr.com/careers/56"
             )
         assert job.company == "podcastle"
@@ -165,7 +165,7 @@ class TestParseJobPostingMerge:
             "hr_breaker.agents.job_parser.get_job_parser_agent",
             return_value=_mock_agent_returning(llm_job),
         ):
-            job = await parse_job_posting(
+            job, _ = await parse_job_posting(
                 text, url="https://podcastle.bamboohr.com/careers/56"
             )
         assert job.company == "Podcastle Inc."  # LLM canonical wins on agreement
@@ -177,7 +177,7 @@ class TestParseJobPostingMerge:
             "hr_breaker.agents.job_parser.get_job_parser_agent",
             return_value=_mock_agent_returning(llm_job),
         ):
-            job = await parse_job_posting(
+            job, _ = await parse_job_posting(
                 text, url="https://podcastle.bamboohr.com/careers/56"
             )
         assert job.company == "podcastle"
@@ -189,5 +189,50 @@ class TestParseJobPostingMerge:
             "hr_breaker.agents.job_parser.get_job_parser_agent",
             return_value=_mock_agent_returning(llm_job),
         ):
-            job = await parse_job_posting(text, url="https://t.me/rfoundersjobs/639")
+            job, _ = await parse_job_posting(text, url="https://t.me/rfoundersjobs/639")
         assert job.company == "Acme Corp"
+
+    async def test_returns_empty_needs_review_when_all_grounded(self):
+        llm_job = JobPosting(title="Backend Eng", company="Podcastle Inc.")
+        text = "Podcastle is hiring a Backend Eng."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(text)
+        assert needs_review == []
+
+    async def test_needs_review_contains_company_when_not_specified(self):
+        llm_job = JobPosting(title="Backend Eng", company="Microsoft")
+        text = "Acme is hiring a Backend Eng."  # company not grounded, no URL
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(text)
+        assert job.company == COMPANY_NOT_SPECIFIED
+        assert "company" in needs_review
+
+    async def test_needs_review_omits_company_when_url_filled(self):
+        # LLM ungrounded but URL provided a fallback → final company is fine
+        llm_job = JobPosting(title="Backend Eng", company="Microsoft")
+        text = "Looking for a Backend Eng."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(
+                text, url="https://podcastle.bamboohr.com/careers/56"
+            )
+        assert job.company == "podcastle"
+        assert "company" not in needs_review
+
+    async def test_needs_review_contains_title_when_ungrounded(self):
+        llm_job = JobPosting(title="Fabricated Title", company="Podcastle Inc.")
+        text = "Podcastle is hiring."  # title not in text
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(text)
+        assert "title" in needs_review

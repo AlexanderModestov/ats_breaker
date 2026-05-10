@@ -83,7 +83,7 @@ def optimize(
         click.echo(f"Resume: {first_name or 'Unknown'} {last_name or ''}")
 
         # Parse job first to get company/role for debug dir
-        job = await parse_job_posting(job_text)
+        job, _ = await parse_job_posting(job_text)
         if job.company == COMPANY_NOT_SPECIFIED:
             job.company = click.prompt(
                 "Could not detect company name. Please enter it"

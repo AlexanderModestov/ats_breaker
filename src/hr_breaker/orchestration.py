@@ -138,7 +138,7 @@ async def optimize_for_job(
         with log_time("parse_job_posting"):
             # TODO(url-signal): plumb url here if this branch is ever reached;
             # current callers pre-parse and pass job=, so URL signal flows via that path.
-            job = await parse_job_posting(job_text)
+            job, _ = await parse_job_posting(job_text)
     optimized = None
     validation = None
     last_attempt: str | None = None

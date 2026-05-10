@@ -115,12 +115,15 @@ def _company_matches(llm_value: str, url_value: str) -> bool:
     return url_norm in llm_norm or llm_norm in url_norm
 
 
-async def parse_job_posting(text: str, url: str | None = None) -> JobPosting:
+async def parse_job_posting(
+    text: str, url: str | None = None
+) -> tuple[JobPosting, list[str]]:
     """Parse job posting text into structured data.
 
-    If `url` is provided and matches a known ATS pattern, the URL-derived
-    company slug is used as a strong signal: it fills in when the LLM
-    extraction fails grounding, and overrides the LLM on conflict.
+    Returns the parsed JobPosting along with a list of field names whose
+    extraction failed and are recommended for manual review:
+      - "company" when the final value is COMPANY_NOT_SPECIFIED
+      - "title" when the LLM-extracted title is not grounded in the text
     """
     agent = get_job_parser_agent()
     result = await agent.run(f"Parse this job posting:\n\n{text}")
@@ -128,6 +131,7 @@ async def parse_job_posting(text: str, url: str | None = None) -> JobPosting:
 
     url_company = extract_company_from_url(url) if url else None
     warnings: list[str] = []
+    needs_review: list[str] = []
 
     if _is_grounded(job.company, text, is_company=True):
         if url_company and not _company_matches(job.company, url_company):
@@ -135,16 +139,19 @@ async def parse_job_posting(text: str, url: str | None = None) -> JobPosting:
                 f"URL says '{url_company}' but LLM extracted '{job.company}' — trusting URL"
             )
             job.company = url_company
-        # else: LLM agrees with URL (or no URL hint) → keep LLM canonical form
     else:
         warnings.append(f"company '{job.company}' not found in posting text")
         job.company = url_company or COMPANY_NOT_SPECIFIED
 
+    if job.company == COMPANY_NOT_SPECIFIED:
+        needs_review.append("company")
+
     if not _is_grounded(job.title, text):
         warnings.append(f"title '{job.title}' not found in posting text")
+        needs_review.append("title")
 
     if warnings:
         logger.warning("Job parser grounding issues: %s", "; ".join(warnings))
 
     job.raw_text = text
-    return job
+    return job, needs_review
