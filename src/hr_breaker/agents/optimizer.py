@@ -118,29 +118,16 @@ class OptimizerResult(BaseModel):
     changes: list[str]
 
 
-def get_optimizer_agent(
-    job: JobPosting,
-    source: ResumeSource,
-    model_name: str | None = None,
-    *,
-    refinement: bool = False,
-) -> Agent:
-    """Create optimizer agent with job/source context for filter tools.
-
-    `model_name` overrides the default (`settings.gemini_pro_model`); used to
-    swap to a faster model on refinement iterations. `refinement=True`
-    additionally routes thinking-budget selection to
-    `gemini_flash_thinking_budget`.
-    """
+def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
+    """Create optimizer agent with job/source context for filter tools."""
     settings = get_settings()
     resume_guide = _load_resume_guide()
     system_prompt = OPTIMIZER_PROMPT.format(resume_guide=resume_guide)
-    model = model_name or settings.gemini_pro_model
     agent = Agent(
-        f"google-gla:{model}",
+        f"google-gla:{settings.gemini_pro_model}",
         output_type=OptimizerResult,
         system_prompt=system_prompt,
-        model_settings=get_model_settings(refinement=refinement),
+        model_settings=get_model_settings(),
     )
 
     @agent.system_prompt
@@ -294,17 +281,7 @@ Return JSON with:
 Output ONLY valid JSON. The html field should contain the raw HTML string.
 """
 
-    settings = get_settings()
-    # Pro for the first draft, Flash for refinement iterations: refining an
-    # existing HTML to fix listed filter failures is a much simpler task than
-    # generating from scratch, and Flash is several times faster. Flash also
-    # uses `gemini_flash_thinking_budget` (set GEMINI_FLASH_THINKING_BUDGET=0
-    # to disable thinking on refinement entirely).
-    is_refinement = context.iteration > 0
-    model_name = (
-        settings.gemini_flash_model if is_refinement else settings.gemini_pro_model
-    )
-    agent = get_optimizer_agent(job, source, model_name, refinement=is_refinement)
+    agent = get_optimizer_agent(job, source)
     result = await agent.run(prompt)
     return OptimizedResume(
         html=result.output.html,

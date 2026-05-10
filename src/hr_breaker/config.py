@@ -44,7 +44,6 @@ class Settings(BaseModel):
     gemini_pro_model: str = "gemini-3-pro-preview"
     gemini_flash_model: str = "gemini-3-flash-preview"
     gemini_thinking_budget: int | None = None
-    gemini_flash_thinking_budget: int | None = None
     cache_dir: Path = Path(".cache/resumes")
     output_dir: Path = Path("output")
     max_iterations: int = 5
@@ -126,18 +125,11 @@ def _parse_unlimited_users(value: str) -> list[str]:
 def get_settings() -> Settings:
     thinking_env = os.getenv("GEMINI_THINKING_BUDGET")
     thinking_budget: int | None = int(thinking_env) if thinking_env else None
-    # Flash budget: falls back to the general budget if not set; explicit "0"
-    # disables thinking on refinement iterations.
-    flash_thinking_env = os.getenv("GEMINI_FLASH_THINKING_BUDGET")
-    flash_thinking_budget: int | None = (
-        int(flash_thinking_env) if flash_thinking_env else thinking_budget
-    )
     return Settings(
         google_api_key=os.getenv("GOOGLE_API_KEY", ""),
         gemini_pro_model=os.getenv("GEMINI_PRO_MODEL") or "gemini-3-pro-preview",
         gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or "gemini-3-flash-preview",
         gemini_thinking_budget=thinking_budget,
-        gemini_flash_thinking_budget=flash_thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
         # Scraper settings
         scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT", "30")),
@@ -187,18 +179,13 @@ def get_settings() -> Settings:
     )
 
 
-def get_model_settings(*, refinement: bool = False) -> dict[str, Any] | None:
-    """Get GoogleModelSettings with thinking config if budget is set.
-
-    `refinement=True` selects `gemini_flash_thinking_budget` (used on
-    optimizer iter ≥ 1); otherwise `gemini_thinking_budget` is used.
-    """
+def get_model_settings() -> dict[str, Any] | None:
+    """Get GoogleModelSettings with thinking config if budget is set."""
     settings = get_settings()
-    budget = (
-        settings.gemini_flash_thinking_budget
-        if refinement
-        else settings.gemini_thinking_budget
-    )
-    if budget is None:
-        return None
-    return {"google_thinking_config": {"thinking_budget": budget}}
+    if settings.gemini_thinking_budget is not None:
+        return {
+            "google_thinking_config": {
+                "thinking_budget": settings.gemini_thinking_budget
+            }
+        }
+    return None
