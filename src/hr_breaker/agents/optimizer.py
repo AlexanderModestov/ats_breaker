@@ -68,14 +68,6 @@ STRICT RULES - NEVER VIOLATE:
 9. NEVER translate the resume - output MUST be in the same language as the original resume
 10. NEVER remove a skill, technology, or keyword that IS PRESENT in the original resume — these are not hallucinations even if they look generic. Hallucination = invented; removing real content to "be safe" is the bigger failure mode. If unsure, search the original resume text for the term.
 
-HOW TO FIX FAILED FILTERS (when the prompt lists them):
-- KeywordMatcher failed → call check_keywords_tool(html) to get missing keywords. For each missing keyword, search the ORIGINAL resume (case-insensitive) — if it appears, surface it in Skills/Summary/relevant bullet. Do NOT invent ones not in the original. Re-run the tool to verify the score moved.
-- VectorSimilarityMatcher failed → rephrase Summary and bullet leads with terminology from the job description (only words supported by original experience). Reorder bullets to put job-relevant ones first.
-- LLMChecker failed → read the issues line; usually means generic phrasing or LLM-tells (em dash, "delve", "leverage", "robust"). Tighten wording to match original tone.
-- ContentIntegrityChecker failed → you removed or paraphrased real facts. Restore them verbatim from the original.
-- DataValidator failed → fix HTML structure (missing sections/headers). Run validate_structure(html).
-- ContentLengthChecker failed → use check_content_length to confirm; trim from Summary first, then less-relevant bullets, never from headline experience.
-
 CONTENT BUDGET:
 - Target: ~500 words, ~4000 characters (these are rough estimates, actual fit depends on formatting)
 - The ONLY authoritative check is page_count from check_content_length
@@ -84,11 +76,11 @@ TOOLS:
 - Use check_content_length(html) to verify your output fits 1 page BEFORE returning
   - Returns actual page_count from rendered PDF (authoritative)
   - Also returns character/word estimates (rough guidance only)
-- Use preview_resume(html) to see rendered PDF preview - call at least once before returning
 - If page_count > 1, trim content and check again
 - Do not return until check_content_length confirms fits_one_page=true
 
 OPTIONAL TOOLS (use when helpful):
+- preview_resume(html) - Renders the PDF and returns a visual preview image. Use ONLY if you suspect layout problems (overflowing columns, awkward gaps, broken sections). Do NOT call routinely — page_count from check_content_length is the authoritative check for fit.
 - check_keywords_tool(html) - Returns missing job keywords ranked by TF-IDF importance. Use if unsure about keyword coverage.
 - validate_structure(html) - Check HTML has proper headers/sections. Use after major structural changes.
 
@@ -107,30 +99,67 @@ LINKS:
 """
 
 
+# Per-filter playbook. Lives outside the system prompt because it's only
+# relevant on refinement iterations (when context.validation is set), so
+# attaching it to the user prompt avoids paying its tokens on iter=0.
+HOW_TO_FIX_FILTERS = """
+HOW TO FIX FAILED FILTERS:
+- KeywordMatcher failed → call check_keywords_tool(html) to get missing keywords. For each missing keyword, search the ORIGINAL resume (case-insensitive) — if it appears, surface it in Skills/Summary/relevant bullet. Do NOT invent ones not in the original. Re-run the tool to verify the score moved.
+- VectorSimilarityMatcher failed → rephrase Summary and bullet leads with terminology from the job description (only words supported by original experience). Reorder bullets to put job-relevant ones first.
+- LLMChecker failed → read the issues line; usually means generic phrasing or LLM-tells (em dash, "delve", "leverage", "robust"). Tighten wording to match original tone.
+- ContentIntegrityChecker failed → you removed or paraphrased real facts. Restore them verbatim from the original.
+- DataValidator failed → fix HTML structure (missing sections/headers). Run validate_structure(html).
+- ContentLengthChecker failed → use check_content_length to confirm; trim from Summary first, then less-relevant bullets, never from headline experience.
+"""
+
+
 class OptimizerResult(BaseModel):
     html: str
     changes: list[str]
 
 
-def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
-    """Create optimizer agent with job/source context for filter tools."""
+def get_optimizer_agent(
+    job: JobPosting,
+    source: ResumeSource,
+    model_name: str | None = None,
+    *,
+    refinement: bool = False,
+) -> Agent:
+    """Create optimizer agent with job/source context for filter tools.
+
+    `model_name` overrides the default (`settings.gemini_pro_model`); used to
+    swap to a faster model on refinement iterations. `refinement=True`
+    additionally routes thinking-budget selection to
+    `gemini_flash_thinking_budget`.
+    """
     settings = get_settings()
     resume_guide = _load_resume_guide()
     system_prompt = OPTIMIZER_PROMPT.format(resume_guide=resume_guide)
+    model = model_name or settings.gemini_pro_model
     agent = Agent(
-        f"google-gla:{settings.gemini_pro_model}",
+        f"google-gla:{model}",
         output_type=OptimizerResult,
         system_prompt=system_prompt,
-        model_settings=get_model_settings(),
+        model_settings=get_model_settings(refinement=refinement),
     )
 
     @agent.system_prompt
     def add_current_date() -> str:
         return f"Today's date: {date.today().strftime('%B %Y')}"
 
+    # Per-agent cache: WeasyPrint render is the slow part of check_content_length.
+    # The LLM often calls the tool 2-3× with identical HTML during one
+    # optimize_resume; caching skips the redundant renders.
+    _length_cache: dict[str, dict] = {}
+
     @agent.tool_plain
     def check_content_length(html: str) -> dict:
         """Check if HTML content fits one page by rendering PDF. Call before finalizing."""
+        cached = _length_cache.get(html)
+        if cached is not None:
+            logger.debug("check_content_length cache hit")
+            return cached
+
         est = estimate_content_length(html)
 
         # Actually render PDF to check real page count
@@ -140,7 +169,7 @@ def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
             page_count = render_result.page_count
             fits_one_page = page_count == 1
         except RenderError as e:
-            return {
+            err_result = {
                 "fits_one_page": False,
                 "error": f"Render failed: {e}",
                 "estimates": {
@@ -149,6 +178,8 @@ def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
                     "note": "Estimates only - fix render error first",
                 },
             }
+            _length_cache[html] = err_result
+            return err_result
 
         result = {
             "fits_one_page": fits_one_page,
@@ -171,6 +202,7 @@ def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
             est.words,
             fits_one_page,
         )
+        _length_cache[html] = result
         return result
 
     @agent.tool_plain
@@ -244,13 +276,13 @@ Do NOT rewrite from scratch - modify the last attempt minimally.
         prompt += f"""
 ## Filter Results:
 {context.format_filter_results()}
-
+{HOW_TO_FIX_FILTERS}
 IMPORTANT: Make MINIMAL changes to fix ONLY the failed filters listed above.
 - Start from the Last Attempt HTML above and modify it in place.
 - Change ONLY what's needed to move each FAILED filter above its threshold.
 - Do NOT regress any PASSED filter — preserve its content and structure.
 - Do NOT rewrite, rephrase, or restructure content unrelated to the failures.
-- See the HOW TO FIX FAILED FILTERS section in the system prompt for per-filter actions.
+- Apply the per-filter actions from the HOW TO FIX FAILED FILTERS section above.
 - If a previous iteration's changes did NOT move the failing score, try a different action (e.g. KeywordMatcher: actually add the missing keywords from the original resume into Skills, don't just reword bullets).
 """
 
@@ -262,7 +294,17 @@ Return JSON with:
 Output ONLY valid JSON. The html field should contain the raw HTML string.
 """
 
-    agent = get_optimizer_agent(job, source)
+    settings = get_settings()
+    # Pro for the first draft, Flash for refinement iterations: refining an
+    # existing HTML to fix listed filter failures is a much simpler task than
+    # generating from scratch, and Flash is several times faster. Flash also
+    # uses `gemini_flash_thinking_budget` (set GEMINI_FLASH_THINKING_BUDGET=0
+    # to disable thinking on refinement entirely).
+    is_refinement = context.iteration > 0
+    model_name = (
+        settings.gemini_flash_model if is_refinement else settings.gemini_pro_model
+    )
+    agent = get_optimizer_agent(job, source, model_name, refinement=is_refinement)
     result = await agent.run(prompt)
     return OptimizedResume(
         html=result.output.html,
