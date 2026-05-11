@@ -10,6 +10,7 @@ import { cn, isMobileDevice, isVoiceRecordingSupported } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { VoiceButton } from "@/components/VoiceButton";
 import { transcribeAudio, ApiError } from "@/lib/api";
+import type { RecorderError } from "@/hooks/useVoiceRecorder";
 import type { CoachMessage } from "@/types";
 
 const MARKDOWN_COMPONENTS = {
@@ -78,6 +79,15 @@ const SUGGESTIONS = [
   "What questions should I expect?",
 ];
 
+const VOICE_ERROR_COPY: Record<RecorderError, string> = {
+  permission_denied: "Microphone access denied. Enable it in your browser settings.",
+  no_microphone: "Microphone unavailable.",
+  unsupported: "Voice recording isn't supported in this browser.",
+  too_short: "Hold to record.",
+  max_duration: "Max 60 seconds reached.",
+  unknown: "Couldn't start recording.",
+};
+
 function MessageBubble({ message }: { message: CoachMessage }) {
   const isUser = message.role === "user";
 
@@ -128,15 +138,6 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
 
   const [voiceError, setVoiceError] = useState<string | null>(null);
 
-  const VOICE_ERROR_COPY: Record<string, string> = {
-    permission_denied: "Microphone access denied. Enable it in your browser settings.",
-    no_microphone: "Microphone unavailable.",
-    unsupported: "Voice recording isn't supported in this browser.",
-    too_short: "Hold to record.",
-    max_duration: "Max 60 seconds reached.",
-    unknown: "Couldn't start recording.",
-  };
-
   const handleVoiceCaptured = useCallback(
     async (blob: Blob) => {
       setVoiceError(null);
@@ -145,6 +146,10 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
         const trimmed = text.trim();
         if (!trimmed) {
           setVoiceError("Didn't catch that.");
+          return;
+        }
+        if (isStreaming) {
+          setVoiceError("Wait until I finish responding.");
           return;
         }
         onSend(trimmed);
@@ -159,7 +164,7 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
         }
       }
     },
-    [onSend],
+    [onSend, isStreaming],
   );
 
   const handleResize = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -257,7 +262,7 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
             <VoiceButton
               disabled={isStreaming}
               onCaptured={handleVoiceCaptured}
-              onError={(kind) => setVoiceError(VOICE_ERROR_COPY[kind] ?? VOICE_ERROR_COPY.unknown)}
+              onError={(kind) => setVoiceError(VOICE_ERROR_COPY[kind])}
             />
           ) : (
             <Button
