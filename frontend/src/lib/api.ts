@@ -337,6 +337,28 @@ export async function streamCoachChat(
   }
 }
 
+export async function transcribeAudio(blob: Blob): Promise<string> {
+  const headers = await getAuthHeaders();
+  const form = new FormData();
+  // Filename matters only for Content-Disposition; backend reads bytes + content_type.
+  form.append("audio", blob, "clip.webm");
+
+  const response = await fetch(`${API_BASE}/coach/transcribe`, {
+    method: "POST",
+    headers: { Authorization: (headers as Record<string, string>).Authorization },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const detail = typeof body?.detail === "string" ? body.detail : `Request failed: ${response.status}`;
+    throw new ApiError(detail, response.status, body?.detail);
+  }
+
+  const { text } = (await response.json()) as { text: string };
+  return text;
+}
+
 // Telegram API
 export async function linkTelegramId(telegramId: number): Promise<void> {
   await fetchWithAuth("/auth/telegram/link", {
