@@ -3,7 +3,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Download, Building2, MapPin, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, Download, Building2, MapPin, Loader2, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResumePreview } from "@/components/ResumePreview";
@@ -67,10 +67,10 @@ function JobInfoHeader({
           <button
             type="button"
             onClick={() => setEditing("title")}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-amber-400 px-3 py-1 text-2xl sm:text-3xl font-bold text-amber-700 transition-colors hover:border-solid hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-amber-500/60 dark:text-amber-400 dark:hover:bg-amber-950/30"
           >
-            <span className="italic">Position not detected — click to set</span>
-            <Pencil className="h-4 w-4" aria-hidden="true" />
+            <Plus className="h-5 w-5" aria-hidden="true" />
+            Add position
           </button>
         ) : (
           job.title
@@ -92,10 +92,10 @@ function JobInfoHeader({
               <button
                 type="button"
                 onClick={() => setEditing("company")}
-                className="inline-flex items-center gap-1.5 italic hover:text-foreground"
+                className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-amber-400 px-2 py-0.5 text-sm font-medium text-amber-700 transition-colors hover:border-solid hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-amber-500/60 dark:text-amber-400 dark:hover:bg-amber-950/30"
               >
-                Company not detected — click to set
-                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                Add company
               </button>
             ) : (
               <span>{job.company}</span>
