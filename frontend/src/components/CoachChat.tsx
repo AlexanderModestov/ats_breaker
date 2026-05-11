@@ -6,7 +6,10 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "@/components/motion";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, isMobileDevice, isVoiceRecordingSupported } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { VoiceButton } from "@/components/VoiceButton";
+import { transcribeAudio, ApiError } from "@/lib/api";
 import type { CoachMessage } from "@/types";
 
 const MARKDOWN_COMPONENTS = {
@@ -118,12 +121,54 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  useEffect(() => {
+    setVoiceSupported(isMobileDevice() && isVoiceRecordingSupported());
+  }, []);
+
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  const VOICE_ERROR_COPY: Record<string, string> = {
+    permission_denied: "Microphone access denied. Enable it in your browser settings.",
+    no_microphone: "Microphone unavailable.",
+    unsupported: "Voice recording isn't supported in this browser.",
+    too_short: "Hold to record.",
+    max_duration: "Max 60 seconds reached.",
+    unknown: "Couldn't start recording.",
+  };
+
+  const handleVoiceCaptured = useCallback(
+    async (blob: Blob) => {
+      setVoiceError(null);
+      try {
+        const text = await transcribeAudio(blob);
+        const trimmed = text.trim();
+        if (!trimmed) {
+          setVoiceError("Didn't catch that.");
+          return;
+        }
+        onSend(trimmed);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          if (e.status === 413) setVoiceError("Recording too long.");
+          else if (e.status === 422) setVoiceError("Didn't catch that.");
+          else if (e.status === 429) setVoiceError("Too many voice messages. Wait a bit.");
+          else setVoiceError("Couldn't transcribe. Try again.");
+        } else {
+          setVoiceError("Couldn't transcribe. Try again.");
+        }
+      }
+    },
+    [onSend],
+  );
+
   const handleResize = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+    if (voiceError) setVoiceError(null);
     const textarea = e.target;
     setInput(textarea.value);
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
-  }, []);
+  }, [voiceError]);
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
@@ -208,18 +253,31 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
             rows={1}
             className="flex-1 resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
-          >
-            {isStreaming ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+          {voiceSupported && !input.trim() ? (
+            <VoiceButton
+              disabled={isStreaming}
+              onCaptured={handleVoiceCaptured}
+              onError={(kind) => setVoiceError(VOICE_ERROR_COPY[kind] ?? VOICE_ERROR_COPY.unknown)}
+            />
+          ) : (
+            <Button
+              size="icon"
+              onClick={handleSend}
+              disabled={!input.trim() || isStreaming}
+            >
+              {isStreaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          )}
         </div>
+        {voiceError && (
+          <Alert variant="destructive" className="mt-2 py-2 text-xs">
+            <AlertDescription>{voiceError}</AlertDescription>
+          </Alert>
+        )}
       </div>
     </div>
   );
