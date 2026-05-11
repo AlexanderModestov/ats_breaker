@@ -22,7 +22,7 @@ interface UseVoiceRecorderResult {
   error: RecorderError | null;
   /** Begin capture. Resolves once recording has actually started (or rejects). */
   start: () => Promise<void>;
-  /** Stop and resolve with the blob (or null if too short or empty). */
+  /** Stop and resolve with the blob (or null if too short, cancelled, or already stopped). */
   stop: () => Promise<Blob | null>;
   /** Stop and discard. */
   cancel: () => void;
@@ -44,6 +44,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
+  const stopResolverRef = useRef<((blob: Blob | null) => void) | null>(null);
 
   const cleanup = useCallback(() => {
     if (tickRef.current) clearInterval(tickRef.current);
@@ -59,6 +60,9 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   useEffect(() => () => cleanup(), [cleanup]);
 
   const start = useCallback(async () => {
+    // Guard against double-start (flaky touch events, StrictMode dev double-invoke).
+    if (recorderRef.current || streamRef.current) return;
+
     setError(null);
     cancelledRef.current = false;
     const mime = pickRecorderMimeType();
@@ -72,7 +76,10 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
-      const name = (e as DOMException)?.name;
+      const name =
+        e && typeof e === "object" && "name" in e
+          ? (e as { name?: string }).name
+          : undefined;
       setError(
         name === "NotAllowedError" || name === "SecurityError"
           ? "permission_denied"
@@ -84,6 +91,13 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
       throw e;
     }
 
+    // User may have released the button while the permission dialog was up.
+    if (cancelledRef.current) {
+      stream.getTracks().forEach((t) => t.stop());
+      setState("idle");
+      return;
+    }
+
     const recorder = new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 32000 });
     recorderRef.current = recorder;
     streamRef.current = stream;
@@ -91,6 +105,32 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
 
     recorder.ondataavailable = (ev) => {
       if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
+    };
+
+    // onstop is set ONCE at recorder creation so it fires correctly regardless of who
+    // triggers `recorder.stop()` (the consumer via stop(), or the max-duration timer).
+    recorder.onstop = () => {
+      const chunks = chunksRef.current;
+      const mimeUsed = recorder.mimeType || "audio/webm";
+      const blob = chunks.length ? new Blob(chunks, { type: mimeUsed }) : null;
+      const elapsed = performance.now() - startedAtRef.current;
+      const resolve = stopResolverRef.current;
+      stopResolverRef.current = null;
+      const cancelled = cancelledRef.current;
+      cleanup();
+      if (cancelled) {
+        setState("idle");
+        resolve?.(null);
+        return;
+      }
+      if (elapsed < MIN_DURATION_MS) {
+        setError("too_short");
+        setState("error");
+        resolve?.(null);
+        return;
+      }
+      setState("idle");
+      resolve?.(blob);
     };
 
     startedAtRef.current = performance.now();
@@ -101,6 +141,10 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
 
     maxTimerRef.current = setTimeout(() => {
       if (recorderRef.current?.state === "recording") {
+        // v1: treat overflow as cancellation (recording is discarded). The consumer
+        // surfaces a "Max 60 seconds reached" message via the error state. A future
+        // version could stash the partial blob and deliver it on release.
+        cancelledRef.current = true;
         setError("max_duration");
         recorderRef.current.stop();
       }
@@ -108,40 +152,19 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
 
     recorder.start();
     setState("recording");
-  }, []);
+  }, [cleanup]);
 
   const stop = useCallback(async (): Promise<Blob | null> => {
     const recorder = recorderRef.current;
     if (!recorder || recorder.state !== "recording") {
-      cleanup();
-      setState("idle");
+      // Already inactive (max-duration timer fired, or start() never completed).
       return null;
     }
-    const elapsed = performance.now() - startedAtRef.current;
     return new Promise<Blob | null>((resolve) => {
-      recorder.onstop = () => {
-        const chunks = chunksRef.current;
-        const mime = recorder.mimeType || "audio/webm";
-        const blob = chunks.length ? new Blob(chunks, { type: mime }) : null;
-        const tooShort = elapsed < MIN_DURATION_MS;
-        cleanup();
-        if (cancelledRef.current) {
-          setState("idle");
-          resolve(null);
-          return;
-        }
-        if (tooShort) {
-          setError("too_short");
-          setState("error");
-          resolve(null);
-          return;
-        }
-        setState("idle");
-        resolve(blob);
-      };
+      stopResolverRef.current = resolve;
       recorder.stop();
     });
-  }, [cleanup]);
+  }, []);
 
   const cancel = useCallback(() => {
     cancelledRef.current = true;
