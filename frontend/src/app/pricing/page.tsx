@@ -21,11 +21,13 @@ import {
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { TIER_LABEL, type Tier } from "@/lib/tiers";
 
+type Feature = string | { label: string; soon?: boolean };
+
 type Plan = {
   tier: Tier;
   price: string;
   tagline: string;
-  features: string[];
+  features: Feature[];
   highlighted?: boolean;
 };
 
@@ -61,7 +63,7 @@ const PLANS: Plan[] = [
     features: [
       "Everything in Job Hunter",
       "AI Coach for interview prep",
-      "Cover letter generator",
+      { label: "Cover letter generator", soon: true },
       "Gap analysis",
       "STAR-structured responses",
     ],
@@ -164,15 +166,24 @@ export default function PricingPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <ul className="space-y-2">
-                    {plan.features.map((f) => (
-                      <li
-                        key={f}
-                        className="flex items-start gap-2 text-sm"
-                      >
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{f}</span>
-                      </li>
-                    ))}
+                    {plan.features.map((f) => {
+                      const label = typeof f === "string" ? f : f.label;
+                      const soon = typeof f === "object" && f.soon;
+                      return (
+                        <li
+                          key={label}
+                          className="flex items-start gap-2 text-sm"
+                        >
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                          <span>{label}</span>
+                          {soon && (
+                            <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide leading-none text-red-600 dark:text-red-400">
+                              soon
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </CardContent>
                 <CardFooter>
