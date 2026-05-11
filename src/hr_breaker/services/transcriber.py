@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 
 from pydantic_ai import Agent, BinaryContent
 
@@ -22,6 +23,15 @@ class TranscriptionError(Exception):
     """Raised when Gemini returns an empty transcript or the provider call fails."""
 
 
+class EmptyTranscriptError(TranscriptionError):
+    """Raised when Gemini returns an empty transcript."""
+
+
+class ProviderTranscriptionError(TranscriptionError):
+    """Raised when the provider call itself fails."""
+
+
+@lru_cache
 def _get_agent() -> Agent:
     settings = get_settings()
     return Agent(
@@ -40,9 +50,9 @@ async def transcribe(audio_bytes: bytes, mime_type: str) -> str:
         result = await agent.run([_PROMPT, BinaryContent(data=audio_bytes, media_type=mime_type)])
     except Exception as exc:
         logger.warning("transcribe: provider error: %s", exc)
-        raise TranscriptionError("Transcription failed") from exc
+        raise ProviderTranscriptionError("Transcription failed") from exc
 
-    text = (result.output or "").strip()
+    text = result.output.strip()
     if not text:
-        raise TranscriptionError("Empty transcript")
+        raise EmptyTranscriptError("Empty transcript")
     return text
