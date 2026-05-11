@@ -1,13 +1,12 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Download, Building2, MapPin, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResumePreview } from "@/components/ResumePreview";
-import EditPopup from "@/components/EditPopup";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import {
   useOptimizationStatus,
@@ -30,27 +29,19 @@ function JobInfoHeader({
   isFailed: boolean;
 }) {
   const [editing, setEditing] = useState<EditingField>(null);
-  const [popupPos, setPopupPos] = useState({ top: 0, left: 0 });
   const [localJob, setLocalJob] = useState<JobParsed | null>(null);
   const update = useUpdateOptimizationJob(runId);
   const job = localJob ?? status.job_parsed;
   const needsReview = new Set(job?.needs_review ?? []);
 
-  const openEditor = (field: "title" | "company", e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setPopupPos({ top: rect.bottom + 4, left: rect.left });
-    setEditing(field);
-  };
-
-  const handleSave = async (newText: string) => {
-    if (!editing) return;
+  const saveField = async (field: "title" | "company", newText: string) => {
     const trimmed = newText.trim();
     if (!trimmed) {
       setEditing(null);
       return;
     }
     try {
-      const updated = await update.mutateAsync({ [editing]: trimmed });
+      const updated = await update.mutateAsync({ [field]: trimmed });
       setLocalJob(updated.job_parsed);
     } catch (err) {
       console.error("Failed to save job edit:", err);
@@ -64,10 +55,18 @@ function JobInfoHeader({
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
         {!job ? (
           <span className="text-muted-foreground">Optimization in Progress</span>
+        ) : editing === "title" ? (
+          <InlineEdit
+            initial=""
+            placeholder="Enter position"
+            className="w-full max-w-md bg-transparent border-b border-input px-0 py-0 text-2xl sm:text-3xl font-bold tracking-tight focus:outline-none focus:border-ring"
+            onSave={(v) => saveField("title", v)}
+            onCancel={() => setEditing(null)}
+          />
         ) : needsReview.has("title") ? (
           <button
             type="button"
-            onClick={(e) => openEditor("title", e)}
+            onClick={() => setEditing("title")}
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <span className="italic">Position not detected — click to set</span>
@@ -81,10 +80,18 @@ function JobInfoHeader({
         <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Building2 className="h-4 w-4" />
-            {needsReview.has("company") ? (
+            {editing === "company" ? (
+              <InlineEdit
+                initial=""
+                placeholder="Enter company"
+                className="w-64 bg-transparent border-b border-input px-0 py-0 text-base focus:outline-none focus:border-ring"
+                onSave={(v) => saveField("company", v)}
+                onCancel={() => setEditing(null)}
+              />
+            ) : needsReview.has("company") ? (
               <button
                 type="button"
-                onClick={(e) => openEditor("company", e)}
+                onClick={() => setEditing("company")}
                 className="inline-flex items-center gap-1.5 italic hover:text-foreground"
               >
                 Company not detected — click to set
@@ -109,23 +116,51 @@ function JobInfoHeader({
             : "Please wait while we optimize your resume"}
         </p>
       )}
-      {editing && job && (
-        <EditPopup
-          text={
-            editing === "title"
-              ? needsReview.has("title")
-                ? ""
-                : job.title
-              : needsReview.has("company")
-              ? ""
-              : job.company
-          }
-          position={popupPos}
-          onSave={handleSave}
-          onCancel={() => setEditing(null)}
-        />
-      )}
     </div>
+  );
+}
+
+function InlineEdit({
+  initial,
+  placeholder,
+  className,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  placeholder?: string;
+  className?: string;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      value={value}
+      placeholder={placeholder}
+      maxLength={200}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onSave(value);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+      onBlur={onCancel}
+      className={className}
+    />
   );
 }
 
