@@ -15,7 +15,10 @@ export type AnalyticsEvent =
   | "optimization_failed"
   | "pdf_downloaded"
   | "pricing_viewed"
-  | "pdf_history_viewed";
+  | "pdf_history_viewed"
+  | "coach_voice_recording_started"
+  | "coach_voice_recording_completed"
+  | "coach_voice_error";
 
 type TrackFn = (event: AnalyticsEvent, props?: Record<string, unknown>) => void;
 

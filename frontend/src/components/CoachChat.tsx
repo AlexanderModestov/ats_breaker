@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { VoiceButton } from "@/components/VoiceButton";
 import { transcribeAudio, ApiError } from "@/lib/api";
 import type { RecorderError } from "@/hooks/useVoiceRecorder";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import type { CoachMessage } from "@/types";
 
 const MARKDOWN_COMPONENTS = {
@@ -122,6 +123,7 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { track } = useAnalytics();
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -155,16 +157,26 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
         onSend(trimmed);
       } catch (e) {
         if (e instanceof ApiError) {
-          if (e.status === 413) setVoiceError("Recording too long.");
-          else if (e.status === 422) setVoiceError("Didn't catch that.");
-          else if (e.status === 429) setVoiceError("Too many voice messages. Wait a bit.");
-          else setVoiceError("Couldn't transcribe. Try again.");
+          if (e.status === 413) {
+            track("coach_voice_error", { error_type: "transcription_failed" });
+            setVoiceError("Recording too long.");
+          } else if (e.status === 422) {
+            track("coach_voice_error", { error_type: "transcription_failed" });
+            setVoiceError("Didn't catch that.");
+          } else if (e.status === 429) {
+            track("coach_voice_error", { error_type: "rate_limited" });
+            setVoiceError("Too many voice messages. Wait a bit.");
+          } else {
+            track("coach_voice_error", { error_type: "transcription_failed" });
+            setVoiceError("Couldn't transcribe. Try again.");
+          }
         } else {
+          track("coach_voice_error", { error_type: "transcription_failed" });
           setVoiceError("Couldn't transcribe. Try again.");
         }
       }
     },
-    [onSend, isStreaming],
+    [onSend, isStreaming, track],
   );
 
   const handleResize = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -262,7 +274,14 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
             <VoiceButton
               disabled={isStreaming}
               onCaptured={handleVoiceCaptured}
-              onError={(kind) => setVoiceError(VOICE_ERROR_COPY[kind])}
+              onError={(kind) => {
+                track("coach_voice_error", { error_type: kind });
+                setVoiceError(VOICE_ERROR_COPY[kind]);
+              }}
+              onRecordingStart={() => track("coach_voice_recording_started")}
+              onRecordingEnd={({ durationMs, cancelled }) =>
+                track("coach_voice_recording_completed", { duration_ms: durationMs, cancelled })
+              }
             />
           ) : (
             <Button
