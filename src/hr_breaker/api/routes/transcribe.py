@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -20,22 +19,30 @@ from hr_breaker.services.voice_rate_limit import (
     get_voice_rate_limiter,
 )
 
-logger = logging.getLogger(__name__)
-
 MAX_AUDIO_BYTES = 5 * 1024 * 1024  # 5 MB
 
-router = APIRouter(dependencies=[Depends(require_feature(Feature.COACH))])
+
+def _check_rate_limit(
+    user_id: CurrentUser,
+    limiter: Annotated[VoiceRateLimiter, Depends(get_voice_rate_limiter)],
+) -> None:
+    """Router-level rate-limit gate. Runs before the multipart body is parsed."""
+    if not limiter.allow(user_id):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+
+router = APIRouter(
+    dependencies=[
+        Depends(require_feature(Feature.COACH)),
+        Depends(_check_rate_limit),
+    ]
+)
 
 
 @router.post("/transcribe", response_model=TranscribeResponse)
 async def transcribe_audio(
-    user_id: CurrentUser,
-    limiter: Annotated[VoiceRateLimiter, Depends(get_voice_rate_limiter)],
     audio: UploadFile = File(...),
 ) -> TranscribeResponse:
-    if not limiter.allow(user_id):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
-
     audio_bytes = await audio.read()
     if len(audio_bytes) > MAX_AUDIO_BYTES:
         raise HTTPException(status_code=413, detail="Audio too long")
