@@ -217,7 +217,7 @@ export const t = {
           { en: "STAR-structured responses", ru: "Ответы по методу STAR" },
           { en: "Personalized feedback", ru: "Персональная обратная связь" },
           { en: "Gap analysis", ru: "Анализ пробелов" },
-          { en: "Cover letter generator", ru: "Генератор сопроводительных писем" },
+          { en: "Cover letter generator", ru: "Генератор сопроводительных писем", soon: true },
         ],
         highlighted: false,
       },

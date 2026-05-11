@@ -70,7 +70,12 @@ export function PricingSection() {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    {feature[lang]}
+                    <span>{feature[lang]}</span>
+                    {"soon" in feature && feature.soon && (
+                      <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide leading-none text-red-600 dark:text-red-400">
+                        soon
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
