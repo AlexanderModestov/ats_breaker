@@ -208,3 +208,9 @@ class CoachSessionResponse(BaseModel):
 class CoachMessageResponse(BaseModel):
     role: str
     content: str
+
+
+class TranscribeResponse(BaseModel):
+    """Result of /api/coach/transcribe."""
+
+    text: str
