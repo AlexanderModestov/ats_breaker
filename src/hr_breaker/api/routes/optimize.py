@@ -237,6 +237,7 @@ async def list_optimization_runs(
                 job_title=job_parsed.get("title"),
                 job_company=job_parsed.get("company"),
                 job_url=job_url,
+                needs_review=job_parsed.get("needs_review") or [],
                 created_at=run["created_at"],
             )
         )

@@ -127,6 +127,7 @@ class OptimizationSummary(BaseModel):
     job_title: str | None = None
     job_company: str | None = None
     job_url: str | None = None
+    needs_review: list[str] = []
     created_at: datetime
 
 

@@ -91,6 +91,7 @@ export interface OptimizationSummary {
   job_title: string | null;
   job_company: string | null;
   job_url: string | null;
+  needs_review?: string[];
   created_at: string;
 }
 

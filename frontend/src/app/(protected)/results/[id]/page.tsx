@@ -1,12 +1,13 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Download, Building2, MapPin, Loader2, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ResumePreview } from "@/components/ResumePreview";
+import { InlineEdit } from "@/components/InlineEdit";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import {
   useOptimizationStatus,
@@ -117,50 +118,6 @@ function JobInfoHeader({
         </p>
       )}
     </div>
-  );
-}
-
-function InlineEdit({
-  initial,
-  placeholder,
-  className,
-  onSave,
-  onCancel,
-}: {
-  initial: string;
-  placeholder?: string;
-  className?: string;
-  onSave: (value: string) => void;
-  onCancel: () => void;
-}) {
-  const [value, setValue] = useState(initial);
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    ref.current?.focus();
-    ref.current?.select();
-  }, []);
-
-  return (
-    <input
-      ref={ref}
-      type="text"
-      value={value}
-      placeholder={placeholder}
-      maxLength={200}
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          onSave(value);
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          onCancel();
-        }
-      }}
-      onBlur={onCancel}
-      className={className}
-    />
   );
 }
 
