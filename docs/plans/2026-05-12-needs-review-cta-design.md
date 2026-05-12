@@ -17,10 +17,9 @@ Make "this field needs your input" obviously interactive at a glance, without re
 
 ## Non-goals
 
-- No change to backend (`needs_review` flow, PATCH endpoint).
-- No change to `InlineEdit` component, save flow, or `useUpdateOptimizationJob` hook.
-- No change to history list (`OptimizationCard.tsx`) — separate task; see "Future work".
+- No change to PATCH endpoint logic or `useUpdateOptimizationJob` hook semantics.
 - No change to copy on already-parsed fields.
+- No editing flow on the optimization start page (the design doc `2026-05-10-job-parsing-manual-fix-design.md` explicitly rejects pre-optimization confirmation).
 
 ## Design
 
@@ -79,19 +78,37 @@ Rationale: short, action-oriented; the dashed border + Plus icon communicates "m
 
 ## Implementation
 
-Single file: `frontend/src/app/(protected)/results/[id]/page.tsx`.
+### Results page (`results/[id]/page.tsx`)
 
 - Add `Plus` to lucide-react import.
-- Replace the two `<button>` blocks (current lines 67-74 for title and 91-99 for company) with the new dashed amber buttons per the spec above.
-- Leave `<Building2 />`, `InlineEdit`, `saveField`, all hooks, and the edit/loading/resolved branches untouched.
+- Replace the two muted `<button>` blocks for title and company with the new dashed amber buttons per the spec above.
+- Leave `<Building2 />`, save flow, and the edit/loading/resolved branches untouched.
 
-Estimated diff: ~15 JSX/Tailwind lines.
+### History cards (`components/OptimizationCard.tsx`)
+
+Same affordance plumbed into the list:
+
+- Backend: `OptimizationSummary` gains `needs_review: list[str] = []`, populated from `job_parsed.get("needs_review")` in `list_optimization_runs`.
+- Frontend types: `OptimizationSummary.needs_review?: string[]`.
+- `InlineEdit` extracted from the results page to `components/InlineEdit.tsx` for reuse. Its input now also `stopPropagation`s on click so card-level navigation does not fire while editing.
+- Card uses `useUpdateOptimizationJob(opt.id)` — already invalidates `["optimizations"]`, so the list refreshes after save. Local `setLocalOpt` mirrors the results-page pattern to avoid a flicker between save and refetch.
+- Card's own `onClick` is suppressed while `editing !== null` so blur/save events do not navigate to the result page.
+- All interactive elements inside the card (CTA buttons, input, delete button) `stopPropagation` on click.
+
+### Sizing
+
+- Card title CTA uses the same compact spec as the company CTA (border 1px, `text-base font-medium`, h-3.5 Plus) — fits inside `<CardTitle>` without breaking the 1-line clamp.
+- Card company CTA matches results-page company CTA exactly.
+
+Estimated diff: ~80 LOC across 5 files.
 
 ## Edge cases
 
 - Both fields in `needs_review` → two stacked buttons (different DOM nodes already).
 - `!job` (parsing in flight) → existing `"Optimization in Progress"` h1 wins; no buttons.
-- Old runs without `needs_review` → `new Set([])`, no buttons; renders as plain title/company.
+- Old runs without `needs_review` → empty set, no buttons; renders as plain title/company (or `"Untitled Job"` / `"Unknown Company"` on cards as before).
+- Editing on a card while another card is also in edit mode: each card holds its own state — no interference.
+- Click outside an editing input while typing → `onBlur` cancels the edit without saving; the input does not propagate the click to the card, so no accidental navigation.
 
 ## Manual verification
 
@@ -102,8 +119,8 @@ Estimated diff: ~15 JSX/Tailwind lines.
    - Tab to it → amber focus ring.
    - Click → `InlineEdit` input, type value, Enter → button replaced by plain text.
    - Reload page → field persists as plain text (no amber).
-3. Toggle dark mode, repeat.
-
-## Future work
-
-`OptimizationCard.tsx` in the history list still shows static `"Untitled Job"` / `"Unknown Company"`. Plumb `needs_review` through `OptimizationSummary` and apply the same amber CTA on cards. Out of scope for this change.
+3. On `/history`:
+   - Same amber CTA on the corresponding card.
+   - Click does not navigate to the result page; input takes focus instead.
+   - Save → card updates in place; navigating into the card now shows the corrected value.
+4. Toggle dark mode, repeat.
