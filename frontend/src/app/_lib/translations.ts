@@ -138,31 +138,27 @@ export const t = {
     heading: { en: "Why HR-Breaker", ru: "Почему HR-Breaker" },
     items: [
       {
-        title: { en: "ATS-Optimized", ru: "Оптимизация под ATS" },
         description: {
-          en: "Your resume is tested against real ATS simulation before you get it.",
-          ru: "Резюме проверяется симуляцией ATS перед выдачей.",
+          en: "Optimize your resume for ATS",
+          ru: "Оптимизируйте резюме под ATS",
         },
       },
       {
-        title: { en: "Keyword Matching", ru: "Подбор ключевых слов" },
         description: {
-          en: "We analyze the job posting and ensure your resume hits the right keywords.",
-          ru: "Анализируем вакансию и обеспечиваем попадание по ключевым словам.",
+          en: "Tailor it to any job description",
+          ru: "Адаптируйте под любую вакансию",
         },
       },
       {
-        title: { en: "No Fabrication", ru: "Без выдумок" },
         description: {
-          en: "Built-in hallucination detection — nothing is made up or exaggerated.",
-          ru: "Встроенная проверка на галлюцинации — ничего не придумано.",
+          en: "Prepare for interviews with personalized questions",
+          ru: "Готовьтесь к собеседованиям с персональными вопросами",
         },
       },
       {
-        title: { en: "Any Format In, PDF Out", ru: "Любой формат → PDF" },
         description: {
-          en: "Upload LaTeX, markdown, plain text, or HTML. Get a clean, professional PDF.",
-          ru: "Загрузите LaTeX, markdown, текст или HTML. Получите чистый PDF.",
+          en: "Improve your interview answers and increase your chances of getting a job offer",
+          ru: "Улучшайте ответы на собеседовании и повышайте шансы получить оффер",
         },
       },
     ],

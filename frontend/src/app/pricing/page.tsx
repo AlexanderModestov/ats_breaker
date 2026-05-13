@@ -34,13 +34,14 @@ type Plan = {
 const PLANS: Plan[] = [
   {
     tier: "free",
-    price: "€0",
+    price: "Free",
     tagline: "Try it out",
     features: [
-      "3 optimizations / week",
+      "3 resume optimizations / week",
       "Basic ATS optimization",
       "Keyword highlights",
-      "PDF export",
+      "AI Interview Prep (limited)",
+      "PDF download",
     ],
   },
   {
@@ -48,9 +49,10 @@ const PLANS: Plan[] = [
     price: "€19/month",
     tagline: "Get more interviews",
     features: [
-      "Unlimited optimizations",
-      "Full ATS scoring",
-      "Missing keywords analysis",
+      "Everything in Starter +",
+      "Unlimited resume optimizations",
+      "Full ATS score",
+      "Missing keywords & improvements",
       "Multiple formats (PDF, DOCX)",
       "Version history",
     ],
@@ -61,11 +63,13 @@ const PLANS: Plan[] = [
     price: "€29/month",
     tagline: "Get the offer",
     features: [
-      "Everything in Job Hunter",
-      "AI Coach for interview prep",
-      { label: "Cover letter generator", soon: true },
-      "Gap analysis",
+      "Everything in Job Hunter +",
+      "AI interview prep",
+      "Answers to common questions",
       "STAR-structured responses",
+      "Personalized feedback",
+      "Gap analysis",
+      { label: "Cover letter generator", soon: true },
     ],
   },
 ];

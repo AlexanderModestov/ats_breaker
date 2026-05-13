@@ -32,12 +32,9 @@ export function FeaturesSection() {
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
                   <Icon className="h-5 w-5 text-accent" />
                 </div>
-                <div>
-                  <h3 className="font-semibold">{item.title[lang]}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {item.description[lang]}
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  {item.description[lang]}
+                </p>
               </motion.div>
             );
           })}
