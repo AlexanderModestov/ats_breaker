@@ -16,6 +16,9 @@ export function FeaturesSection() {
         <h2 className="text-center text-3xl font-bold">
           {t.features.heading[lang]}
         </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-lg text-muted-foreground">
+          {t.features.subtitle[lang]}
+        </p>
 
         <div className="mt-12 grid gap-8 sm:grid-cols-2">
           {t.features.items.map((item, i) => {

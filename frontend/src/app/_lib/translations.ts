@@ -136,6 +136,10 @@ export const t = {
   },
   features: {
     heading: { en: "Why HR-Breaker", ru: "Почему HR-Breaker" },
+    subtitle: {
+      en: "Most tools help you either build a resume or practice interviews. HR-Breaker does both — so you don't just apply, you actually get hired.",
+      ru: "Большинство сервисов помогают либо собрать резюме, либо потренироваться к собеседованию. HR-Breaker делает и то, и другое — чтобы вы не просто откликались, а действительно получали офферы.",
+    },
     items: [
       {
         description: {
