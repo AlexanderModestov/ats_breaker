@@ -22,6 +22,9 @@ FEATURE_MIN_TIER: dict[Feature, str] = {
 
 FREE_WEEKLY_LIMIT = 3
 
+FREE_COACH_THREADS = 3
+FREE_COACH_TURNS = 5
+
 
 def _parse_ts(value):
     if value is None:
@@ -43,6 +46,11 @@ def effective_tier(profile: dict) -> str:
     if status == "cancelled" and period_end and now < period_end:
         return tier
     return "free"
+
+
+def coach_is_unlimited(profile: dict) -> bool:
+    """True when the user has unlimited Coach access (Offer Mode, including cancellation grace)."""
+    return effective_tier(profile) == "offer_mode"
 
 
 def has_feature_access(feature: Feature, profile: dict) -> bool:

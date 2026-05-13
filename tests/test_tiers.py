@@ -8,7 +8,10 @@ from hr_breaker.services.tiers import (
     Feature,
     TIER_RANK,
     FEATURE_MIN_TIER,
+    FREE_COACH_THREADS,
+    FREE_COACH_TURNS,
     FREE_WEEKLY_LIMIT,
+    coach_is_unlimited,
     effective_tier,
     has_feature_access,
     maybe_reset_weekly_window,
@@ -81,6 +84,45 @@ class TestHasFeatureAccess:
     def test_offer_mode_can_coach(self):
         p = _profile(subscription_tier="offer_mode", subscription_status="active")
         assert has_feature_access(Feature.COACH, p) is True
+
+
+class TestCoachTrialConstants:
+    def test_thread_limit_is_3(self):
+        assert FREE_COACH_THREADS == 3
+
+    def test_turn_limit_is_5(self):
+        assert FREE_COACH_TURNS == 5
+
+
+class TestCoachIsUnlimited:
+    def test_free_is_not_unlimited(self):
+        assert coach_is_unlimited(_profile()) is False
+
+    def test_job_hunter_is_not_unlimited(self):
+        p = _profile(subscription_tier="job_hunter", subscription_status="active")
+        assert coach_is_unlimited(p) is False
+
+    def test_offer_mode_active_is_unlimited(self):
+        p = _profile(subscription_tier="offer_mode", subscription_status="active")
+        assert coach_is_unlimited(p) is True
+
+    def test_offer_mode_cancelled_within_grace_is_unlimited(self):
+        future = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
+        p = _profile(
+            subscription_tier="offer_mode",
+            subscription_status="cancelled",
+            current_period_end=future,
+        )
+        assert coach_is_unlimited(p) is True
+
+    def test_offer_mode_cancelled_after_grace_is_not_unlimited(self):
+        past = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+        p = _profile(
+            subscription_tier="offer_mode",
+            subscription_status="cancelled",
+            current_period_end=past,
+        )
+        assert coach_is_unlimited(p) is False
 
 
 class TestWeeklyWindowReset:
