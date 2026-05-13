@@ -15,7 +15,7 @@ TIER_RANK: dict[str, int] = {"free": 0, "job_hunter": 1, "offer_mode": 2}
 
 FEATURE_MIN_TIER: dict[Feature, str] = {
     Feature.OPTIMIZE: "free",
-    Feature.COACH: "offer_mode",
+    Feature.COACH: "free",  # was "offer_mode" — quota gates the trial now
     Feature.COVER_LETTER: "offer_mode",
     Feature.GAP_ANALYSIS: "offer_mode",
 }

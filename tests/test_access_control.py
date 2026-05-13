@@ -47,13 +47,12 @@ class TestFeatureAccess:
         mock.return_value.unlimited_users = []
         return m
 
-    def test_free_blocked_from_coach(self):
+    def test_free_allowed_coach_via_trial(self):
+        # Tier matrix is open; quota check enforces trial caps separately.
         m = self._no_unlimited()
         r = check_feature_access(Feature.COACH, "u@test.com", _profile())
         m.stop()
-        assert r.allowed is False
-        assert r.reason == "feature_locked"
-        assert r.required_tier == "offer_mode"
+        assert r.allowed is True
 
     def test_offer_mode_allowed_coach(self):
         m = self._no_unlimited()
