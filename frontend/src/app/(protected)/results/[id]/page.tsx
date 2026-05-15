@@ -156,7 +156,7 @@ export default function ResultsPage({
       >
         <Button
           variant="ghost"
-          onClick={() => router.push("/optimize")}
+          onClick={() => router.back()}
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -182,7 +182,7 @@ export default function ResultsPage({
       >
         <Button
           variant="ghost"
-          onClick={() => router.push("/optimize")}
+          onClick={() => router.back()}
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -212,7 +212,7 @@ export default function ResultsPage({
         <motion.div whileHover={{ x: -2 }} whileTap={{ scale: 0.98 }}>
           <Button
             variant="ghost"
-            onClick={() => router.push("/optimize")}
+            onClick={() => router.back()}
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />

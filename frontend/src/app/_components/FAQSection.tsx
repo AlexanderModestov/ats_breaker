@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence, ease } from "@/components/motion";
+import { Button } from "@/components/ui/button";
 import { useLang } from "../_lib/LangContext";
 import { t } from "../_lib/translations";
 
@@ -53,6 +55,14 @@ export function FAQSection() {
               </AnimatePresence>
             </div>
           ))}
+        </div>
+
+        <div className="mt-12 flex justify-center">
+          <Link href="/signin">
+            <Button size="lg" className="px-8">
+              {t.faq.cta[lang]}
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

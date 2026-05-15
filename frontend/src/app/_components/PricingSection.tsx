@@ -101,7 +101,7 @@ export function PricingSection() {
         >
           <Link href="/signin">
             <Button variant="accent" size="lg">
-              {lang === "en" ? "Get Started" : "Начать"}
+              {lang === "en" ? "Start Free" : "Начать бесплатно"}
             </Button>
           </Link>
         </motion.div>

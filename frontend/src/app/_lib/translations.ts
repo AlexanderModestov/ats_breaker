@@ -166,6 +166,7 @@ export const t = {
         },
       },
     ],
+    cta: { en: "Help Me Get a Job", ru: "Помоги мне найти работу" },
   },
   pricing: {
     heading: { en: "Pricing", ru: "Тарифы" },
@@ -223,6 +224,17 @@ export const t = {
       },
     ],
   },
+  pain: {
+    heading: { en: "Sending Applications but Not Getting Responses?", ru: "Отправляете отклики, но не получаете ответов?" },
+    intro: { en: "If you're not getting interviews, the problem is usually:", ru: "Если вам не звонят на собеседования, причина, как правило, в следующем:" },
+    items: [
+      { en: "your resume isn't tailored to the job", ru: "резюме не адаптировано под конкретную вакансию" },
+      { en: "ATS systems filter you out", ru: "ATS-системы отсеивают вас автоматически" },
+      { en: "your answers aren't structured or convincing", ru: "ответы на собеседовании не структурированы и не убеждают" },
+    ],
+    slogan: { en: "Fix all three in one place", ru: "Решите все три проблемы в одном месте" },
+    cta: { en: "Fix My Resume & Interview Skills", ru: "Исправить резюме и подготовиться к интервью" },
+  },
   faq: {
     heading: { en: "Frequently Asked Questions", ru: "Часто задаваемые вопросы" },
     items: [
@@ -262,6 +274,7 @@ export const t = {
         },
       },
     ],
+    cta: { en: "Turn Applications into Offers", ru: "Превратите отклики в офферы" },
   },
   footer: {
     tagline: { en: "Resume optimization that works.", ru: "Оптимизация резюме, которая работает." },

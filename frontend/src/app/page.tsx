@@ -11,6 +11,7 @@ import { HowItWorksSection } from "./_components/HowItWorksSection";
 import { AICoachSection } from "./_components/AICoachSection";
 import { FeaturesSection } from "./_components/FeaturesSection";
 import { PricingSection } from "./_components/PricingSection";
+import { PainSection } from "./_components/PainSection";
 import { FAQSection } from "./_components/FAQSection";
 import { LandingFooter } from "./_components/LandingFooter";
 
@@ -48,6 +49,7 @@ export default function LandingPage() {
           <AICoachSection />
           <FeaturesSection />
           <PricingSection />
+          <PainSection />
           <FAQSection />
         </main>
         <LandingFooter />

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { ShieldCheck, Target, Eye, FileText } from "lucide-react";
 import { motion, fadeSlideUp } from "@/components/motion";
+import { Button } from "@/components/ui/button";
 import { useLang } from "../_lib/LangContext";
 import { t } from "../_lib/translations";
 
@@ -41,6 +43,14 @@ export function FeaturesSection() {
               </motion.div>
             );
           })}
+        </div>
+
+        <div className="mt-12 flex justify-center">
+          <Link href="/signin">
+            <Button size="lg" className="px-8">
+              {t.features.cta[lang]}
+            </Button>
+          </Link>
         </div>
       </div>
     </section>
