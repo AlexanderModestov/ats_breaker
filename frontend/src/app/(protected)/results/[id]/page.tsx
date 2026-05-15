@@ -64,7 +64,7 @@ function JobInfoHeader({
             onSave={(v) => saveField("title", v)}
             onCancel={() => setEditing(null)}
           />
-        ) : needsReview.has("title") ? (
+        ) : needsReview.has("title") || job.title === "Not Specified" ? (
           <button
             type="button"
             onClick={() => setEditing("title")}
