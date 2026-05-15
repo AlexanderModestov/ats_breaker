@@ -11,37 +11,48 @@ export function PainSection() {
 
   return (
     <section className="py-20">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="initial"
           whileInView="animate"
           viewport={{ once: true, margin: "-50px" }}
           variants={fadeSlideUp}
-          className="rounded-2xl border border-border/50 bg-card p-8 sm:p-10 space-y-6"
+          className="text-center"
         >
-          <h2 className="text-2xl font-bold sm:text-3xl">
-            {t.pain.heading[lang]}
-          </h2>
+          <h2 className="text-3xl font-bold">{t.pain.heading[lang]}</h2>
+          <p className="mt-4 text-lg text-muted-foreground">{t.pain.intro[lang]}</p>
+        </motion.div>
 
-          <div className="space-y-3 text-muted-foreground">
-            <p>{t.pain.intro[lang]}</p>
-            <ul className="space-y-2 pl-1">
-              {t.pain.items.map((item, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                  {item[lang]}
-                </li>
-              ))}
-            </ul>
+        <motion.ul
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: "-50px" }}
+          variants={fadeSlideUp}
+          className="mt-8 space-y-3 text-muted-foreground"
+        >
+          {t.pain.items.map((item, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+              <span className="text-base">{item[lang]}</span>
+            </li>
+          ))}
+        </motion.ul>
+
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: "-50px" }}
+          variants={fadeSlideUp}
+          className="mt-8 text-center"
+        >
+          <p className="text-lg font-semibold">{t.pain.slogan[lang]}</p>
+          <div className="mt-6">
+            <Link href="/signin">
+              <Button size="lg" className="px-8">
+                {t.pain.cta[lang]}
+              </Button>
+            </Link>
           </div>
-
-          <p className="font-semibold text-foreground">{t.pain.slogan[lang]}</p>
-
-          <Link href="/signin">
-            <Button size="lg" className="w-full sm:w-auto px-8">
-              {t.pain.cta[lang]}
-            </Button>
-          </Link>
         </motion.div>
       </div>
     </section>
