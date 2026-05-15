@@ -13,7 +13,7 @@ export function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="py-20">
+    <section className="py-20 bg-secondary/30">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
         <h2 className="text-center text-3xl font-bold">
           {t.faq.heading[lang]}
