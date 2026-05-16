@@ -183,10 +183,10 @@ class StripeService:
         customer_id = subscription["customer"]
 
         try:
-            invoice = stripe.Invoice.upcoming(
+            invoice = stripe.Invoice.create_preview(
                 customer=customer_id,
                 subscription=subscription_id,
-                subscription_items=[{"id": item_id, "price": price_id}],
+                subscription_details={"items": [{"id": item_id, "price": price_id}]},
             )
             return {"amount_due": invoice["amount_due"], "currency": invoice["currency"]}
         except stripe.StripeError as e:
