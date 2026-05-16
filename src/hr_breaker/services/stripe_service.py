@@ -188,7 +188,12 @@ class StripeService:
                 subscription=subscription_id,
                 subscription_details={"items": [{"id": item_id, "price": price_id}]},
             )
-            return {"amount_due": invoice["amount_due"], "currency": invoice["currency"]}
+            proration_amount = sum(
+                line["amount"]
+                for line in invoice["lines"]["data"]
+                if line.get("proration")
+            )
+            return {"amount_due": proration_amount, "currency": invoice["currency"]}
         except stripe.StripeError as e:
             logger.error(f"Failed to preview upgrade: {e}")
             raise StripeError(f"Failed to preview upgrade: {e}") from e
