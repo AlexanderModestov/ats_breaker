@@ -1,10 +1,12 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getSubscriptionStatus,
   createCheckout,
   createBillingPortal,
+  previewUpgrade,
+  upgradeSubscription,
 } from "@/lib/api";
 import type { Tier } from "@/lib/tiers";
 
@@ -41,6 +43,25 @@ export function useBillingPortal() {
     },
     onSuccess: (data) => {
       window.location.href = data.checkout_url;
+    },
+  });
+}
+
+export function useUpgradePreview(tier: Tier | null) {
+  return useQuery({
+    queryKey: ["upgrade-preview", tier],
+    queryFn: () => previewUpgrade(tier!),
+    enabled: !!tier,
+    staleTime: 60_000,
+  });
+}
+
+export function useUpgrade() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tier: Exclude<Tier, "free">) => upgradeSubscription(tier),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
   });
 }

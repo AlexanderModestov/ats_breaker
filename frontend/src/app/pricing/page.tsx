@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,11 +12,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useSubscription,
   useCheckout,
   useBillingPortal,
+  useUpgradePreview,
+  useUpgrade,
 } from "@/hooks/useSubscription";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { TIER_LABEL, type Tier } from "@/lib/tiers";
@@ -80,17 +90,41 @@ type CtaState = {
   disabled: boolean;
 };
 
+function formatAmount(amountCents: number, currency: string) {
+  return new Intl.NumberFormat("en-EU", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 2,
+  }).format(amountCents / 100);
+}
+
 export default function PricingPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: sub } = useSubscription();
   const checkout = useCheckout();
   const portal = useBillingPortal();
+  const upgrade = useUpgrade();
   const { track } = useAnalytics();
+
+  const [pendingUpgrade, setPendingUpgrade] = useState<Exclude<Tier, "free"> | null>(null);
+  const [upgraded, setUpgraded] = useState(false);
+
+  const preview = useUpgradePreview(pendingUpgrade);
 
   useEffect(() => {
     track("pricing_viewed");
   }, [track]);
+
+  const handleUpgradeConfirm = () => {
+    if (!pendingUpgrade) return;
+    upgrade.mutate(pendingUpgrade, {
+      onSuccess: () => {
+        setUpgraded(true);
+        setPendingUpgrade(null);
+      },
+    });
+  };
 
   const ctaFor = (planTier: Tier): CtaState => {
     if (!isAuthenticated) {
@@ -122,20 +156,19 @@ export default function PricingPage() {
       };
     }
 
-    // planTier is job_hunter or offer_mode, and user is on a different tier
     if (current === "free") {
       return {
         label: "Subscribe",
-        onClick: () =>
-          checkout.mutate(planTier as Exclude<Tier, "free">),
+        onClick: () => checkout.mutate(planTier as Exclude<Tier, "free">),
         disabled: checkout.isPending,
       };
     }
 
+    // paid → paid upgrade
     return {
-      label: "Switch plan",
-      onClick: () => portal.mutate(),
-      disabled: portal.isPending,
+      label: "Upgrade",
+      onClick: () => setPendingUpgrade(planTier as Exclude<Tier, "free">),
+      disabled: false,
     };
   };
 
@@ -147,6 +180,11 @@ export default function PricingPage() {
           <p className="mt-2 text-muted-foreground">
             Choose the plan that fits your job search
           </p>
+          {upgraded && (
+            <p className="mt-3 text-sm font-medium text-primary">
+              ✓ Plan upgraded successfully
+            </p>
+          )}
         </div>
 
         <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
@@ -205,6 +243,68 @@ export default function PricingPage() {
           })}
         </div>
       </div>
+
+      {/* Upgrade confirmation dialog */}
+      <Dialog open={!!pendingUpgrade} onOpenChange={(open) => !open && setPendingUpgrade(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Upgrade to {pendingUpgrade ? TIER_LABEL[pendingUpgrade] : ""}
+            </DialogTitle>
+            <DialogDescription>
+              You'll be charged only for the remaining days of the current billing period.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {preview.isLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Calculating amount...
+              </div>
+            )}
+            {preview.error && (
+              <p className="text-sm text-destructive">
+                Failed to load preview. You can still proceed.
+              </p>
+            )}
+            {preview.data && (
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                <p className="text-sm text-muted-foreground">Due today</p>
+                <p className="mt-1 text-2xl font-bold">
+                  {formatAmount(preview.data.amount_due, preview.data.currency)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Prorated for remaining days in billing cycle
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setPendingUpgrade(null)}
+              disabled={upgrade.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpgradeConfirm}
+              disabled={upgrade.isPending || preview.isLoading}
+            >
+              {upgrade.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Upgrading...
+                </>
+              ) : (
+                "Confirm upgrade"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

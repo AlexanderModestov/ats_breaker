@@ -168,6 +168,55 @@ class StripeService:
         logger.warning(f"[tier-debug] falling back to 'free' for sub {sub_id}")
         return "free"
 
+    def preview_upgrade(self, *, subscription_id: str, new_tier: str) -> dict:
+        """Return the proration amount_due (cents) for switching to new_tier."""
+        settings = get_settings()
+        price_id = {
+            "job_hunter": settings.stripe_price_job_hunter,
+            "offer_mode": settings.stripe_price_offer_mode,
+        }.get(new_tier)
+        if not price_id:
+            raise StripeError(f"Unknown tier: {new_tier}")
+
+        subscription = self.get_subscription(subscription_id)
+        item_id = subscription["items"]["data"][0]["id"]
+        customer_id = subscription["customer"]
+
+        try:
+            invoice = stripe.Invoice.upcoming(
+                customer=customer_id,
+                subscription=subscription_id,
+                subscription_items=[{"id": item_id, "price": price_id}],
+            )
+            return {"amount_due": invoice["amount_due"], "currency": invoice["currency"]}
+        except stripe.StripeError as e:
+            logger.error(f"Failed to preview upgrade: {e}")
+            raise StripeError(f"Failed to preview upgrade: {e}") from e
+
+    def upgrade_subscription(self, *, subscription_id: str, new_tier: str) -> None:
+        """Upgrade to new_tier immediately; Stripe creates a proration invoice."""
+        settings = get_settings()
+        price_id = {
+            "job_hunter": settings.stripe_price_job_hunter,
+            "offer_mode": settings.stripe_price_offer_mode,
+        }.get(new_tier)
+        if not price_id:
+            raise StripeError(f"Unknown tier: {new_tier}")
+
+        subscription = self.get_subscription(subscription_id)
+        item_id = subscription["items"]["data"][0]["id"]
+
+        try:
+            stripe.Subscription.modify(
+                subscription_id,
+                items=[{"id": item_id, "price": price_id}],
+                proration_behavior="always_invoice",
+                metadata={"tier": new_tier},
+            )
+        except stripe.StripeError as e:
+            logger.error(f"Failed to upgrade subscription: {e}")
+            raise StripeError(f"Failed to upgrade subscription: {e}") from e
+
     def retrieve_checkout_session(self, session_id: str) -> stripe.checkout.Session:
         """Retrieve a checkout session by ID."""
         try:

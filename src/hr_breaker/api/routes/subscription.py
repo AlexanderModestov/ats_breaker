@@ -1,8 +1,8 @@
 """Subscription API routes — tier checkout, billing portal, status."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
@@ -26,6 +26,15 @@ class CheckoutResponse(BaseModel):
 
 class PortalRequest(BaseModel):
     return_url: str
+
+
+class UpgradeRequest(BaseModel):
+    tier: Literal["job_hunter", "offer_mode"]
+
+
+class UpgradePreviewResponse(BaseModel):
+    amount_due: int  # cents
+    currency: str
 
 
 class SubscriptionStatusResponse(BaseModel):
@@ -84,6 +93,48 @@ async def create_checkout(
             stripe_customer_id=stripe_customer_id,
         )
         return CheckoutResponse(checkout_url=url)
+    except StripeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/upgrade-preview", response_model=UpgradePreviewResponse)
+async def upgrade_preview(
+    user: CurrentUserWithEmail,
+    supabase: SupabaseServiceDep,
+    tier: Annotated[Literal["job_hunter", "offer_mode"], Query()],
+) -> UpgradePreviewResponse:
+    """Return the proration amount due when upgrading to the given tier."""
+    user_id, _ = user
+    profile = supabase.get_profile(user_id) or {}
+    subscription_id = profile.get("subscription_id")
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription")
+    try:
+        result = StripeService().preview_upgrade(
+            subscription_id=subscription_id, new_tier=tier
+        )
+        return UpgradePreviewResponse(**result)
+    except StripeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/upgrade")
+async def upgrade_subscription(
+    body: UpgradeRequest,
+    user: CurrentUserWithEmail,
+    supabase: SupabaseServiceDep,
+) -> dict:
+    """Upgrade the subscription to the requested tier with immediate proration invoice."""
+    user_id, _ = user
+    profile = supabase.get_profile(user_id) or {}
+    subscription_id = profile.get("subscription_id")
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription")
+    try:
+        StripeService().upgrade_subscription(
+            subscription_id=subscription_id, new_tier=body.tier
+        )
+        return {"ok": True}
     except StripeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

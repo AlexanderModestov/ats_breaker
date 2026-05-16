@@ -257,6 +257,22 @@ export async function createBillingPortal(returnUrl: string): Promise<CheckoutRe
   });
 }
 
+export interface UpgradePreview {
+  amount_due: number; // cents
+  currency: string;
+}
+
+export async function previewUpgrade(tier: string): Promise<UpgradePreview> {
+  return fetchWithAuth<UpgradePreview>(`/subscription/upgrade-preview?tier=${tier}`);
+}
+
+export async function upgradeSubscription(tier: string): Promise<void> {
+  await fetchWithAuth<void>("/subscription/upgrade", {
+    method: "POST",
+    body: JSON.stringify({ tier }),
+  });
+}
+
 // Coach API
 export async function listCoachSessions(): Promise<CoachSession[]> {
   return fetchWithAuth<CoachSession[]>("/coach/sessions");
