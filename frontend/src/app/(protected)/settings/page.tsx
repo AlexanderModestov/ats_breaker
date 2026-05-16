@@ -128,9 +128,18 @@ function SubscriptionCard() {
 
           {isActive && (
             <>
+              {tier === "job_hunter" && (
+                <Link
+                  href="/pricing"
+                  className={cn(buttonVariants(), "w-full sm:w-auto")}
+                >
+                  Upgrade plan
+                </Link>
+              )}
               <Button
                 onClick={handlePortal}
                 disabled={portalPending}
+                variant="outline"
                 className="w-full sm:w-auto"
               >
                 {portalPending ? "Opening..." : "Manage subscription"}
