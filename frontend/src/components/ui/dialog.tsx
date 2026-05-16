@@ -70,8 +70,8 @@ export function DialogDescription({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground">{children}</p>;
 }
 
-export function DialogFooter({ children }: { children: React.ReactNode }) {
-  return <div className="mt-6 flex justify-end gap-3">{children}</div>;
+export function DialogFooter({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={`mt-6 flex justify-end gap-3 ${className ?? ""}`}>{children}</div>;
 }
 
 interface ConfirmDialogProps {
