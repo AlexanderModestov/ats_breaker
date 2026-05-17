@@ -33,17 +33,15 @@ class TestRequireFeature:
             result = dep(user=("uid", "u@test.com"), supabase=supabase)
             assert result == ("uid", "u@test.com")
 
-    def test_blocks_free_user_from_coach_with_402(self):
+    def test_allows_free_user_to_coach_via_trial(self):
+        # Tier gate is open; per-endpoint quota enforces the trial caps.
         with patch("hr_breaker.services.access_control.get_settings") as s:
             s.return_value.unlimited_users = []
             supabase = MagicMock()
             supabase.get_profile.return_value = _profile()
             dep = require_feature(Feature.COACH)
-            with pytest.raises(HTTPException) as exc:
-                dep(user=("uid", "u@test.com"), supabase=supabase)
-            assert exc.value.status_code == 402
-            assert exc.value.detail["reason"] == "feature_locked"
-            assert exc.value.detail["required_tier"] == "offer_mode"
+            result = dep(user=("uid", "u@test.com"), supabase=supabase)
+            assert result == ("uid", "u@test.com")
 
     def test_returns_404_when_profile_missing(self):
         with patch("hr_breaker.services.access_control.get_settings") as s:

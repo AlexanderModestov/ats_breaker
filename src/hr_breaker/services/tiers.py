@@ -15,12 +15,15 @@ TIER_RANK: dict[str, int] = {"free": 0, "job_hunter": 1, "offer_mode": 2}
 
 FEATURE_MIN_TIER: dict[Feature, str] = {
     Feature.OPTIMIZE: "free",
-    Feature.COACH: "offer_mode",
+    Feature.COACH: "free",  # was "offer_mode" — quota gates the trial now
     Feature.COVER_LETTER: "offer_mode",
     Feature.GAP_ANALYSIS: "offer_mode",
 }
 
 FREE_WEEKLY_LIMIT = 3
+
+FREE_COACH_THREADS = 3
+FREE_COACH_TURNS = 5
 
 
 def _parse_ts(value):
@@ -43,6 +46,11 @@ def effective_tier(profile: dict) -> str:
     if status == "cancelled" and period_end and now < period_end:
         return tier
     return "free"
+
+
+def coach_is_unlimited(profile: dict) -> bool:
+    """True when the user has unlimited Coach access (Offer Mode, including cancellation grace)."""
+    return effective_tier(profile) == "offer_mode"
 
 
 def has_feature_access(feature: Feature, profile: dict) -> bool:
