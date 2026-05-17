@@ -108,7 +108,6 @@ export default function PricingPage() {
   const { track } = useAnalytics();
 
   const [pendingUpgrade, setPendingUpgrade] = useState<Exclude<Tier, "free"> | null>(null);
-  const [upgraded, setUpgraded] = useState(false);
 
   const preview = useUpgradePreview(pendingUpgrade);
 
@@ -120,8 +119,8 @@ export default function PricingPage() {
     if (!pendingUpgrade) return;
     upgrade.mutate(pendingUpgrade, {
       onSuccess: () => {
-        setUpgraded(true);
         setPendingUpgrade(null);
+        router.push("/settings");
       },
     });
   };
@@ -164,7 +163,15 @@ export default function PricingPage() {
       };
     }
 
-    // paid → paid upgrade
+    // paid → paid: upgrade or downgrade
+    const RANK: Record<Tier, number> = { free: 0, job_hunter: 1, offer_mode: 2 };
+    if (RANK[planTier] < RANK[current]) {
+      return {
+        label: "Downgrade",
+        onClick: () => portal.mutate(),
+        disabled: portal.isPending,
+      };
+    }
     return {
       label: "Upgrade",
       onClick: () => setPendingUpgrade(planTier as Exclude<Tier, "free">),
@@ -180,11 +187,6 @@ export default function PricingPage() {
           <p className="mt-2 text-muted-foreground">
             Choose the plan that fits your job search
           </p>
-          {upgraded && (
-            <p className="mt-3 text-sm font-medium text-primary">
-              ✓ Plan upgraded successfully
-            </p>
-          )}
         </div>
 
         <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
