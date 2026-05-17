@@ -181,6 +181,7 @@ class StripeService:
         subscription = self.get_subscription(subscription_id)
         item_id = subscription["items"]["data"][0]["id"]
         customer_id = subscription["customer"]
+        current_period_end = subscription["current_period_end"]
 
         try:
             invoice = stripe.Invoice.create_preview(
@@ -188,10 +189,12 @@ class StripeService:
                 subscription=subscription_id,
                 subscription_details={"items": [{"id": item_id, "price": price_id}]},
             )
+            # Proration lines cover the current period; the next billing cycle's
+            # charge starts exactly at current_period_end, so exclude it.
             proration_amount = sum(
                 line["amount"]
                 for line in invoice["lines"]["data"]
-                if line.get("proration")
+                if line.get("period", {}).get("start", 0) < current_period_end
             )
             return {"amount_due": proration_amount, "currency": invoice["currency"]}
         except stripe.StripeError as e:
