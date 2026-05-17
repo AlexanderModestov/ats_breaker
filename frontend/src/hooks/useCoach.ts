@@ -33,7 +33,10 @@ export function useCreateThread() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (optimizationRunId: string) => createCoachThread(optimizationRunId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["coach-sessions"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach-sessions"] });
+      qc.invalidateQueries({ queryKey: ["subscription"] });
+    },
   });
 }
 
@@ -122,6 +125,7 @@ export function useCoachChat({
             setIsStreaming(false);
             qc.invalidateQueries({ queryKey: ["coach-sessions"] });
             qc.invalidateQueries({ queryKey: ["coach-messages", newThreadId] });
+            if (!threadId) qc.invalidateQueries({ queryKey: ["subscription"] });
             setStreamingMessages(null);
             if (!threadId) onThreadCreated(newThreadId);
           },
