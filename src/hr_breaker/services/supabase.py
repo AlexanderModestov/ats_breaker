@@ -350,7 +350,7 @@ class SupabaseService:
         user_id: str,
         optimization_run_id: str,
     ) -> dict[str, Any]:
-        """Create a new coach session (thread)."""
+        """Create a new coach session (thread) and bump the lifetime counter."""
         try:
             session_id = str(uuid4())
             result = (
@@ -362,6 +362,10 @@ class SupabaseService:
                 })
                 .execute()
             )
+            self._client.rpc(
+                "increment_coach_threads_created_total",
+                {"p_user_id": user_id},
+            ).execute()
             return result.data[0]
         except Exception as e:
             logger.error(f"Failed to create coach session: {e}")

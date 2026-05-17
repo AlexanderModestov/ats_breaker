@@ -5,13 +5,13 @@ import json
 import logging
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic_ai import ModelMessagesTypeAdapter
 from pydantic_core import to_jsonable_python
 
 from hr_breaker.agents.coach import CoachDeps, create_coach_agent
-from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep, require_feature
+from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
 from hr_breaker.api.schemas import (
     CoachChatRequest,
     CoachMessageResponse,
@@ -19,11 +19,11 @@ from hr_breaker.api.schemas import (
     CoachThreadCreateRequest,
     CoachThreadUpdateRequest,
 )
-from hr_breaker.services.tiers import Feature
+from hr_breaker.services.tiers import FREE_COACH_THREADS, FREE_COACH_TURNS, coach_is_unlimited
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(require_feature(Feature.COACH))])
+router = APIRouter()
 
 
 def _extract_display_messages(raw_messages: list) -> list[dict]:
@@ -80,6 +80,25 @@ async def get_session_messages(
     return _extract_display_messages(raw)
 
 
+_THREAD_CAP_ERROR = {
+    "code": "coach_thread_limit",
+    "message": "You've used all 3 free Coach dialogs. Upgrade to Offer Mode to keep going.",
+}
+
+_TURN_CAP_ERROR = {
+    "code": "coach_turn_limit",
+    "message": "This dialog has reached the 5-message limit. Start a new dialog or upgrade.",
+}
+
+
+def _check_thread_cap(profile: dict) -> None:
+    """Raise 403 if the user has exhausted their free coach thread quota."""
+    if not coach_is_unlimited(profile):
+        used = profile.get("coach_threads_created_total", 0)
+        if used >= FREE_COACH_THREADS:
+            raise HTTPException(status_code=403, detail=_THREAD_CAP_ERROR)
+
+
 @router.post("/sessions", response_model=CoachSessionResponse, status_code=201)
 async def create_thread(
     body: CoachThreadCreateRequest,
@@ -87,6 +106,8 @@ async def create_thread(
     supabase: SupabaseServiceDep,
 ):
     """Create an empty coach thread for a position."""
+    profile = supabase.get_profile(user_id) or {}
+    _check_thread_cap(profile)
     run = supabase.get_optimization_run(body.optimization_run_id, user_id)
     if not run:
         raise HTTPException(status_code=404, detail="Optimization run not found")
@@ -138,8 +159,23 @@ async def chat(
         if not session:
             raise HTTPException(status_code=404, detail="Thread not found")
         optimization_run_id = session["optimization_run_id"]
+        # Turn cap for trial users on existing threads.
+        profile = supabase.get_profile(user_id) or {}
+        if not coach_is_unlimited(profile):
+            raw_history = supabase.get_coach_messages(session["id"])
+            user_turns = sum(
+                1
+                for msg in raw_history
+                if msg.get("kind") == "request"
+                for part in msg.get("parts", [])
+                if part.get("part_kind") == "user-prompt"
+            )
+            if user_turns >= FREE_COACH_TURNS:
+                raise HTTPException(status_code=403, detail=_TURN_CAP_ERROR)
     else:
-        # Lazy create: ensure the run is owned by the user before creating.
+        # Lazy create: enforce thread cap, then ensure run is owned by the user.
+        profile = supabase.get_profile(user_id) or {}
+        _check_thread_cap(profile)
         check_run = supabase.get_optimization_run(body.optimization_run_id, user_id)
         if not check_run:
             raise HTTPException(status_code=404, detail="Optimization run not found")

@@ -5,3 +5,15 @@
 
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS coach_threads_created_total INT NOT NULL DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION increment_coach_threads_created_total(p_user_id UUID)
+RETURNS VOID
+LANGUAGE SQL
+SECURITY DEFINER
+AS $$
+  UPDATE profiles
+     SET coach_threads_created_total = coach_threads_created_total + 1
+   WHERE id = p_user_id;
+$$;
+
+GRANT EXECUTE ON FUNCTION increment_coach_threads_created_total(UUID) TO service_role;

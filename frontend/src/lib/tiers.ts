@@ -8,7 +8,7 @@ export const TIER_RANK: Record<Tier, number> = {
 
 export const FEATURE_MIN_TIER = {
   optimize: "free",
-  coach: "offer_mode",
+  coach: "free",
   cover_letter: "offer_mode",
   gap_analysis: "offer_mode",
 } as const satisfies Record<string, Tier>;
