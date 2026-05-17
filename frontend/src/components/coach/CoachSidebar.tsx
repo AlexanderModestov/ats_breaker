@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Lock } from "lucide-react";
 import { ThreadListItem } from "./ThreadListItem";
 import type { CoachSession, OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface Props {
   sessions: CoachSession[];
@@ -29,6 +30,10 @@ export function CoachSidebar({
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const { data: sub } = useSubscription();
+  const isTrialUser = sub != null && !sub.coach.is_unlimited;
+  const threadsRemaining = sub?.coach.threads_remaining ?? null;
+  const atThreadCap = isTrialUser && threadsRemaining === 0;
 
   const groups = useMemo(() => {
     const positionsById = new Map(positions.map((p) => [p.id, p]));
@@ -75,6 +80,18 @@ export function CoachSidebar({
           <Plus className="h-4 w-4" />
           Add position
         </button>
+        {isTrialUser && threadsRemaining !== null && (
+          <p className="text-xs text-muted-foreground text-center">
+            {atThreadCap
+              ? "All 3 free dialogs used"
+              : `${threadsRemaining} of ${sub!.coach.threads_total} free dialogs left`}
+          </p>
+        )}
+        {atThreadCap && (
+          <p className="text-xs text-muted-foreground text-center opacity-70">
+            Deleting a dialog won&apos;t free up a slot.
+          </p>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
         {groups.length === 0 && (
@@ -109,11 +126,20 @@ export function CoachSidebar({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onCreateThreadInPosition(runId)}
-                  aria-label="New thread in position"
-                  className="p-1 hover:bg-muted rounded"
+                  onClick={() => !atThreadCap && onCreateThreadInPosition(runId)}
+                  aria-label={atThreadCap ? "Thread limit reached" : "New thread in position"}
+                  className={cn(
+                    "p-1 rounded",
+                    atThreadCap
+                      ? "opacity-40 cursor-not-allowed"
+                      : "hover:bg-muted",
+                  )}
                 >
-                  <Plus className="h-3 w-3" />
+                  {atThreadCap ? (
+                    <Lock className="h-3 w-3" />
+                  ) : (
+                    <Plus className="h-3 w-3" />
+                  )}
                 </button>
               </div>
               {!isCollapsed && (

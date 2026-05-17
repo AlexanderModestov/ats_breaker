@@ -9,7 +9,11 @@ from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
 from hr_breaker.config import logger
 from hr_breaker.services.access_control import check_quota
 from hr_breaker.services.stripe_service import StripeService, StripeError
-from hr_breaker.services.tiers import effective_tier
+from hr_breaker.services.tiers import (
+    FREE_COACH_THREADS,
+    coach_is_unlimited,
+    effective_tier,
+)
 
 router = APIRouter()
 
@@ -37,6 +41,12 @@ class UpgradePreviewResponse(BaseModel):
     currency: str
 
 
+class CoachAccessBlock(BaseModel):
+    is_unlimited: bool
+    threads_remaining: int
+    threads_total: int
+
+
 class SubscriptionStatusResponse(BaseModel):
     tier: str  # "free" | "job_hunter" | "offer_mode"
     status: str  # "none" | "active" | "cancelled"
@@ -44,6 +54,7 @@ class SubscriptionStatusResponse(BaseModel):
     is_unlimited: bool
     weekly_reset_at: str | None
     current_period_end: str | None
+    coach: CoachAccessBlock
 
 
 @router.get("", response_model=SubscriptionStatusResponse)
@@ -59,6 +70,9 @@ async def get_subscription_status(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     quota = check_quota(user_email or "", profile)
+    unlimited = coach_is_unlimited(profile)
+    used = profile.get("coach_threads_created_total", 0)
+    threads_remaining = 0 if unlimited else max(0, FREE_COACH_THREADS - used)
     return SubscriptionStatusResponse(
         tier=effective_tier(profile),
         status=profile.get("subscription_status", "none"),
@@ -66,6 +80,11 @@ async def get_subscription_status(
         is_unlimited=quota.unlimited,
         weekly_reset_at=profile.get("weekly_reset_at"),
         current_period_end=profile.get("current_period_end"),
+        coach=CoachAccessBlock(
+            is_unlimited=unlimited,
+            threads_remaining=threads_remaining,
+            threads_total=FREE_COACH_THREADS,
+        ),
     )
 
 

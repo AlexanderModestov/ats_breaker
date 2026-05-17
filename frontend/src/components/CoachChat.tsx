@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CoachMessage } from "@/types";
+import { useSubscription } from "@/hooks/useSubscription";
+
+const FREE_COACH_TURNS = 5;
 
 const MARKDOWN_COMPONENTS = {
   p: ({ children }: { children?: React.ReactNode }) => (
@@ -109,6 +112,11 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { data: sub } = useSubscription();
+  const isTrialUser = sub != null && !sub.coach.is_unlimited;
+  const userTurns = messages.filter((m) => m.role === "user").length;
+  const atTurnCap = isTrialUser && userTurns >= FREE_COACH_TURNS;
+  const turnsRemaining = isTrialUser ? Math.max(0, FREE_COACH_TURNS - userTurns) : null;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -127,7 +135,7 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+    if (!trimmed || isStreaming || atTurnCap) return;
     onSend(trimmed);
     setInput("");
     if (textareaRef.current) {
@@ -196,22 +204,38 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
       </div>
 
       {/* Input area */}
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-4 space-y-2">
+        {atTurnCap ? (
+          <p className="text-center text-sm text-muted-foreground">
+            This dialog has reached the {FREE_COACH_TURNS}-message limit.
+            Start a new dialog or{" "}
+            <a href="/pricing" className="underline underline-offset-2">
+              upgrade
+            </a>
+            .
+          </p>
+        ) : (
+          isTrialUser && turnsRemaining !== null && messages.length > 0 && (
+            <p className="text-center text-xs text-muted-foreground">
+              {turnsRemaining} of {FREE_COACH_TURNS} messages left in this dialog
+            </p>
+          )
+        )}
         <div className="flex items-end gap-2">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleResize}
             onKeyDown={handleKeyDown}
-            disabled={isStreaming}
-            placeholder="Type a message..."
+            disabled={isStreaming || atTurnCap}
+            placeholder={atTurnCap ? "Dialog limit reached" : "Type a message..."}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           />
           <Button
             size="icon"
             onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
+            disabled={!input.trim() || isStreaming || atTurnCap}
           >
             {isStreaming ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -137,6 +137,11 @@ export interface SubscriptionStatus {
   is_unlimited: boolean;
   weekly_reset_at: string | null;
   current_period_end: string | null;
+  coach: {
+    is_unlimited: boolean;
+    threads_remaining: number;
+    threads_total: number;
+  };
 }
 
 export interface CheckoutResponse {
