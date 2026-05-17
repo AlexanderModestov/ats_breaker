@@ -31,8 +31,8 @@ export function CoachSidebar({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const { data: sub } = useSubscription();
-  const isTrialUser = sub != null && !sub.coach.is_unlimited;
-  const threadsRemaining = sub?.coach.threads_remaining ?? null;
+  const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
+  const threadsRemaining = sub?.coach?.threads_remaining ?? null;
   const atThreadCap = isTrialUser && threadsRemaining === 0;
 
   const groups = useMemo(() => {

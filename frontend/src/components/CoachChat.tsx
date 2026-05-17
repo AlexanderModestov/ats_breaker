@@ -113,7 +113,7 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { data: sub } = useSubscription();
-  const isTrialUser = sub != null && !sub.coach.is_unlimited;
+  const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
   const userTurns = messages.filter((m) => m.role === "user").length;
   const atTurnCap = isTrialUser && userTurns >= FREE_COACH_TURNS;
   const turnsRemaining = isTrialUser ? Math.max(0, FREE_COACH_TURNS - userTurns) : null;
