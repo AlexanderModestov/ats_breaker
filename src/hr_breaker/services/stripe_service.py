@@ -181,7 +181,6 @@ class StripeService:
         subscription = self.get_subscription(subscription_id)
         item_id = subscription["items"]["data"][0]["id"]
         customer_id = subscription["customer"]
-        current_period_end = subscription["current_period_end"]
 
         try:
             invoice = stripe.Invoice.create_preview(
@@ -189,13 +188,21 @@ class StripeService:
                 subscription=subscription_id,
                 subscription_details={"items": [{"id": item_id, "price": price_id}]},
             )
-            # Proration lines cover the current period; the next billing cycle's
-            # charge starts exactly at current_period_end, so exclude it.
-            proration_amount = sum(
-                line["amount"]
-                for line in invoice["lines"]["data"]
-                if line.get("period", {}).get("start", 0) < current_period_end
-            )
+            lines = invoice["lines"]["data"]
+            # Proration lines start ~now; the next billing cycle's charge starts
+            # at the period boundary (later timestamp). Exclude the next-cycle line
+            # by filtering out lines that start latest among all lines.
+            starts = [line.get("period", {}).get("start", 0) for line in lines]
+            next_cycle_start = max(starts) if starts else 0
+            min_start = min(starts) if starts else 0
+            if next_cycle_start == min_start:
+                proration_amount = sum(line["amount"] for line in lines)
+            else:
+                proration_amount = sum(
+                    line["amount"]
+                    for line in lines
+                    if line.get("period", {}).get("start", 0) < next_cycle_start
+                )
             return {"amount_due": proration_amount, "currency": invoice["currency"]}
         except stripe.StripeError as e:
             logger.error(f"Failed to preview upgrade: {e}")
