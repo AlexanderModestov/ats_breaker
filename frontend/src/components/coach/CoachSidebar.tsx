@@ -5,7 +5,7 @@ import { Plus, ChevronDown, ChevronRight, Lock } from "lucide-react";
 import { ThreadListItem } from "./ThreadListItem";
 import type { CoachSession, OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useSubscription, useCheckout } from "@/hooks/useSubscription";
 
 interface Props {
   sessions: CoachSession[];
@@ -34,6 +34,7 @@ export function CoachSidebar({
   const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
   const threadsRemaining = sub?.coach?.threads_remaining ?? null;
   const atThreadCap = isTrialUser && threadsRemaining === 0;
+  const checkout = useCheckout();
 
   const groups = useMemo(() => {
     const positionsById = new Map(positions.map((p) => [p.id, p]));
@@ -88,9 +89,19 @@ export function CoachSidebar({
           </p>
         )}
         {atThreadCap && (
-          <p className="text-xs text-muted-foreground text-center opacity-70">
-            Deleting a dialog won&apos;t free up a slot.
-          </p>
+          <>
+            <p className="text-xs text-muted-foreground text-center opacity-70">
+              Deleting a dialog won&apos;t free up a slot.
+            </p>
+            <button
+              type="button"
+              onClick={() => checkout.mutate("offer_mode")}
+              disabled={checkout.isPending}
+              className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {checkout.isPending ? "Loading…" : "Upgrade to Offer Mode"}
+            </button>
+          </>
         )}
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
