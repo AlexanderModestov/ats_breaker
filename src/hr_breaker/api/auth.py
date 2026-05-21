@@ -33,18 +33,23 @@ def _get_jwks(supabase_url: str) -> dict[str, Any]:
         raise AuthError("Failed to fetch JWKS", status_code=500) from e
 
 
-def _get_signing_key(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
+def _get_signing_key(token: str, jwks: dict[str, Any], *, refetch: bool = False) -> dict[str, Any]:
     """Get the signing key from JWKS that matches the token's kid."""
     unverified_header = jwt.get_unverified_header(token)
     kid = unverified_header.get("kid")
+    jwks_kids = [k.get("kid") for k in jwks.get("keys", [])]
+    logger.warning(f"Token kid={kid}, JWKS kids={jwks_kids}")
 
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
             return key
 
-    # If no kid match, try the first key
-    if jwks.get("keys"):
-        return jwks["keys"][0]
+    if not refetch:
+        # kid not found — cache may be stale, invalidate and retry
+        settings = get_settings()
+        _get_jwks.cache_clear()
+        fresh_jwks = _get_jwks(settings.supabase_url)
+        return _get_signing_key(token, fresh_jwks, refetch=True)
 
     raise AuthError("No matching signing key found")
 
@@ -70,7 +75,7 @@ def verify_jwt(token: str) -> dict[str, Any]:
         # Decode header to check algorithm
         unverified_header = jwt.get_unverified_header(token)
         token_alg = unverified_header.get("alg")
-        logger.info(f"JWT alg={token_alg} kid={unverified_header.get('kid')}")
+        logger.warning(f"JWT alg={token_alg} kid={unverified_header.get('kid')}")
 
         if token_alg == "HS256":
             # Symmetric verification with JWT secret
