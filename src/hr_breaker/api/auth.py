@@ -70,6 +70,7 @@ def verify_jwt(token: str) -> dict[str, Any]:
         # Decode header to check algorithm
         unverified_header = jwt.get_unverified_header(token)
         token_alg = unverified_header.get("alg")
+        logger.info(f"JWT alg={token_alg} kid={unverified_header.get('kid')}")
 
         if token_alg == "HS256":
             # Symmetric verification with JWT secret
