@@ -10,7 +10,7 @@ from hr_breaker.api.auth_telegram import (
     InitDataError,
     parse_and_validate_init_data,
 )
-from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
+from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
 from hr_breaker.config import get_settings, logger
 
 router = APIRouter()
@@ -72,10 +72,16 @@ async def _edit_welcome_message(chat_id: int, message_id: int) -> None:
 @router.post("/link")
 async def link_telegram(
     body: LinkTelegramRequest,
-    user_id: CurrentUser,
+    user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
 ):
     """Link a Telegram ID to the currently authenticated user."""
+    user_id, email = user
+
+    profile = supabase.get_profile(user_id)
+    if not profile:
+        supabase.create_profile(user_id, email or "")
+
     supabase.link_telegram(user_id, body.telegram_id)
 
     pending = supabase.pop_pending_signin_message(body.telegram_id)

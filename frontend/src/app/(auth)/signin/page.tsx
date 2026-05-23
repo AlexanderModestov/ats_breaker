@@ -79,8 +79,8 @@ export default function LoginPage() {
             }
           }
         })
-        .catch(() => {
-          // Non-fatal: user is logged in even if linking failed
+        .catch((err) => {
+          console.error("[signin] Failed to link Telegram ID:", err);
         });
     }
     router.push("/optimize");

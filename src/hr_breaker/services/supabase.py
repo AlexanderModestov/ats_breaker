@@ -574,9 +574,16 @@ class SupabaseService:
     def link_telegram(self, user_id: str, telegram_id: int) -> None:
         """Link a Telegram ID to a user profile."""
         try:
-            self._client.table("profiles").update(
-                {"telegram_id": telegram_id}
-            ).eq("id", user_id).execute()
+            result = (
+                self._client.table("profiles")
+                .update({"telegram_id": telegram_id})
+                .eq("id", user_id)
+                .execute()
+            )
+            if not result.data:
+                raise SupabaseError(f"No profile found for user_id={user_id}")
+        except SupabaseError:
+            raise
         except Exception as e:
             raise SupabaseError(f"Failed to link Telegram: {e}") from e
 
