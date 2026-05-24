@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
+import { usePricingModal } from "@/context/PricingModalContext";
 
 function daysUntil(iso: string | null): number | null {
   if (!iso) return null;
@@ -12,6 +12,7 @@ function daysUntil(iso: string | null): number | null {
 
 export function QuotaBanner() {
   const { data: sub } = useSubscription();
+  const { open } = usePricingModal();
 
   // Don't render for paid/unlimited users or while loading
   if (!sub || sub.tier !== "free" || sub.is_unlimited) return null;
@@ -26,9 +27,9 @@ export function QuotaBanner() {
       <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <span>Last optimization this week.</span>
-        <Link href="/pricing" className="ml-auto underline underline-offset-4">
+        <button onClick={open} className="ml-auto underline underline-offset-4">
           Upgrade for unlimited →
-        </Link>
+        </button>
       </div>
     );
   }
@@ -39,9 +40,9 @@ export function QuotaBanner() {
       <span>
         Used 3/3 this week. Resets in {days ?? "?"} day{days === 1 ? "" : "s"}.
       </span>
-      <Link href="/pricing" className="ml-auto underline underline-offset-4">
+      <button onClick={open} className="ml-auto underline underline-offset-4">
         Upgrade →
-      </Link>
+      </button>
     </div>
   );
 }

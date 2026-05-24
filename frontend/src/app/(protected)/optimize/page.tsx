@@ -23,12 +23,14 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import { ApiError } from "@/lib/api";
 import { TIER_LABEL } from "@/lib/tiers";
+import { usePricingModal } from "@/context/PricingModalContext";
 import type { CV } from "@/types";
 
 function OptimizeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { open } = usePricingModal();
   const initialCvId = searchParams.get("cv");
 
   const { data: cvs, isLoading: loadingCVs } = useCVs();
@@ -105,12 +107,12 @@ function OptimizeContent() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         queryClient.invalidateQueries({ queryKey: ["subscription"] });
-        router.push("/pricing");
+        open();
         return;
       }
       console.error("Failed to start optimization:", err);
     }
-  }, [selectedCV, jobInput, startOptimization, router, track, queryClient]);
+  }, [selectedCV, jobInput, startOptimization, router, track, queryClient, open]);
 
   const quotaExhausted =
     subscription?.tier === "free" &&

@@ -7,6 +7,7 @@ import { useLinkTelegram } from "@/hooks/useLinkTelegram";
 import { useTelegramAutoLogin } from "@/hooks/useTelegramAutoLogin";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
+import { PricingModalProvider } from "@/context/PricingModalContext";
 
 export default function ProtectedLayout({
   children,
@@ -48,16 +49,18 @@ export default function ProtectedLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <motion.main
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8"
-      >
-        {children}
-      </motion.main>
-    </div>
+    <PricingModalProvider>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <motion.main
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8"
+        >
+          {children}
+        </motion.main>
+      </div>
+    </PricingModalProvider>
   );
 }
