@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
+import { usePricingModal } from "@/context/PricingModalContext";
 import {
   Card,
   CardContent,
@@ -10,9 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import {
   createBillingPortal,
   getProfile,
@@ -31,6 +30,7 @@ function formatDate(iso: string | null): string {
 
 function SubscriptionCard() {
   const queryClient = useQueryClient();
+  const { open } = usePricingModal();
 
   const { data, isLoading, error, refetch } = useQuery<SubscriptionStatus>({
     queryKey: ["subscription"],
@@ -117,23 +117,17 @@ function SubscriptionCard() {
 
         <div className="flex flex-col gap-2 sm:flex-row">
           {isFree && (
-            <Link
-              href="/pricing"
-              className={cn(buttonVariants(), "w-full sm:w-auto")}
-            >
+            <Button onClick={open} className="w-full sm:w-auto">
               Upgrade
-            </Link>
+            </Button>
           )}
 
           {isActive && (
             <>
               {tier === "job_hunter" && (
-                <Link
-                  href="/pricing"
-                  className={cn(buttonVariants(), "w-full sm:w-auto")}
-                >
+                <Button onClick={open} className="w-full sm:w-auto">
                   Upgrade plan
-                </Link>
+                </Button>
               )}
               <Button
                 onClick={handlePortal}
