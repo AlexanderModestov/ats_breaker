@@ -23,6 +23,17 @@ class StripeService:
         stripe.api_key = settings.stripe_secret_key
         self._webhook_secret = settings.stripe_webhook_secret
 
+    def _price_id_for_tier(self, tier: str) -> str:
+        """Return the Stripe price ID for the given tier, or raise StripeError."""
+        settings = get_settings()
+        price_id = {
+            "job_hunter": settings.stripe_price_job_hunter,
+            "offer_mode": settings.stripe_price_offer_mode,
+        }.get(tier)
+        if not price_id:
+            raise StripeError(f"Unknown tier: {tier}")
+        return price_id
+
     def create_checkout_session_for_tier(
         self,
         *,
@@ -34,13 +45,7 @@ class StripeService:
         stripe_customer_id: str | None = None,
     ) -> str:
         """Create a subscription checkout session for the given tier."""
-        settings = get_settings()
-        price_id = {
-            "job_hunter": settings.stripe_price_job_hunter,
-            "offer_mode": settings.stripe_price_offer_mode,
-        }.get(tier)
-        if not price_id:
-            raise StripeError(f"Unknown tier: {tier}")
+        price_id = self._price_id_for_tier(tier)
 
         try:
             session_params: dict[str, Any] = {
@@ -170,13 +175,7 @@ class StripeService:
 
     def preview_upgrade(self, *, subscription_id: str, new_tier: str) -> dict:
         """Return the proration amount_due (cents) for switching to new_tier."""
-        settings = get_settings()
-        price_id = {
-            "job_hunter": settings.stripe_price_job_hunter,
-            "offer_mode": settings.stripe_price_offer_mode,
-        }.get(new_tier)
-        if not price_id:
-            raise StripeError(f"Unknown tier: {new_tier}")
+        price_id = self._price_id_for_tier(new_tier)
 
         subscription = self.get_subscription(subscription_id)
         item_id = subscription["items"]["data"][0]["id"]
@@ -210,13 +209,7 @@ class StripeService:
 
     def upgrade_subscription(self, *, subscription_id: str, new_tier: str) -> None:
         """Upgrade to new_tier immediately; Stripe creates a proration invoice."""
-        settings = get_settings()
-        price_id = {
-            "job_hunter": settings.stripe_price_job_hunter,
-            "offer_mode": settings.stripe_price_offer_mode,
-        }.get(new_tier)
-        if not price_id:
-            raise StripeError(f"Unknown tier: {new_tier}")
+        price_id = self._price_id_for_tier(new_tier)
 
         subscription = self.get_subscription(subscription_id)
         item_id = subscription["items"]["data"][0]["id"]
