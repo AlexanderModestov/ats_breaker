@@ -41,9 +41,10 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 interface DialogContentProps {
   children: React.ReactNode;
   className?: string;
+  onClose?: () => void;
 }
 
-export function DialogContent({ children, className }: DialogContentProps) {
+export function DialogContent({ children, className, onClose }: DialogContentProps) {
   return (
     <div
       className={cn(
@@ -53,6 +54,16 @@ export function DialogContent({ children, className }: DialogContentProps) {
       )}
       onClick={(e) => e.stopPropagation()}
     >
+      {onClose && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-4 top-4 h-6 w-6 rounded-sm opacity-70 hover:opacity-100"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
       {children}
     </div>
   );
