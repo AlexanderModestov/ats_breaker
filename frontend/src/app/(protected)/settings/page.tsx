@@ -13,7 +13,6 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-// import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import {
   createBillingPortal,
   getProfile,
@@ -217,17 +216,6 @@ export default function SettingsPage() {
 
       <SupportCard />
 
-      {/* TODO: re-enable when theme switching is implemented
-      <Card>
-        <CardHeader>
-          <CardTitle>Theme</CardTitle>
-          <CardDescription>Choose your preferred color scheme</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ThemeSwitcher value={theme} onChange={setTheme} />
-        </CardContent>
-      </Card>
-      */}
     </div>
   );
 }
