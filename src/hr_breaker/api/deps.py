@@ -45,38 +45,6 @@ def _resolve_bot_user(
     return profile["id"]
 
 
-async def get_current_user(
-    supabase: Annotated[SupabaseService, Depends(get_supabase_service)],
-    authorization: Annotated[str | None, Header()] = None,
-    x_bot_api_key: Annotated[str | None, Header()] = None,
-    x_telegram_user_id: Annotated[str | None, Header()] = None,
-) -> str:
-    """
-    Resolve the current user via one of two auth schemes:
-
-    1. Web/Mini App: ``Authorization: Bearer <Supabase JWT>``
-    2. Telegram bot: ``X-Bot-Api-Key`` + ``X-Telegram-User-Id`` — looked up
-       in ``profiles.telegram_id``.
-    """
-    bot_user_id = _resolve_bot_user(supabase, x_bot_api_key, x_telegram_user_id)
-    if bot_user_id is not None:
-        return bot_user_id
-
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Missing authorization header")
-
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Invalid authorization header format")
-
-    token = parts[1]
-
-    try:
-        return get_user_id_from_token(token)
-    except AuthError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message) from e
-
-
 async def get_current_user_email(
     supabase: Annotated[SupabaseService, Depends(get_supabase_service)],
     authorization: Annotated[str | None, Header()] = None,
@@ -109,6 +77,25 @@ async def get_current_user_email(
         return user_id, email
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message) from e
+
+
+async def get_current_user(
+    supabase: Annotated[SupabaseService, Depends(get_supabase_service)],
+    authorization: Annotated[str | None, Header()] = None,
+    x_bot_api_key: Annotated[str | None, Header()] = None,
+    x_telegram_user_id: Annotated[str | None, Header()] = None,
+) -> str:
+    """
+    Resolve the current user via one of two auth schemes:
+
+    1. Web/Mini App: ``Authorization: Bearer <Supabase JWT>``
+    2. Telegram bot: ``X-Bot-Api-Key`` + ``X-Telegram-User-Id`` — looked up
+       in ``profiles.telegram_id``.
+    """
+    user_id, _ = await get_current_user_email(
+        supabase, authorization, x_bot_api_key, x_telegram_user_id
+    )
+    return user_id
 
 
 # Type aliases for dependency injection
