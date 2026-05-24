@@ -29,7 +29,7 @@ import {
   useUpgrade,
 } from "@/hooks/useSubscription";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { TIER_LABEL, type Tier } from "@/lib/tiers";
+import { TIER_LABEL, TIER_RANK, type Tier } from "@/lib/tiers";
 
 type Feature = string | { label: string; soon?: boolean };
 
@@ -164,8 +164,7 @@ export default function PricingPage() {
     }
 
     // paid → paid: upgrade or downgrade
-    const RANK: Record<Tier, number> = { free: 0, job_hunter: 1, offer_mode: 2 };
-    if (RANK[planTier] < RANK[current]) {
+    if (TIER_RANK[planTier] < TIER_RANK[current]) {
       return {
         label: "Downgrade",
         onClick: () => portal.mutate(),
