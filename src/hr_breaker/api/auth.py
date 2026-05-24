@@ -1,12 +1,10 @@
 """JWT verification via Supabase."""
 
-from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 
 import httpx
-from jose import JWTError, jwt, jwk
-from jose.utils import base64url_decode
+from jose import JWTError, jwt
 
 from hr_breaker.config import get_settings, logger
 
@@ -37,9 +35,6 @@ def _get_signing_key(token: str, jwks: dict[str, Any], *, refetch: bool = False)
     """Get the signing key from JWKS that matches the token's kid."""
     unverified_header = jwt.get_unverified_header(token)
     kid = unverified_header.get("kid")
-    jwks_kids = [k.get("kid") for k in jwks.get("keys", [])]
-    logger.warning(f"Token kid={kid}, JWKS kids={jwks_kids}")
-
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
             return key
@@ -75,7 +70,6 @@ def verify_jwt(token: str) -> dict[str, Any]:
         # Decode header to check algorithm
         unverified_header = jwt.get_unverified_header(token)
         token_alg = unverified_header.get("alg")
-        logger.warning(f"JWT alg={token_alg} kid={unverified_header.get('kid')}")
 
         if token_alg == "HS256":
             # Symmetric verification with JWT secret
@@ -104,13 +98,6 @@ def verify_jwt(token: str) -> dict[str, Any]:
             )
         else:
             raise AuthError(f"Unsupported JWT algorithm: {token_alg}")
-
-        # Check expiration
-        exp = payload.get("exp")
-        if exp:
-            exp_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
-            if exp_datetime < datetime.now(tz=timezone.utc):
-                raise AuthError("Token has expired")
 
         return payload
 
