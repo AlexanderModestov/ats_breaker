@@ -84,12 +84,14 @@ const PLANS: Plan[] = [
 ];
 
 function formatAmount(amountCents: number, currency: string) {
-  return new Intl.NumberFormat("en-EU", {
+  return new Intl.NumberFormat("de-DE", {
     style: "currency",
     currency: currency.toUpperCase(),
     minimumFractionDigits: 2,
   }).format(amountCents / 100);
 }
+
+type CtaState = { label: string; onClick: () => void; disabled: boolean };
 
 type Props = {
   onClose?: () => void;
@@ -120,8 +122,6 @@ export function PricingContent({ onClose }: Props) {
       },
     });
   };
-
-  type CtaState = { label: string; onClick: () => void; disabled: boolean };
 
   const ctaFor = (planTier: Tier): CtaState => {
     if (!isAuthenticated) {
