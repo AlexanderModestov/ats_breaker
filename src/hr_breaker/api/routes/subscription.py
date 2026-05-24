@@ -69,7 +69,8 @@ async def get_subscription_status(
 
     quota = check_quota(user_email or "", profile)
     unlimited = coach_is_unlimited(profile)
-    locked_company = None if unlimited else supabase.get_coach_locked_company(user_id)
+    raw_lock = None if unlimited else supabase.get_coach_locked_company(user_id)
+    locked_company = raw_lock or None  # convert "" (unknown slot) to None for the API
     return SubscriptionStatusResponse(
         tier=effective_tier(profile),
         status=profile.get("subscription_status", "none"),

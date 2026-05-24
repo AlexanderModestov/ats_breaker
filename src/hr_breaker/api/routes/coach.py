@@ -87,18 +87,28 @@ _COMPANY_CAP_ERROR = {
 
 
 def _check_company_cap(profile: dict, run: dict, supabase, user_id: str) -> None:
-    """Raise 403 if a trial user tries to create a session for a different company."""
+    """Raise 403 if a trial user tries to create a session for a different company identity."""
     if coach_is_unlimited(profile):
         return
-    new_company = (run.get("job_parsed") or {}).get("company") or run.get("job_company") or ""
-    if not new_company or new_company == "Unknown":
-        return
-    locked = supabase.get_coach_locked_company(user_id)
-    if locked and locked.lower().strip() != new_company.lower().strip():
-        raise HTTPException(
-            status_code=403,
-            detail={**_COMPANY_CAP_ERROR, "locked_company": locked},
-        )
+    locked_company, locked_run_id = supabase.get_coach_lock(user_id)
+    if locked_company is None and locked_run_id is None:
+        return  # No sessions yet — allow anything.
+    new_company = ((run.get("job_parsed") or {}).get("company") or "").strip()
+    new_company_known = bool(new_company) and new_company.lower() != "unknown"
+    if locked_company is not None:
+        # Locked to a known company — new session must have the same company.
+        if not new_company_known or new_company.lower() != locked_company.lower():
+            raise HTTPException(
+                status_code=403,
+                detail={**_COMPANY_CAP_ERROR, "locked_company": locked_company},
+            )
+    else:
+        # Locked to a specific run (unknown company) — new session must be for that same run.
+        if run.get("id") != locked_run_id:
+            raise HTTPException(
+                status_code=403,
+                detail={**_COMPANY_CAP_ERROR, "locked_company": None},
+            )
 
 
 @router.post("/sessions", response_model=CoachSessionResponse, status_code=201)
