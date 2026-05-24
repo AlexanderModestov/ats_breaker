@@ -22,9 +22,6 @@ FEATURE_MIN_TIER: dict[Feature, str] = {
 
 FREE_WEEKLY_LIMIT = 3
 
-FREE_COACH_THREADS = 3
-FREE_COACH_TURNS = 5
-
 
 def _parse_ts(value):
     if value is None:

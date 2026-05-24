@@ -32,8 +32,7 @@ export function CoachSidebar({
   const [search, setSearch] = useState("");
   const { data: sub } = useSubscription();
   const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
-  const threadsRemaining = sub?.coach?.threads_remaining ?? null;
-  const atThreadCap = isTrialUser && threadsRemaining === 0;
+  const lockedCompany = sub?.coach?.locked_company ?? null;
   const checkout = useCheckout();
 
   const groups = useMemo(() => {
@@ -81,27 +80,15 @@ export function CoachSidebar({
           <Plus className="h-4 w-4" />
           Add position
         </button>
-        {isTrialUser && threadsRemaining !== null && (
+        {isTrialUser && lockedCompany && (
           <p className="text-xs text-muted-foreground text-center">
-            {atThreadCap
-              ? "All 3 free dialogs used"
-              : `${threadsRemaining} of ${sub!.coach.threads_total} free dialogs left`}
+            Free plan: {lockedCompany} only
           </p>
         )}
-        {atThreadCap && (
-          <>
-            <p className="text-xs text-muted-foreground text-center opacity-70">
-              Deleting a dialog won&apos;t free up a slot.
-            </p>
-            <button
-              type="button"
-              onClick={() => checkout.mutate("offer_mode")}
-              disabled={checkout.isPending}
-              className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {checkout.isPending ? "Loading…" : "Upgrade to Offer Mode"}
-            </button>
-          </>
+        {isTrialUser && !lockedCompany && (
+          <p className="text-xs text-muted-foreground text-center">
+            Free plan: 1 company
+          </p>
         )}
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
@@ -115,6 +102,11 @@ export function CoachSidebar({
           const label = g.position
             ? `${g.position.job_company ?? ""} — ${g.position.job_title ?? ""}`.trim()
             : "Unknown position";
+          const positionCompany = (g.position?.job_company ?? "").toLowerCase().trim();
+          const isCompanyLocked =
+            isTrialUser &&
+            !!lockedCompany &&
+            positionCompany !== lockedCompany.toLowerCase().trim();
           return (
             <div key={runId}>
               <div className="flex items-center justify-between px-1 py-1 text-xs font-semibold text-muted-foreground">
@@ -137,16 +129,16 @@ export function CoachSidebar({
                 </button>
                 <button
                   type="button"
-                  onClick={() => !atThreadCap && onCreateThreadInPosition(runId)}
-                  aria-label={atThreadCap ? "Thread limit reached" : "New thread in position"}
+                  onClick={() => !isCompanyLocked && onCreateThreadInPosition(runId)}
+                  aria-label={isCompanyLocked ? "Different company — upgrade to unlock" : "New thread in position"}
                   className={cn(
                     "p-1 rounded",
-                    atThreadCap
+                    isCompanyLocked
                       ? "opacity-40 cursor-not-allowed"
                       : "hover:bg-muted",
                   )}
                 >
-                  {atThreadCap ? (
+                  {isCompanyLocked ? (
                     <Lock className="h-3 w-3" />
                   ) : (
                     <Plus className="h-3 w-3" />

@@ -10,7 +10,6 @@ from hr_breaker.config import logger
 from hr_breaker.services.access_control import check_quota
 from hr_breaker.services.stripe_service import StripeService, StripeError
 from hr_breaker.services.tiers import (
-    FREE_COACH_THREADS,
     coach_is_unlimited,
     effective_tier,
 )
@@ -43,8 +42,7 @@ class UpgradePreviewResponse(BaseModel):
 
 class CoachAccessBlock(BaseModel):
     is_unlimited: bool
-    threads_remaining: int
-    threads_total: int
+    locked_company: str | None
 
 
 class SubscriptionStatusResponse(BaseModel):
@@ -71,8 +69,7 @@ async def get_subscription_status(
 
     quota = check_quota(user_email or "", profile)
     unlimited = coach_is_unlimited(profile)
-    used = profile.get("coach_threads_created_total", 0)
-    threads_remaining = 0 if unlimited else max(0, FREE_COACH_THREADS - used)
+    locked_company = None if unlimited else supabase.get_coach_locked_company(user_id)
     return SubscriptionStatusResponse(
         tier=effective_tier(profile),
         status=profile.get("subscription_status", "none"),
@@ -82,8 +79,7 @@ async def get_subscription_status(
         current_period_end=profile.get("current_period_end"),
         coach=CoachAccessBlock(
             is_unlimited=unlimited,
-            threads_remaining=threads_remaining,
-            threads_total=FREE_COACH_THREADS,
+            locked_company=locked_company,
         ),
     )
 

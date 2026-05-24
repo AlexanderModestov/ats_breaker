@@ -362,10 +362,6 @@ class SupabaseService:
                 })
                 .execute()
             )
-            self._client.rpc(
-                "increment_coach_threads_created_total",
-                {"p_user_id": user_id},
-            ).execute()
             return result.data[0]
         except Exception as e:
             logger.error(f"Failed to create coach session: {e}")
@@ -456,6 +452,34 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Failed to list coach sessions: {e}")
             raise SupabaseError(f"Failed to list coach sessions: {e}") from e
+
+    def get_coach_locked_company(self, user_id: str) -> str | None:
+        """Return the company name from the user's earliest coach session, or None."""
+        try:
+            sessions = (
+                self._client.table("coach_sessions")
+                .select("optimization_run_id")
+                .eq("user_id", user_id)
+                .order("created_at", desc=False)
+                .limit(1)
+                .execute()
+            )
+            if not sessions.data:
+                return None
+            run_id = sessions.data[0]["optimization_run_id"]
+            run = (
+                self._client.table("optimization_runs")
+                .select("job_company")
+                .eq("id", run_id)
+                .limit(1)
+                .execute()
+            )
+            if not run.data:
+                return None
+            return run.data[0].get("job_company") or None
+        except Exception as e:
+            logger.warning(f"Failed to get coach locked company: {e}")
+            return None
 
     # Coach message operations
     def get_coach_messages(self, session_id: str) -> list:
