@@ -39,7 +39,7 @@ async def get_current_profile(
     if not profile:
         # Create profile if it doesn't exist
         try:
-            profile = supabase.create_profile(user_id, email or "")
+            profile = supabase.create_profile(user_id, email)
         except SupabaseError as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
 

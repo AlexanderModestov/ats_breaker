@@ -84,6 +84,7 @@ class SupabaseService:
                 self._client.table("profiles")
                 .update(data)
                 .eq("id", user_id)
+                .select()
                 .execute()
             )
             if not result.data:
@@ -95,7 +96,7 @@ class SupabaseService:
             logger.error(f"Failed to update profile: {e}")
             raise SupabaseError(f"Failed to update profile: {e}") from e
 
-    def create_profile(self, user_id: str, email: str, name: str | None = None) -> dict[str, Any]:
+    def create_profile(self, user_id: str, email: str | None, name: str | None = None) -> dict[str, Any]:
         """Create user profile."""
         try:
             result = (
@@ -453,33 +454,46 @@ class SupabaseService:
             logger.error(f"Failed to list coach sessions: {e}")
             raise SupabaseError(f"Failed to list coach sessions: {e}") from e
 
-    def get_coach_locked_company(self, user_id: str) -> str | None:
-        """Return the company name from the user's earliest coach session, or None."""
+    def get_coach_lock(self, user_id: str) -> tuple[str | None, str | None]:
+        """
+        Return (locked_company, locked_run_id) for a trial user.
+
+        - (None, None): no sessions exist — no restriction.
+        - ("Google", None): locked to a known company name.
+        - (None, run_id): sessions exist but company is unknown — locked to that specific run.
+        """
         try:
             sessions = (
                 self._client.table("coach_sessions")
                 .select("optimization_run_id")
                 .eq("user_id", user_id)
                 .order("created_at", desc=False)
-                .limit(1)
                 .execute()
             )
             if not sessions.data:
-                return None
-            run_id = sessions.data[0]["optimization_run_id"]
-            run = (
+                return (None, None)
+            run_ids = [s["optimization_run_id"] for s in sessions.data]
+            runs = (
                 self._client.table("optimization_runs")
-                .select("job_company")
-                .eq("id", run_id)
-                .limit(1)
+                .select("id, job_parsed")
+                .in_("id", run_ids)
                 .execute()
             )
-            if not run.data:
-                return None
-            return run.data[0].get("job_company") or None
+            runs_by_id = {r["id"]: (r.get("job_parsed") or {}) for r in (runs.data or [])}
+            for run_id in run_ids:
+                company = (runs_by_id.get(run_id, {}).get("company") or "").strip()
+                if company and company.lower() != "unknown":
+                    return (company, None)
+            # Sessions exist but none have a known company.
+            return (None, run_ids[0])
         except Exception as e:
-            logger.warning(f"Failed to get coach locked company: {e}")
-            return None
+            logger.warning(f"Failed to get coach lock: {e}")
+            return (None, None)
+
+    def get_coach_locked_company(self, user_id: str) -> str | None:
+        """Return the known company name the user is locked to, or None."""
+        company, _ = self.get_coach_lock(user_id)
+        return company
 
     # Coach message operations
     def get_coach_messages(self, session_id: str) -> list:
@@ -602,6 +616,7 @@ class SupabaseService:
                 self._client.table("profiles")
                 .update({"telegram_id": telegram_id})
                 .eq("id", user_id)
+                .select()
                 .execute()
             )
             if not result.data:
@@ -698,9 +713,9 @@ class SupabaseService:
         try:
             result = (
                 self._client.table("optimization_runs")
-                .select("id, job_title, job_company, status, created_at")
+                .select("id, job_parsed, status, created_at")
                 .eq("user_id", user_id)
-                .eq("status", "completed")
+                .eq("status", "complete")
                 .order("created_at", desc=True)
                 .limit(limit)
                 .execute()

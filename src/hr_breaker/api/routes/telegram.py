@@ -11,6 +11,7 @@ from hr_breaker.api.auth_telegram import (
     parse_and_validate_init_data,
 )
 from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
+from hr_breaker.services.supabase import SupabaseError
 from hr_breaker.config import get_settings, logger
 
 router = APIRouter()
@@ -80,7 +81,11 @@ async def link_telegram(
 
     profile = supabase.get_profile(user_id)
     if not profile:
-        supabase.create_profile(user_id, email or "")
+        try:
+            supabase.create_profile(user_id, email)
+        except SupabaseError:
+            if not supabase.get_profile(user_id):
+                raise
 
     supabase.link_telegram(user_id, body.telegram_id)
 
