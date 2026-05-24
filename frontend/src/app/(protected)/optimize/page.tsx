@@ -112,7 +112,7 @@ function OptimizeContent() {
       }
       console.error("Failed to start optimization:", err);
     }
-  }, [selectedCV, jobInput, startOptimization, router, track, queryClient]);
+  }, [selectedCV, jobInput, startOptimization, router, track, queryClient, open]);
 
   const quotaExhausted =
     subscription?.tier === "free" &&
