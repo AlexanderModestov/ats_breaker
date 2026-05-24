@@ -96,7 +96,7 @@ class SupabaseService:
             logger.error(f"Failed to update profile: {e}")
             raise SupabaseError(f"Failed to update profile: {e}") from e
 
-    def create_profile(self, user_id: str, email: str, name: str | None = None) -> dict[str, Any]:
+    def create_profile(self, user_id: str, email: str | None, name: str | None = None) -> dict[str, Any]:
         """Create user profile."""
         try:
             result = (

@@ -80,7 +80,7 @@ async def link_telegram(
 
     profile = supabase.get_profile(user_id)
     if not profile:
-        supabase.create_profile(user_id, email or "")
+        supabase.create_profile(user_id, email)
 
     supabase.link_telegram(user_id, body.telegram_id)
 
