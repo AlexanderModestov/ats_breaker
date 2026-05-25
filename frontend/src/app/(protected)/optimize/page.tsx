@@ -207,7 +207,7 @@ function OptimizeContent() {
           whileTap={{ scale: canOptimize ? 0.99 : 1 }}
         >
           <Button
-            className="w-full bg-violet-700 font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+            className="w-full bg-violet-700 font-medium text-white hover:bg-violet-800 disabled:opacity-50 py-3"
             disabled={!canOptimize || startOptimization.isPending}
             onClick={handleOptimize}
           >
