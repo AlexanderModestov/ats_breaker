@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { useLang } from "../_lib/LangContext";
-import { t } from "../_lib/translations";
 import { type Lang } from "../_lib/translations";
 import { cn } from "@/lib/utils";
 
@@ -114,7 +113,7 @@ export function LandingHeader() {
             )}
           </div>
 
-          <div className="h-5 w-px bg-border" />
+          <div className={cn("h-5 w-px", scrolled ? "bg-zinc-200" : "bg-white/20")} />
 
           <Link href="/signin">
             <Button
