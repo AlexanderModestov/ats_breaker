@@ -11,7 +11,7 @@ export function PricingSection() {
   const { lang } = useLang();
 
   return (
-    <section id="pricing" className="py-20 bg-secondary/30 scroll-mt-16">
+    <section id="pricing" className="py-20 bg-white scroll-mt-16">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial="initial"
@@ -70,7 +70,7 @@ export function PricingSection() {
                 ))}
               </ul>
 
-              <div className="mt-6 pt-6 border-t border-border">
+              <div className="mt-6 pt-6 border-t border-zinc-200">
                 <Link href="/signin">
                   {plan.highlighted ? (
                     <Button className="w-full bg-violet-700 hover:bg-violet-800 text-white">
