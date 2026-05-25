@@ -6,6 +6,7 @@ import { ThreadListItem } from "./ThreadListItem";
 import type { CoachSession, OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
 import { useSubscription, useCheckout } from "@/hooks/useSubscription";
+import { PricingModal } from "@/components/PricingModal";
 
 interface Props {
   sessions: CoachSession[];
@@ -30,6 +31,7 @@ export function CoachSidebar({
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [pricingOpen, setPricingOpen] = useState(false);
   const { data: sub } = useSubscription();
   const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
   const lockedCompany = sub?.coach?.locked_company ?? null;
@@ -63,6 +65,8 @@ export function CoachSidebar({
   }, [sessions, positions, search]);
 
   return (
+    <>
+    <PricingModal isOpen={pricingOpen} onClose={() => setPricingOpen(false)} upgradeOnly />
     <div className="flex h-full w-full flex-col border-r border-border bg-background">
       <div className="border-b border-border p-3 space-y-2">
         <input
@@ -81,11 +85,17 @@ export function CoachSidebar({
           Add position
         </button>
         {isTrialUser && (
-          <p className="text-xs text-muted-foreground text-center">
+          <button
+            type="button"
+            onClick={() => setPricingOpen(true)}
+            className="w-full text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
+          >
             {lockedCompany
               ? `Coach sessions available for ${lockedCompany} only`
               : "Coach sessions available for 1 company only"}
-          </p>
+            {" — "}
+            <span className="underline">Upgrade</span>
+          </button>
         )}
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
@@ -161,5 +171,6 @@ export function CoachSidebar({
         })}
       </div>
     </div>
+    </>
   );
 }
