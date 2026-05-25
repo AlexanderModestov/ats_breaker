@@ -3,14 +3,12 @@
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Rocket, CheckCircle, ArrowRight } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CVDropdown } from "@/components/CVDropdown";
@@ -161,8 +159,7 @@ function OptimizeContent() {
         {/* CV Selection */}
         <Card className="border-border/50 shadow-sm transition-shadow hover:shadow-md">
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Select Resume</CardTitle>
-            <CardDescription>Choose which resume to optimize</CardDescription>
+            <p className="text-sm font-medium text-zinc-500">Your resume</p>
           </CardHeader>
           <CardContent>
             <CVDropdown
@@ -193,10 +190,7 @@ function OptimizeContent() {
         {/* Job Input */}
         <Card className="overflow-hidden border-border/50 shadow-sm transition-shadow hover:shadow-md">
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Job Posting</CardTitle>
-            <CardDescription>
-              Paste the job posting URL or description
-            </CardDescription>
+            <p className="text-sm font-medium text-zinc-500">Job posting</p>
           </CardHeader>
           <CardContent>
             <JobInput
@@ -213,22 +207,17 @@ function OptimizeContent() {
           whileTap={{ scale: canOptimize ? 0.99 : 1 }}
         >
           <Button
-            size="lg"
-            className="group w-full gap-2 py-6 text-base"
+            className="w-full bg-violet-700 font-medium text-white hover:bg-violet-800 disabled:opacity-50"
             disabled={!canOptimize || startOptimization.isPending}
             onClick={handleOptimize}
           >
             {startOptimization.isPending ? (
               <>
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Starting optimization...
+                Optimizing...
               </>
             ) : (
-              <>
-                <Rocket className="h-4 w-4" />
-                Start Optimization
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </>
+              "Optimize"
             )}
           </Button>
         </motion.div>
