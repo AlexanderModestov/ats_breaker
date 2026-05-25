@@ -80,14 +80,11 @@ export function CoachSidebar({
           <Plus className="h-4 w-4" />
           Add position
         </button>
-        {isTrialUser && lockedCompany && (
+        {isTrialUser && (
           <p className="text-xs text-muted-foreground text-center">
-            Free plan: {lockedCompany} only
-          </p>
-        )}
-        {isTrialUser && !lockedCompany && (
-          <p className="text-xs text-muted-foreground text-center">
-            Free plan: 1 company
+            {lockedCompany
+              ? `Coach sessions available for ${lockedCompany} only`
+              : "Coach sessions available for 1 company only"}
           </p>
         )}
       </div>
