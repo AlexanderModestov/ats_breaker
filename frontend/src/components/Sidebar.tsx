@@ -64,10 +64,11 @@ export function Sidebar() {
             <span className="flex-1 truncate text-xs text-zinc-500">
               {user?.email?.split("@")[0]}
             </span>
-            <Link href="/settings">
-              <button className="rounded p-1 text-zinc-400 transition-colors hover:text-zinc-700">
-                <Settings className="h-3.5 w-3.5" />
-              </button>
+            <Link
+              href="/settings"
+              className="rounded p-1 text-zinc-400 transition-colors hover:text-zinc-700"
+            >
+              <Settings className="h-3.5 w-3.5" />
             </Link>
             <button
               onClick={() => signOut()}
