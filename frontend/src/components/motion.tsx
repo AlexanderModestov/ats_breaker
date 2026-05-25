@@ -18,15 +18,15 @@ export const fadeIn: Variants = {
 };
 
 export const fadeSlideUp: Variants = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 8 },
   animate: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: ease.smooth }
+    transition: { duration: 0.4, ease: ease.smooth }
   },
   exit: {
     opacity: 0,
-    y: -10,
+    y: -4,
     transition: { duration: 0.2 }
   },
 };
@@ -46,16 +46,16 @@ export const fadeSlideIn: Variants = {
 };
 
 export const scaleIn: Variants = {
-  initial: { opacity: 0, scale: 0.95 },
+  initial: { opacity: 0, scale: 0.97 },
   animate: {
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.3, ease: ease.snappy }
+    transition: { duration: 0.2, ease: ease.snappy }
   },
   exit: {
     opacity: 0,
-    scale: 0.95,
-    transition: { duration: 0.2 }
+    scale: 0.97,
+    transition: { duration: 0.15 }
   },
 };
 
@@ -89,8 +89,8 @@ export function PageTransition({ children, className }: PageTransitionProps) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.4, ease: ease.smooth }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.35, ease: ease.smooth }}
       className={className}
     >
       {children}
@@ -173,9 +173,9 @@ interface SlideUpProps {
 export function SlideUp({ children, className, delay = 0 }: SlideUpProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: ease.smooth }}
+      transition={{ duration: 0.4, delay, ease: ease.smooth }}
       className={className}
     >
       {children}
