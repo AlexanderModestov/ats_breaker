@@ -84,7 +84,6 @@ class SupabaseService:
                 self._client.table("profiles")
                 .update(data)
                 .eq("id", user_id)
-                .select()
                 .execute()
             )
             if not result.data:
@@ -616,7 +615,6 @@ class SupabaseService:
                 self._client.table("profiles")
                 .update({"telegram_id": telegram_id})
                 .eq("id", user_id)
-                .select()
                 .execute()
             )
             if not result.data:
