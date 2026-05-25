@@ -1,5 +1,3 @@
-"use client";
-
 const steps = [
   {
     number: "01",

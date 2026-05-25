@@ -1,5 +1,3 @@
-"use client";
-
 import { Zap, Target, FileText, History, MessageCircle, Download } from "lucide-react";
 
 const features = [
