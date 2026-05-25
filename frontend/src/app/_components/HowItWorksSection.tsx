@@ -1,63 +1,38 @@
 "use client";
 
-import Link from "next/link";
-import { FileUp, Link as LinkIcon, Download, MessagesSquare } from "lucide-react";
-import { motion, staggerContainer, staggerItem } from "@/components/motion";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { useLang } from "../_lib/LangContext";
-import { t } from "../_lib/translations";
-
-const icons = [FileUp, LinkIcon, Download, MessagesSquare];
+const steps = [
+  {
+    number: "01",
+    title: "Upload your resume",
+    description: "LaTeX, PDF, Markdown, or plain text — any format works.",
+  },
+  {
+    number: "02",
+    title: "Paste the job posting",
+    description: "Copy the job description or drop in the URL.",
+  },
+  {
+    number: "03",
+    title: "Get your tailored resume",
+    description: "ATS-optimized PDF ready in seconds, no fabrications.",
+  },
+];
 
 export function HowItWorksSection() {
-  const { lang } = useLang();
-
   return (
-    <section className="py-20 bg-secondary/30">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-3xl font-bold">
-          {t.howItWorks.heading[lang]}
+    <section id="how-it-works" className="bg-white py-24">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        <h2 className="text-center text-3xl font-bold tracking-tight text-zinc-900">
+          How it works
         </h2>
-
-        <motion.div
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={staggerContainer}
-          className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {t.howItWorks.steps.map((step, i) => {
-            const Icon = icons[i];
-            return (
-              <motion.div key={i} variants={staggerItem}>
-                <Card className="h-full text-center">
-                  <CardContent className="pt-6">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-                      <Icon className="h-6 w-6 text-accent" />
-                    </div>
-                    <div className="mt-2 text-sm font-medium text-muted-foreground">
-                      {i + 1}
-                    </div>
-                    <h3 className="mt-2 text-lg font-semibold">
-                      {step.title[lang]}
-                    </h3>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {step.description[lang]}
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-
-        <div className="mt-12 flex justify-center">
-          <Link href="/signin">
-            <Button variant="accent" size="lg" className="text-base px-8">
-              {t.howItWorks.cta[lang]}
-            </Button>
-          </Link>
+        <div className="mt-16 grid gap-12 sm:grid-cols-3">
+          {steps.map((step) => (
+            <div key={step.number} className="flex flex-col">
+              <span className="text-6xl font-bold text-zinc-200">{step.number}</span>
+              <h3 className="mt-4 text-lg font-bold text-zinc-900">{step.title}</h3>
+              <p className="mt-2 text-sm text-zinc-500">{step.description}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
