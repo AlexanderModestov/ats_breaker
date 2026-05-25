@@ -28,6 +28,7 @@ import {
   useUpgradePreview,
   useUpgrade,
 } from "@/hooks/useSubscription";
+import { cn } from "@/lib/utils";
 import { TIER_LABEL, TIER_RANK, type Tier } from "@/lib/tiers";
 
 type Feature = string | { label: string; soon?: boolean };
@@ -177,11 +178,12 @@ export function PricingContent({ onClose }: Props) {
 
   return (
     <>
-      <div className="mx-auto max-w-2xl text-center">
-        <h1 className="text-3xl font-bold tracking-tight">Pricing</h1>
-        <p className="mt-2 text-muted-foreground">
-          Choose the plan that fits your job search
-        </p>
+      <div className="mx-auto max-w-4xl text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-violet-600">Pricing</p>
+        <h1 className="mt-2 text-4xl font-bold tracking-tight text-zinc-900">
+          Simple, transparent pricing.
+        </h1>
+        <p className="mt-3 text-zinc-500">Start free. Upgrade when you're ready.</p>
       </div>
 
       <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
@@ -190,16 +192,17 @@ export function PricingContent({ onClose }: Props) {
           return (
             <Card
               key={plan.tier}
-              className={
+              className={cn(
+                "flex flex-col",
                 plan.highlighted
-                  ? "border-2 border-primary shadow-lg"
-                  : "border-border"
-              }
+                  ? "border border-violet-400 bg-violet-50"
+                  : "border border-zinc-200 bg-white"
+              )}
             >
               <CardHeader>
                 <CardTitle className="text-xl">{TIER_LABEL[plan.tier]}</CardTitle>
                 <CardDescription>{plan.tagline}</CardDescription>
-                <div className="mt-3 text-3xl font-bold">{plan.price}</div>
+                <div className="mt-3 text-4xl font-bold text-zinc-900">{plan.price}</div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <ul className="space-y-2">
@@ -208,7 +211,7 @@ export function PricingContent({ onClose }: Props) {
                     const soon = typeof f === "object" && f.soon;
                     return (
                       <li key={label} className="flex items-start gap-2 text-sm">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
                         <span>{label}</span>
                         {soon && (
                           <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide leading-none text-red-600 dark:text-red-400">
@@ -222,10 +225,13 @@ export function PricingContent({ onClose }: Props) {
               </CardContent>
               <CardFooter>
                 <Button
-                  className="w-full"
+                  className={cn(
+                    "w-full",
+                    plan.highlighted ? "bg-violet-700 text-white hover:bg-violet-800" : ""
+                  )}
+                  variant={plan.highlighted ? "default" : "outline"}
                   onClick={cta.onClick}
                   disabled={cta.disabled}
-                  variant={plan.highlighted ? "default" : "outline"}
                 >
                   {cta.label}
                 </Button>
@@ -262,7 +268,7 @@ export function PricingContent({ onClose }: Props) {
               </p>
             )}
             {preview.data && (
-              <div className="rounded-lg border border-border bg-muted/50 p-4">
+              <div className="rounded-lg border border-zinc-200 bg-zinc-100 p-4">
                 <p className="text-sm text-muted-foreground">Due today</p>
                 <p className="mt-1 text-2xl font-bold">
                   {formatAmount(preview.data.amount_due, preview.data.currency)}
@@ -283,6 +289,7 @@ export function PricingContent({ onClose }: Props) {
               Cancel
             </Button>
             <Button
+              className="bg-violet-700 text-white hover:bg-violet-800"
               onClick={handleUpgradeConfirm}
               disabled={upgrade.isPending || preview.isLoading}
             >
