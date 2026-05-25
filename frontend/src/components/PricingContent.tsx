@@ -95,9 +95,10 @@ type CtaState = { label: string; onClick: () => void; disabled: boolean };
 
 type Props = {
   onClose?: () => void;
+  upgradeOnly?: boolean;
 };
 
-export function PricingContent({ onClose }: Props) {
+export function PricingContent({ onClose, upgradeOnly }: Props) {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: sub } = useSubscription();
@@ -185,7 +186,7 @@ export function PricingContent({ onClose }: Props) {
       </div>
 
       <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
-        {PLANS.map((plan) => {
+        {PLANS.filter((plan) => !upgradeOnly || TIER_RANK[plan.tier] > TIER_RANK[sub?.tier ?? "free"]).map((plan) => {
           const cta = ctaFor(plan.tier);
           return (
             <Card

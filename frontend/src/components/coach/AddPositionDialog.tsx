@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Lock } from "lucide-react";
 import type { OptimizationSummary } from "@/types";
-import { useSubscription, useCheckout } from "@/hooks/useSubscription";
+import { useSubscription } from "@/hooks/useSubscription";
 import { TIER_LABEL } from "@/lib/tiers";
+import { PricingModal } from "@/components/PricingModal";
 
 interface Props {
   open: boolean;
@@ -22,7 +23,7 @@ export function AddPositionDialog({
   onClose,
 }: Props) {
   const { data: sub } = useSubscription();
-  const checkout = useCheckout();
+  const [pricingOpen, setPricingOpen] = useState(false);
   const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
   const lockedCompany = sub?.coach?.locked_company ?? null;
 
@@ -42,6 +43,8 @@ export function AddPositionDialog({
     (p.job_company ?? "").toLowerCase().trim() !== lockedCompany.toLowerCase().trim();
 
   return (
+    <>
+    <PricingModal isOpen={pricingOpen} onClose={() => setPricingOpen(false)} upgradeOnly />
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={onClose}
@@ -66,7 +69,7 @@ export function AddPositionDialog({
                     className="w-full px-2 py-2 text-left text-sm rounded flex items-center justify-between gap-2 hover:bg-muted"
                     onClick={() => {
                       if (locked) {
-                        checkout.mutate("job_hunter");
+                        setPricingOpen(true);
                       } else {
                         onPick(p.id);
                         onClose();
@@ -90,5 +93,6 @@ export function AddPositionDialog({
         )}
       </div>
     </div>
+    </>
   );
 }
