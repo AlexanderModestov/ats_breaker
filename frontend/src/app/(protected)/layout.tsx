@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLinkTelegram } from "@/hooks/useLinkTelegram";
 import { useTelegramAutoLogin } from "@/hooks/useTelegramAutoLogin";
-import { Navbar } from "@/components/Navbar";
+import { Sidebar } from "@/components/Sidebar";
 import { motion } from "framer-motion";
 import { PricingModalProvider } from "@/context/PricingModalContext";
 
@@ -50,15 +50,17 @@ export default function ProtectedLayout({
 
   return (
     <PricingModalProvider>
-      <div className="min-h-screen bg-background">
-        <Navbar />
+      <div className="flex min-h-screen bg-white">
+        <Sidebar />
         <motion.main
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8"
+          transition={{ duration: 0.3 }}
+          className="flex-1 overflow-x-hidden pb-16 lg:pb-0"
         >
-          {children}
+          <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            {children}
+          </div>
         </motion.main>
       </div>
     </PricingModalProvider>
