@@ -3,83 +3,59 @@
 import Link from "next/link";
 import { motion, ease } from "@/components/motion";
 import { Button } from "@/components/ui/button";
-import { useLang } from "../_lib/LangContext";
-import { t } from "../_lib/translations";
-
-const TELEGRAM_BOT_URL = "https://t.me/hrbreaker_bot";
-
-function TelegramIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className={className}
-      fill="currentColor"
-    >
-      <path d="M9.78 15.27 9.6 18.9c.4 0 .58-.18.79-.39l1.9-1.82 3.94 2.88c.72.4 1.24.19 1.43-.66l2.6-12.18c.25-1.1-.4-1.54-1.1-1.28L3.46 10.8c-1.07.42-1.06 1.02-.18 1.29l3.95 1.23 9.17-5.78c.43-.27.83-.12.5.18z" />
-    </svg>
-  );
-}
 
 export function HeroSection() {
-  const { lang } = useLang();
-
   return (
-    <section className="py-24 sm:py-32">
-      <div className="mx-auto max-w-3xl text-center">
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950">
+      {/* Violet radial bloom */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% 65%, rgba(124, 58, 237, 0.15) 0%, transparent 70%)",
+        }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-3xl px-4 text-center sm:px-6">
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: ease.smooth }}
-          className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl"
+          className="text-5xl font-bold tracking-tight text-white sm:text-6xl"
         >
-          {t.hero.heading[lang]}
+          Transform your resume
+          <br />
+          for every job posting.
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease: ease.smooth }}
-          className="mt-6 text-lg text-muted-foreground sm:text-xl"
+          className="mt-6 text-lg text-zinc-400"
         >
-          {t.hero.subheading[lang]}
+          AI-powered. ATS-ready. One click.
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2, ease: ease.smooth }}
-          className="mt-10"
+          className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
         >
           <Link href="/signin">
-            <Button variant="accent" size="lg" className="text-base px-8">
-              {t.hero.cta[lang]}
+            <Button className="bg-violet-700 px-8 py-6 text-base font-medium text-white hover:bg-violet-800">
+              Get started free
             </Button>
           </Link>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {t.hero.ctaSub[lang]}
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3, ease: ease.smooth }}
-          className="mt-8"
-        >
-          <a
-            href={TELEGRAM_BOT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variant="outline" size="lg" className="text-base px-8">
-              <TelegramIcon className="text-[#229ED9]" />
-              {t.hero.telegramCta[lang]}
+          <a href="#how-it-works">
+            <Button
+              variant="ghost"
+              className="px-8 py-6 text-base text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              See how it works
             </Button>
           </a>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
-            {t.hero.telegramCtaSub[lang]}
-          </p>
         </motion.div>
       </div>
     </section>
