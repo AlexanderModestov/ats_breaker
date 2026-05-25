@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 import { JsonLd } from "./components/JsonLd";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://hrbreaker.co"),
@@ -56,7 +51,7 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${GeistSans.variable} font-sans antialiased`} suppressHydrationWarning>
         <JsonLd />
         <Providers>{children}</Providers>
       </body>
