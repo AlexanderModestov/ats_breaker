@@ -41,8 +41,8 @@ class Settings(BaseModel):
     """Application settings."""
 
     google_api_key: str = ""
-    gemini_pro_model: str = "gemini-2.5-pro"
-    gemini_flash_model: str = "gemini-2.5-flash"
+    gemini_pro_model: str = "gemini-3-pro-preview"
+    gemini_flash_model: str = "gemini-3-flash-preview"
     gemini_thinking_budget: int | None = None
     cache_dir: Path = Path(".cache/resumes")
     output_dir: Path = Path("output")
@@ -127,8 +127,8 @@ def get_settings() -> Settings:
     thinking_budget: int | None = int(thinking_env) if thinking_env else None
     return Settings(
         google_api_key=os.getenv("GOOGLE_API_KEY", ""),
-        gemini_pro_model=os.getenv("GEMINI_PRO_MODEL") or "gemini-2.5-pro",
-        gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or "gemini-2.5-flash",
+        gemini_pro_model=os.getenv("GEMINI_PRO_MODEL") or "gemini-3-pro-preview",
+        gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or "gemini-3-flash-preview",
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
         # Scraper settings
