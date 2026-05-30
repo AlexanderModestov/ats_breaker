@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ResumePreview } from "@/components/ResumePreview";
 import { InlineEdit } from "@/components/InlineEdit";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
+import { AMBER_FIELD_BTN } from "@/lib/utils";
 import {
   useOptimizationStatus,
   useDownloadPDF,
@@ -93,7 +94,7 @@ function JobInfoHeader({
               <button
                 type="button"
                 onClick={() => setEditing("company")}
-                className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-amber-400 px-2 py-0.5 text-sm font-medium text-amber-700 transition-colors hover:border-solid hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-amber-500/60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                className={AMBER_FIELD_BTN}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 Add company

@@ -107,6 +107,11 @@ class Settings(BaseModel):
     agent_name_extractor_chars: int = 2000
 
 
+def _field_default(name: str):
+    """Return the Settings class-level default for a field (single source of truth)."""
+    return Settings.model_fields[name].default
+
+
 def _parse_cors_origins(value: str) -> list[str]:
     """Parse CORS origins from comma-separated string."""
     if not value:
@@ -127,35 +132,35 @@ def get_settings() -> Settings:
     thinking_budget: int | None = int(thinking_env) if thinking_env else None
     return Settings(
         google_api_key=os.getenv("GOOGLE_API_KEY", ""),
-        gemini_pro_model=os.getenv("GEMINI_PRO_MODEL") or "gemini-3-pro-preview",
-        gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or "gemini-3-flash-preview",
+        gemini_pro_model=os.getenv("GEMINI_PRO_MODEL") or _field_default("gemini_pro_model"),
+        gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or _field_default("gemini_flash_model"),
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
         # Scraper settings
-        scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT", "30")),
-        scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT", "15")),
-        scraper_playwright_timeout=int(os.getenv("SCRAPER_PLAYWRIGHT_TIMEOUT", "60000")),
-        scraper_httpx_max_retries=int(os.getenv("SCRAPER_HTTPX_MAX_RETRIES", "3")),
-        scraper_wayback_max_age_days=int(os.getenv("SCRAPER_WAYBACK_MAX_AGE_DAYS", "30")),
-        scraper_min_text_length=int(os.getenv("SCRAPER_MIN_TEXT_LENGTH", "200")),
+        scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT") or _field_default("scraper_httpx_timeout")),
+        scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT") or _field_default("scraper_wayback_timeout")),
+        scraper_playwright_timeout=int(os.getenv("SCRAPER_PLAYWRIGHT_TIMEOUT") or _field_default("scraper_playwright_timeout")),
+        scraper_httpx_max_retries=int(os.getenv("SCRAPER_HTTPX_MAX_RETRIES") or _field_default("scraper_httpx_max_retries")),
+        scraper_wayback_max_age_days=int(os.getenv("SCRAPER_WAYBACK_MAX_AGE_DAYS") or _field_default("scraper_wayback_max_age_days")),
+        scraper_min_text_length=int(os.getenv("SCRAPER_MIN_TEXT_LENGTH") or _field_default("scraper_min_text_length")),
         # Filter thresholds
-        filter_hallucination_threshold=float(os.getenv("FILTER_HALLUCINATION_THRESHOLD", "0.9")),
-        filter_keyword_threshold=float(os.getenv("FILTER_KEYWORD_THRESHOLD", "0.25")),
-        filter_llm_threshold=float(os.getenv("FILTER_LLM_THRESHOLD", "0.7")),
-        filter_vector_threshold=float(os.getenv("FILTER_VECTOR_THRESHOLD", "0.4")),
-        filter_ai_generated_threshold=float(os.getenv("FILTER_AI_GENERATED_THRESHOLD", "0.4")),
+        filter_hallucination_threshold=float(os.getenv("FILTER_HALLUCINATION_THRESHOLD") or _field_default("filter_hallucination_threshold")),
+        filter_keyword_threshold=float(os.getenv("FILTER_KEYWORD_THRESHOLD") or _field_default("filter_keyword_threshold")),
+        filter_llm_threshold=float(os.getenv("FILTER_LLM_THRESHOLD") or _field_default("filter_llm_threshold")),
+        filter_vector_threshold=float(os.getenv("FILTER_VECTOR_THRESHOLD") or _field_default("filter_vector_threshold")),
+        filter_ai_generated_threshold=float(os.getenv("FILTER_AI_GENERATED_THRESHOLD") or _field_default("filter_ai_generated_threshold")),
         # Resume length limits
-        resume_max_chars=int(os.getenv("RESUME_MAX_CHARS", "4500")),
-        resume_max_words=int(os.getenv("RESUME_MAX_WORDS", "520")),
-        resume_page2_overflow_chars=int(os.getenv("RESUME_PAGE2_OVERFLOW_CHARS", "1000")),
+        resume_max_chars=int(os.getenv("RESUME_MAX_CHARS") or _field_default("resume_max_chars")),
+        resume_max_words=int(os.getenv("RESUME_MAX_WORDS") or _field_default("resume_max_words")),
+        resume_page2_overflow_chars=int(os.getenv("RESUME_PAGE2_OVERFLOW_CHARS") or _field_default("resume_page2_overflow_chars")),
         # Keyword matcher params
-        keyword_tfidf_max_features=int(os.getenv("KEYWORD_TFIDF_MAX_FEATURES", "200")),
-        keyword_tfidf_cutoff=float(os.getenv("KEYWORD_TFIDF_CUTOFF", "0.1")),
-        keyword_max_missing_display=int(os.getenv("KEYWORD_MAX_MISSING_DISPLAY", "10")),
+        keyword_tfidf_max_features=int(os.getenv("KEYWORD_TFIDF_MAX_FEATURES") or _field_default("keyword_tfidf_max_features")),
+        keyword_tfidf_cutoff=float(os.getenv("KEYWORD_TFIDF_CUTOFF") or _field_default("keyword_tfidf_cutoff")),
+        keyword_max_missing_display=int(os.getenv("KEYWORD_MAX_MISSING_DISPLAY") or _field_default("keyword_max_missing_display")),
         # Model settings
-        sentence_transformer_model=os.getenv("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2"),
+        sentence_transformer_model=os.getenv("SENTENCE_TRANSFORMER_MODEL") or _field_default("sentence_transformer_model"),
         # Agent limits
-        agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS", "2000")),
+        agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS") or _field_default("agent_name_extractor_chars")),
         # Supabase settings
         supabase_url=os.getenv("SUPABASE_URL", ""),
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY", ""),
