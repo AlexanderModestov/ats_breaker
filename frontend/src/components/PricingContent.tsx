@@ -185,7 +185,19 @@ export function PricingContent({ onClose, upgradeOnly }: Props) {
         </p>
       </div>
 
-      <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
+      <div
+        className={[
+          "mx-auto mt-12 grid gap-6",
+          (() => {
+            const count = PLANS.filter(
+              (plan) => !upgradeOnly || TIER_RANK[plan.tier] > TIER_RANK[sub?.tier ?? "free"],
+            ).length;
+            if (count === 1) return "max-w-sm grid-cols-1";
+            if (count === 2) return "max-w-2xl grid-cols-2";
+            return "max-w-5xl md:grid-cols-3";
+          })(),
+        ].join(" ")}
+      >
         {PLANS.filter((plan) => !upgradeOnly || TIER_RANK[plan.tier] > TIER_RANK[sub?.tier ?? "free"]).map((plan) => {
           const cta = ctaFor(plan.tier);
           return (

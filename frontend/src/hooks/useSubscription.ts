@@ -25,11 +25,12 @@ export function useCheckout() {
       const baseUrl = window.location.origin;
       return createCheckout(
         tier,
-        `${baseUrl}/optimize?upgraded=${tier}`,
+        `${baseUrl}/pricing?upgraded=${tier}`,
         `${baseUrl}/pricing`,
       );
     },
     onSuccess: (data) => {
+      window.history.replaceState({}, "", "/pricing");
       window.location.href = data.checkout_url;
     },
   });
