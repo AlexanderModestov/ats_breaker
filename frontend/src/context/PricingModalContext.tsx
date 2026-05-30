@@ -2,20 +2,29 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 import { PricingModal } from "@/components/PricingModal";
+import type { Tier } from "@/lib/tiers";
+
+type OpenOptions = { minTier?: Tier };
 
 type PricingModalContextValue = {
-  open: () => void;
+  open: (options?: OpenOptions) => void;
 };
 
 const PricingModalContext = createContext<PricingModalContextValue | null>(null);
 
 export function PricingModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [options, setOptions] = useState<OpenOptions>({});
+
+  const open = (opts?: OpenOptions) => {
+    setOptions(opts ?? {});
+    setIsOpen(true);
+  };
 
   return (
-    <PricingModalContext.Provider value={{ open: () => setIsOpen(true) }}>
+    <PricingModalContext.Provider value={{ open }}>
       {children}
-      <PricingModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <PricingModal isOpen={isOpen} onClose={() => setIsOpen(false)} minTier={options.minTier} />
     </PricingModalContext.Provider>
   );
 }
