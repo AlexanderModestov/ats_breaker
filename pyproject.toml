@@ -20,8 +20,6 @@ dependencies = [
     "google-generativeai",
     "httpx",
     "beautifulsoup4",
-    "spacy>=3.0",
-    "qdrant-client",
     "sentence-transformers",
     "scikit-learn>=1.0",
     "python-dotenv",

@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { InlineEdit } from "@/components/InlineEdit";
 import { motion } from "@/components/motion";
 import { useUpdateOptimizationJob } from "@/hooks/useOptimization";
+import { cn, AMBER_FIELD_BTN } from "@/lib/utils";
 import type { OptimizationSummary } from "@/types";
 
 interface OptimizationCardProps {
@@ -127,7 +128,7 @@ export function OptimizationCard({
                     e.stopPropagation();
                     setEditing("title");
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-amber-400 px-2 py-0.5 text-base font-medium text-amber-700 transition-colors hover:border-solid hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-amber-500/60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  className={cn(AMBER_FIELD_BTN, "text-base")}
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                   Add position
@@ -165,7 +166,7 @@ export function OptimizationCard({
                   e.stopPropagation();
                   setEditing("company");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-amber-400 px-2 py-0.5 text-sm font-medium text-amber-700 transition-colors hover:border-solid hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-amber-500/60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                className={AMBER_FIELD_BTN}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 Add company
