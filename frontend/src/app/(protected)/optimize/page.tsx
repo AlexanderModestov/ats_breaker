@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Rocket, ArrowRight } from "lucide-react";
+import { Rocket, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CVDropdown } from "@/components/CVDropdown";
 import { JobInput } from "@/components/JobInput";
 import { QuotaBanner } from "@/components/QuotaBanner";
@@ -21,6 +22,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { motion, AnimatePresence, SlideUp } from "@/components/motion";
 import { ApiError } from "@/lib/api";
+import { TIER_LABEL } from "@/lib/tiers";
 import { usePricingModal } from "@/context/PricingModalContext";
 import type { CV } from "@/types";
 
@@ -38,8 +40,18 @@ function OptimizeContent() {
 
   const [selectedCV, setSelectedCV] = useState<CV | null>(null);
   const [jobInput, setJobInput] = useState("");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cvInitialized, setCvInitialized] = useState(false);
 
+  useEffect(() => {
+    const upgraded = searchParams.get("upgraded");
+    if (upgraded === "job_hunter" || upgraded === "offer_mode") {
+      setSuccessMessage(`Welcome to ${TIER_LABEL[upgraded]}! Your subscription is active.`);
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      window.history.replaceState({}, "", "/optimize");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // CV select with localStorage persistence
   const handleCVSelect = useCallback((cv: CV) => {
@@ -114,6 +126,22 @@ function OptimizeContent() {
       transition={{ duration: 0.4 }}
       className="space-y-8"
     >
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription>{successMessage}</AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <SlideUp className="mx-auto max-w-2xl space-y-1">
         <h1 className="text-3xl font-bold tracking-tight">Optimize Resume</h1>
