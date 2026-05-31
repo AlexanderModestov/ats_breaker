@@ -40,18 +40,19 @@ class StripeService:
         tier: str,
         user_id: str,
         user_email: str,
-        return_url: str,
+        success_url: str,
+        cancel_url: str,
         stripe_customer_id: str | None = None,
     ) -> str:
-        """Create an embedded subscription checkout session for the given tier."""
+        """Create a subscription checkout session for the given tier."""
         price_id = self._price_id_for_tier(tier)
 
         try:
             session_params: dict[str, Any] = {
-                "ui_mode": "embedded",
                 "mode": "subscription",
                 "line_items": [{"price": price_id, "quantity": 1}],
-                "return_url": return_url,
+                "success_url": success_url,
+                "cancel_url": cancel_url,
                 "metadata": {"user_id": user_id, "tier": tier},
                 "subscription_data": {"metadata": {"user_id": user_id, "tier": tier}},
             }
@@ -61,7 +62,7 @@ class StripeService:
                 session_params["customer_email"] = user_email
 
             session = stripe.checkout.Session.create(**session_params)
-            return session.client_secret
+            return session.url
         except stripe.StripeError as e:
             logger.error(f"Stripe checkout session creation failed: {e}")
             raise StripeError(f"Failed to create checkout session: {e}") from e

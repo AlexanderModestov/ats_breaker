@@ -144,10 +144,6 @@ export interface SubscriptionStatus {
 }
 
 export interface CheckoutResponse {
-  client_secret: string;
-}
-
-export interface PortalResponse {
   checkout_url: string;
 }
 

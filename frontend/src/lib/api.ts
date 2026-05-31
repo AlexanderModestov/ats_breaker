@@ -17,7 +17,6 @@ import type {
   UserProfileUpdate,
   SubscriptionStatus,
   CheckoutResponse,
-  PortalResponse,
   ValidateResponse,
 } from "@/types";
 
@@ -242,16 +241,17 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
 
 export async function createCheckout(
   tier: "job_hunter" | "offer_mode",
-  returnUrl: string,
+  successUrl: string,
+  cancelUrl: string,
 ): Promise<CheckoutResponse> {
   return fetchWithAuth<CheckoutResponse>("/subscription/checkout", {
     method: "POST",
-    body: JSON.stringify({ tier, return_url: returnUrl }),
+    body: JSON.stringify({ tier, success_url: successUrl, cancel_url: cancelUrl }),
   });
 }
 
-export async function createBillingPortal(returnUrl: string): Promise<PortalResponse> {
-  return fetchWithAuth<PortalResponse>("/subscription/billing-portal", {
+export async function createBillingPortal(returnUrl: string): Promise<CheckoutResponse> {
+  return fetchWithAuth<CheckoutResponse>("/subscription/billing-portal", {
     method: "POST",
     body: JSON.stringify({ return_url: returnUrl }),
   });
