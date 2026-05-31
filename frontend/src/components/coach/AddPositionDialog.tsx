@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Lock, Zap } from "lucide-react";
 import type { OptimizationSummary } from "@/types";
 import { useSubscription } from "@/hooks/useSubscription";
-import { PricingModal } from "@/components/PricingModal";
+import { usePricingModal } from "@/context/PricingModalContext";
 
 interface Props {
   open: boolean;
@@ -22,7 +22,7 @@ export function AddPositionDialog({
   onClose,
 }: Props) {
   const { data: sub } = useSubscription();
-  const [pricingOpen, setPricingOpen] = useState(false);
+  const { open: openPricing } = usePricingModal();
   const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
   const lockedCompany = sub?.coach?.locked_company ?? null;
 
@@ -43,9 +43,13 @@ export function AddPositionDialog({
 
   const hasLocked = candidates.some(isPositionLocked);
 
+  const handleUpgrade = () => {
+    onClose();
+    openPricing({ minTier: "offer_mode" });
+  };
+
   return (
     <>
-      <PricingModal isOpen={pricingOpen} onClose={() => setPricingOpen(false)} upgradeOnly />
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
         onClick={onClose}
@@ -75,7 +79,7 @@ export function AddPositionDialog({
                         }
                         onClick={() => {
                           if (locked) {
-                            setPricingOpen(true);
+                            handleUpgrade();
                           } else {
                             onPick(p.id);
                             onClose();
@@ -106,7 +110,7 @@ export function AddPositionDialog({
               </p>
               <button
                 type="button"
-                onClick={() => setPricingOpen(true)}
+                onClick={handleUpgrade}
                 className="shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-md transition-colors"
               >
                 <Zap className="h-3 w-3" />

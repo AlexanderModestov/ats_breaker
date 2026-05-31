@@ -117,7 +117,7 @@ function SubscriptionCard() {
 
         <div className="flex flex-col gap-2 sm:flex-row">
           {isFree && (
-            <Button onClick={open} className="w-full sm:w-auto">
+            <Button onClick={() => open()} className="w-full sm:w-auto">
               Upgrade
             </Button>
           )}
@@ -125,7 +125,7 @@ function SubscriptionCard() {
           {isActive && (
             <>
               {tier === "job_hunter" && (
-                <Button onClick={open} className="w-full sm:w-auto">
+                <Button onClick={() => open()} className="w-full sm:w-auto">
                   Upgrade plan
                 </Button>
               )}

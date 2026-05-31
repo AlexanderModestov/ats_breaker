@@ -6,7 +6,7 @@ import { ThreadListItem } from "./ThreadListItem";
 import type { CoachSession, OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
 import { useSubscription, useCheckout } from "@/hooks/useSubscription";
-import { PricingModal } from "@/components/PricingModal";
+import { usePricingModal } from "@/context/PricingModalContext";
 
 interface Props {
   sessions: CoachSession[];
@@ -31,8 +31,8 @@ export function CoachSidebar({
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [pricingOpen, setPricingOpen] = useState(false);
   const { data: sub } = useSubscription();
+  const { open: openPricing } = usePricingModal();
   const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
   const lockedCompany = sub?.coach?.locked_company ?? null;
   const checkout = useCheckout();
@@ -66,7 +66,6 @@ export function CoachSidebar({
 
   return (
     <>
-    <PricingModal isOpen={pricingOpen} onClose={() => setPricingOpen(false)} upgradeOnly />
     <div className="flex h-full w-full flex-col border-r border-border bg-background">
       <div className="border-b border-border p-3 space-y-2">
         <input
@@ -87,7 +86,7 @@ export function CoachSidebar({
         {isTrialUser && (
           <button
             type="button"
-            onClick={() => setPricingOpen(true)}
+            onClick={() => openPricing({ minTier: "offer_mode" })}
             className="w-full text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
           >
             {lockedCompany

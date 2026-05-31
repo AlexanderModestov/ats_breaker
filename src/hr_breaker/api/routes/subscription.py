@@ -110,6 +110,7 @@ async def create_checkout(
         )
         return CheckoutResponse(checkout_url=url)
     except StripeError as e:
+        logger.error(f"Checkout failed for user {user_id} tier={body.tier}: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -148,11 +149,17 @@ async def upgrade_subscription(
         raise HTTPException(status_code=400, detail="No active subscription")
     try:
         StripeService().upgrade_subscription(
-            subscription_id=subscription_id, new_tier=body.tier
+            subscription_id=subscription_id, new_tier=body.tier, user_id=user_id
         )
-        return {"ok": True}
     except StripeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+    try:
+        supabase.update_profile(user_id, {"subscription_tier": body.tier})
+    except Exception:
+        logger.warning(f"Failed to immediately update subscription_tier for {user_id}; webhook will sync")
+
+    return {"ok": True}
 
 
 @router.post("/billing-portal", response_model=CheckoutResponse)

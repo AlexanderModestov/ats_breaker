@@ -207,7 +207,7 @@ class StripeService:
             logger.error(f"Failed to preview upgrade: {e}")
             raise StripeError(f"Failed to preview upgrade: {e}") from e
 
-    def upgrade_subscription(self, *, subscription_id: str, new_tier: str) -> None:
+    def upgrade_subscription(self, *, subscription_id: str, new_tier: str, user_id: str) -> None:
         """Upgrade to new_tier immediately; Stripe creates a proration invoice."""
         price_id = self._price_id_for_tier(new_tier)
 
@@ -219,7 +219,7 @@ class StripeService:
                 subscription_id,
                 items=[{"id": item_id, "price": price_id}],
                 proration_behavior="always_invoice",
-                metadata={"tier": new_tier},
+                metadata={"tier": new_tier, "user_id": user_id},
             )
         except stripe.StripeError as e:
             logger.error(f"Failed to upgrade subscription: {e}")

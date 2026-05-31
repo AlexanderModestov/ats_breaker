@@ -96,9 +96,10 @@ type CtaState = { label: string; onClick: () => void; disabled: boolean };
 type Props = {
   onClose?: () => void;
   upgradeOnly?: boolean;
+  minTier?: Tier;
 };
 
-export function PricingContent({ onClose, upgradeOnly }: Props) {
+export function PricingContent({ onClose, upgradeOnly, minTier }: Props) {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: sub } = useSubscription();
@@ -190,7 +191,9 @@ export function PricingContent({ onClose, upgradeOnly }: Props) {
           "mx-auto mt-12 grid gap-6",
           (() => {
             const count = PLANS.filter(
-              (plan) => !upgradeOnly || TIER_RANK[plan.tier] > TIER_RANK[sub?.tier ?? "free"],
+              (plan) =>
+                (!upgradeOnly || TIER_RANK[plan.tier] > TIER_RANK[sub?.tier ?? "free"]) &&
+                (!minTier || TIER_RANK[plan.tier] >= TIER_RANK[minTier]),
             ).length;
             if (count === 1) return "max-w-sm grid-cols-1";
             if (count === 2) return "max-w-2xl grid-cols-2";
@@ -198,7 +201,11 @@ export function PricingContent({ onClose, upgradeOnly }: Props) {
           })(),
         ].join(" ")}
       >
-        {PLANS.filter((plan) => !upgradeOnly || TIER_RANK[plan.tier] > TIER_RANK[sub?.tier ?? "free"]).map((plan) => {
+        {PLANS.filter(
+          (plan) =>
+            (!upgradeOnly || TIER_RANK[plan.tier] > TIER_RANK[sub?.tier ?? "free"]) &&
+            (!minTier || TIER_RANK[plan.tier] >= TIER_RANK[minTier]),
+        ).map((plan) => {
           const cta = ctaFor(plan.tier);
           return (
             <Card
