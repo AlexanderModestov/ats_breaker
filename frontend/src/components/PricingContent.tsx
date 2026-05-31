@@ -28,6 +28,7 @@ import {
   useUpgradePreview,
   useUpgrade,
 } from "@/hooks/useSubscription";
+import { EmbeddedCheckoutModal } from "@/components/EmbeddedCheckoutModal";
 import { TIER_LABEL, TIER_RANK, type Tier } from "@/lib/tiers";
 
 type Feature = string | { label: string; soon?: boolean };
@@ -108,6 +109,7 @@ export function PricingContent({ onClose, upgradeOnly, minTier }: Props) {
   const upgrade = useUpgrade();
 
   const [pendingUpgrade, setPendingUpgrade] = useState<Exclude<Tier, "free"> | null>(null);
+  const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
 
   const preview = useUpgradePreview(pendingUpgrade);
 
@@ -158,7 +160,10 @@ export function PricingContent({ onClose, upgradeOnly, minTier }: Props) {
     if (current === "free") {
       return {
         label: "Subscribe",
-        onClick: () => checkout.mutate(planTier as Exclude<Tier, "free">),
+        onClick: () =>
+          checkout.mutate(planTier as Exclude<Tier, "free">, {
+            onSuccess: (data) => setCheckoutSecret(data.client_secret),
+          }),
         disabled: checkout.isPending,
       };
     }
@@ -254,6 +259,13 @@ export function PricingContent({ onClose, upgradeOnly, minTier }: Props) {
           );
         })}
       </div>
+
+      {checkoutSecret && (
+        <EmbeddedCheckoutModal
+          clientSecret={checkoutSecret}
+          onClose={() => setCheckoutSecret(null)}
+        />
+      )}
 
       <Dialog
         open={!!pendingUpgrade}

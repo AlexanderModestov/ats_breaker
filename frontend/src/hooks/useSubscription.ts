@@ -25,12 +25,8 @@ export function useCheckout() {
       const baseUrl = window.location.origin;
       return createCheckout(
         tier,
-        `${baseUrl}/optimize?upgraded=${tier}`,
-        `${baseUrl}/optimize`,
+        `${baseUrl}/optimize?upgraded=${tier}&session_id={CHECKOUT_SESSION_ID}`,
       );
-    },
-    onSuccess: (data) => {
-      window.location.href = data.checkout_url;
     },
   });
 }

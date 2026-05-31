@@ -19,11 +19,14 @@ router = APIRouter()
 
 class CheckoutRequest(BaseModel):
     tier: Literal["job_hunter", "offer_mode"]
-    success_url: str
-    cancel_url: str
+    return_url: str
 
 
 class CheckoutResponse(BaseModel):
+    client_secret: str
+
+
+class PortalResponse(BaseModel):
     checkout_url: str
 
 
@@ -100,15 +103,14 @@ async def create_checkout(
     stripe_customer_id = profile.get("stripe_customer_id")
 
     try:
-        url = StripeService().create_checkout_session_for_tier(
+        client_secret = StripeService().create_checkout_session_for_tier(
             tier=body.tier,
             user_id=user_id,
             user_email=user_email,
-            success_url=body.success_url,
-            cancel_url=body.cancel_url,
+            return_url=body.return_url,
             stripe_customer_id=stripe_customer_id,
         )
-        return CheckoutResponse(checkout_url=url)
+        return CheckoutResponse(client_secret=client_secret)
     except StripeError as e:
         logger.error(f"Checkout failed for user {user_id} tier={body.tier}: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -162,12 +164,12 @@ async def upgrade_subscription(
     return {"ok": True}
 
 
-@router.post("/billing-portal", response_model=CheckoutResponse)
+@router.post("/billing-portal", response_model=PortalResponse)
 async def billing_portal(
     body: PortalRequest,
     user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
-) -> CheckoutResponse:
+) -> PortalResponse:
     """Create a Stripe Billing Portal session for plan management."""
     user_id, _ = user
     profile = supabase.get_profile(user_id) or {}
@@ -182,6 +184,6 @@ async def billing_portal(
             customer_id=customer_id,
             return_url=body.return_url,
         )
-        return CheckoutResponse(checkout_url=url)
+        return PortalResponse(checkout_url=url)
     except StripeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
