@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, type StripeEmbeddedCheckout } from "@stripe/stripe-js";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -18,11 +18,11 @@ export function EmbeddedCheckoutModal({ clientSecret, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let checkout: { destroy: () => void } | null = null;
+    let checkout: StripeEmbeddedCheckout | null = null;
 
     stripePromise.then(async (stripe) => {
       if (!stripe || !containerRef.current) return;
-      checkout = await stripe.initEmbeddedCheckout({ clientSecret });
+      checkout = await stripe.createEmbeddedCheckoutPage({ clientSecret });
       if (containerRef.current) {
         checkout.mount(containerRef.current);
       }
