@@ -49,6 +49,7 @@ class Settings(BaseModel):
     max_iterations: int = 5
     pass_threshold: float = 0.7
     fast_mode: bool = True
+    optimizer_version: str = "v1"
 
     # Supabase settings
     supabase_url: str = ""
@@ -136,6 +137,7 @@ def get_settings() -> Settings:
         gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or _field_default("gemini_flash_model"),
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
+        optimizer_version=os.getenv("OPTIMIZER_VERSION") or "v1",
         # Scraper settings
         scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT") or _field_default("scraper_httpx_timeout")),
         scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT") or _field_default("scraper_wayback_timeout")),

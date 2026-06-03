@@ -281,3 +281,35 @@ def test_audit_score_rejects_invalid_literal():
             overall="Strong",
             top_fixes=[],
         )
+
+
+def test_optimized_resume_audit_field_optional():
+    """OptimizedResume.audit is None by default (v1 path)."""
+    resume = OptimizedResume(
+        html="<div>test</div>",
+        source_checksum="abc123",
+    )
+    assert resume.audit is None
+
+
+def test_optimized_resume_audit_field_set():
+    """OptimizedResume.audit is populated on the v2 path."""
+    audit = AuditScore(
+        ats_compatibility="ATS-Ready",
+        recruiter_scan="Strong",
+        bullet_quality="Strong",
+        seniority_calibration="Aligned",
+        keyword_coverage="Strong",
+        structure="Strong",
+        concern_management="NA",
+        consistency="Strong",
+        overall="Strong",
+        top_fixes=["fix1", "fix2", "fix3"],
+    )
+    resume = OptimizedResume(
+        html="<div>test</div>",
+        source_checksum="abc123",
+        audit=audit,
+    )
+    assert resume.audit is not None
+    assert resume.audit.overall == "Strong"

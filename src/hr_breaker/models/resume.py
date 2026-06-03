@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
+from hr_breaker.models.audit import AuditScore
 from hr_breaker.models.resume_data import ResumeData
 
 
@@ -46,3 +47,4 @@ class OptimizedResume(BaseModel):
     pdf_text: str | None = None
     pdf_bytes: bytes | None = None
     pdf_path: Path | None = None
+    audit: AuditScore | None = None
