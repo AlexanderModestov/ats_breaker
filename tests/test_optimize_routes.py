@@ -1,6 +1,6 @@
 """Tests for /api/optimize PATCH route (manual title/company fix)."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +11,9 @@ from hr_breaker.api.deps import (
     get_supabase_service,
 )
 from hr_breaker.api.main import app
+from hr_breaker.api.routes.optimize import _run_optimization
+from hr_breaker.models.audit import AuditScore
+from hr_breaker.models.resume import OptimizedResume
 
 USER = "user-uuid"
 EMAIL = "user@example.com"
@@ -150,3 +153,77 @@ def test_patch_unauthenticated_returns_401():
     c = TestClient(app)
     resp = c.patch(f"/api/optimize/{RUN_ID}/job", json={"company": "Acme"})
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# _run_optimization: audit score is persisted when optimized.audit is set
+# ---------------------------------------------------------------------------
+
+_AUDIT = AuditScore(
+    ats_compatibility="ATS-Ready",
+    recruiter_scan="Strong",
+    bullet_quality="Strong",
+    seniority_calibration="Aligned",
+    keyword_coverage="Strong",
+    structure="Strong",
+    concern_management="NA",
+    consistency="Strong",
+    overall="Strong",
+    top_fixes=["Fix X", "Fix Y"],
+)
+
+
+@pytest.mark.asyncio
+async def test_run_optimization_persists_audit():
+    """When optimize_for_job returns an OptimizedResume with audit set,
+    the final update_optimization_run call must include the serialized audit."""
+    optimized = OptimizedResume(source_checksum="abc", html="<p>hi</p>", audit=_AUDIT)
+
+    mock_validation = MagicMock()
+    mock_validation.passed = True
+
+    mock_job = MagicMock()
+    mock_job.title = "Engineer"
+    mock_job.company = "Acme"
+    mock_job.location = "Remote"
+    mock_job.requirements = []
+    mock_job.responsibilities = []
+    mock_job.keywords = []
+
+    fake_supa = MagicMock()
+    fake_supa.upload_result_pdf.side_effect = Exception("no pdf")
+
+    with (
+        patch(
+            "hr_breaker.api.routes.optimize.parse_job_posting",
+            new=AsyncMock(return_value=(mock_job, [])),
+        ),
+        patch(
+            "hr_breaker.api.routes.optimize.extract_name",
+            new=AsyncMock(return_value=("Jane", "Doe")),
+        ),
+        patch(
+            "hr_breaker.api.routes.optimize.optimize_for_job",
+            new=AsyncMock(return_value=(optimized, mock_validation, None)),
+        ),
+        patch("hr_breaker.api.routes.optimize.capture"),
+        patch("hr_breaker.api.routes.optimize.consume_request", return_value=None),
+    ):
+        await _run_optimization(
+            run_id=RUN_ID,
+            user_id=USER,
+            cv_content="my cv",
+            job_input="https://example.com/job",
+            max_iterations=1,
+            parallel=False,
+            supabase=fake_supa,
+        )
+
+    # Find the "complete" update call
+    complete_call = next(
+        call
+        for call in fake_supa.update_optimization_run.call_args_list
+        if call[0][1].get("status") == "complete"
+    )
+    payload = complete_call[0][1]
+    assert payload["audit"] == _AUDIT.model_dump()

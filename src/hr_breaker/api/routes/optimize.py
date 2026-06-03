@@ -204,6 +204,7 @@ async def _run_optimization(
             "result_pdf_path": result_pdf_path,
             "feedback": all_feedback,
             "timing": timing,
+            "audit": optimized.audit.model_dump() if optimized and optimized.audit else None,
         })
         logger.info(f"[{run_id}] Optimization complete! Timing: {timing}")
 

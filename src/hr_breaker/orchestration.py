@@ -7,7 +7,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
 
-from hr_breaker.agents import optimize_resume, parse_job_posting
+from hr_breaker.agents import optimize_resume, optimize_resume_v2, parse_job_posting
 from hr_breaker.config import get_settings, logger
 from hr_breaker.filters import (
     LLMChecker,
@@ -156,7 +156,10 @@ async def optimize_for_job(
             validation=validation,
         )
         with log_time("optimize_resume (LLM)"):
-            optimized = await optimize_resume(source, job, ctx)
+            if settings.optimizer_version == "v2":
+                optimized = await optimize_resume_v2(source, job, ctx)
+            else:
+                optimized = await optimize_resume(source, job, ctx)
         print(f"  📝 Changes: {optimized.changes[:100]}..." if len(optimized.changes) > 100 else f"  📝 Changes: {optimized.changes}")
         # Store last attempt for feedback (html or data depending on mode)
         last_attempt = optimized.html if optimized.html else (

@@ -49,9 +49,11 @@ class Settings(BaseModel):
     max_iterations: int = 5
     pass_threshold: float = 0.7
     fast_mode: bool = True
+    optimizer_version: str = "v1"
 
     # Supabase settings
     supabase_url: str = ""
+    supabase_auth_url: str = ""  # custom auth domain, e.g. https://auth.hrbreaker.co
     supabase_anon_key: str = ""
     supabase_service_key: str = ""
     supabase_jwt_secret: str = ""
@@ -136,6 +138,7 @@ def get_settings() -> Settings:
         gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or _field_default("gemini_flash_model"),
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
+        optimizer_version=os.getenv("OPTIMIZER_VERSION") or "v1",
         # Scraper settings
         scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT") or _field_default("scraper_httpx_timeout")),
         scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT") or _field_default("scraper_wayback_timeout")),
@@ -163,6 +166,7 @@ def get_settings() -> Settings:
         agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS") or _field_default("agent_name_extractor_chars")),
         # Supabase settings
         supabase_url=os.getenv("SUPABASE_URL", ""),
+        supabase_auth_url=os.getenv("SUPABASE_AUTH_URL", ""),
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY", ""),
         supabase_service_key=os.getenv("SUPABASE_SERVICE_KEY", ""),
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET", ""),

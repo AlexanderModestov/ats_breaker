@@ -93,7 +93,7 @@ export function CoachSidebar({
               ? `Coach sessions available for ${lockedCompany} only`
               : "Coach sessions available for 1 company only"}
             {" — "}
-            <span className="underline">Upgrade</span>
+            <span className="underline text-amber-500">Upgrade</span>
           </button>
         )}
       </div>
