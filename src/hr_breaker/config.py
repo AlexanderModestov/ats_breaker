@@ -53,6 +53,7 @@ class Settings(BaseModel):
 
     # Supabase settings
     supabase_url: str = ""
+    supabase_auth_url: str = ""  # custom auth domain, e.g. https://auth.hrbreaker.co
     supabase_anon_key: str = ""
     supabase_service_key: str = ""
     supabase_jwt_secret: str = ""
@@ -165,6 +166,7 @@ def get_settings() -> Settings:
         agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS") or _field_default("agent_name_extractor_chars")),
         # Supabase settings
         supabase_url=os.getenv("SUPABASE_URL", ""),
+        supabase_auth_url=os.getenv("SUPABASE_AUTH_URL", ""),
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY", ""),
         supabase_service_key=os.getenv("SUPABASE_SERVICE_KEY", ""),
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET", ""),

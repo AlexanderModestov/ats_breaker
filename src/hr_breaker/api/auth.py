@@ -19,9 +19,13 @@ class AuthError(Exception):
 
 
 @lru_cache(maxsize=1)
-def _get_jwks(supabase_url: str) -> dict[str, Any]:
+def _get_jwks(supabase_url: str, supabase_auth_url: str) -> dict[str, Any]:
     """Fetch JWKS from Supabase (cached)."""
-    jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
+    if supabase_auth_url:
+        # Custom auth domain: the domain IS the auth service, no /auth/v1 prefix
+        jwks_url = f"{supabase_auth_url}/.well-known/jwks.json"
+    else:
+        jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
     try:
         response = httpx.get(jwks_url, timeout=10)
         response.raise_for_status()
@@ -43,7 +47,7 @@ def _get_signing_key(token: str, jwks: dict[str, Any], *, refetch: bool = False)
         # kid not found — cache may be stale, invalidate and retry
         settings = get_settings()
         _get_jwks.cache_clear()
-        fresh_jwks = _get_jwks(settings.supabase_url)
+        fresh_jwks = _get_jwks(settings.supabase_url, settings.supabase_auth_url)
         return _get_signing_key(token, fresh_jwks, refetch=True)
 
     raise AuthError("No matching signing key found")
@@ -87,7 +91,7 @@ def verify_jwt(token: str) -> dict[str, Any]:
             if not settings.supabase_url:
                 raise AuthError("Supabase URL not configured", status_code=500)
 
-            jwks = _get_jwks(settings.supabase_url)
+            jwks = _get_jwks(settings.supabase_url, settings.supabase_auth_url)
             signing_key = _get_signing_key(token, jwks)
 
             payload = jwt.decode(
