@@ -22,8 +22,7 @@ class AuthError(Exception):
 def _get_jwks(supabase_url: str, supabase_auth_url: str) -> dict[str, Any]:
     """Fetch JWKS from Supabase (cached)."""
     if supabase_auth_url:
-        # Custom auth domain: the domain IS the auth service, no /auth/v1 prefix
-        jwks_url = f"{supabase_auth_url}/.well-known/jwks.json"
+        jwks_url = f"{supabase_auth_url}/auth/v1/.well-known/jwks.json"
     else:
         jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
     try:
