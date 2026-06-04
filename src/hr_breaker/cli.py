@@ -44,8 +44,8 @@ def optimize(
     JOB_INPUT: URL or path to file with job description
     """
     settings = get_settings()
-    if not settings.google_api_key:
-        raise click.ClickException("GOOGLE_API_KEY not set in environment")
+    if not settings.gcp_project:
+        raise click.ClickException("GOOGLE_CLOUD_PROJECT not set in environment")
 
     resume_content = resume_path.read_text()
 

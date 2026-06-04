@@ -40,7 +40,8 @@ logger = setup_logging()
 class Settings(BaseModel):
     """Application settings."""
 
-    google_api_key: str = ""
+    gcp_project: str = ""
+    gcp_location: str = "us-central1"
     gemini_pro_model: str = "gemini-3-pro-preview"
     gemini_flash_model: str = "gemini-3-flash-preview"
     gemini_thinking_budget: int | None = None
@@ -133,7 +134,8 @@ def get_settings() -> Settings:
     thinking_env = os.getenv("GEMINI_THINKING_BUDGET")
     thinking_budget: int | None = int(thinking_env) if thinking_env else None
     return Settings(
-        google_api_key=os.getenv("GOOGLE_API_KEY", ""),
+        gcp_project=os.getenv("GOOGLE_CLOUD_PROJECT", ""),
+        gcp_location=os.getenv("GOOGLE_CLOUD_LOCATION") or _field_default("gcp_location"),
         gemini_pro_model=os.getenv("GEMINI_PRO_MODEL") or _field_default("gemini_pro_model"),
         gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or _field_default("gemini_flash_model"),
         gemini_thinking_budget=thinking_budget,

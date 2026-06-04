@@ -32,7 +32,7 @@ def create_coach_agent() -> Agent:
     settings = get_settings()
 
     agent = Agent(
-        f"google-gla:{settings.gemini_pro_model}",
+        f"google-vertex:{settings.gemini_pro_model}",
         system_prompt=_load_system_prompt(),
         model_settings=get_model_settings(),
         deps_type=CoachDeps,

@@ -96,7 +96,7 @@ Return all four fields: no_hallucination_score, hallucination_concerns, ai_proba
 def get_content_integrity_agent() -> Agent:
     settings = get_settings()
     agent = Agent(
-        f"google-gla:{settings.gemini_flash_model}",
+        f"google-vertex:{settings.gemini_flash_model}",
         output_type=ContentIntegrityResult,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),
