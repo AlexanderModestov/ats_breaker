@@ -41,19 +41,20 @@ export function CVCard({ cv, onSelect, onDelete, selected }: CVCardProps) {
         onClick={() => onSelect?.(cv)}
       >
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
               <FileText className="h-5 w-5 text-muted-foreground" />
             </div>
-            <div>
-              <CardTitle className="text-base font-medium">{cv.name}</CardTitle>
-              <CardDescription className="text-xs">
+            <div className="min-w-0">
+              <CardTitle className="truncate text-base font-medium">{cv.name}</CardTitle>
+              <CardDescription className="truncate text-xs">
                 {cv.original_filename}
               </CardDescription>
             </div>
           </div>
           {onDelete && (
             <motion.div
+              className="shrink-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               whileHover={{ scale: 1.1 }}
