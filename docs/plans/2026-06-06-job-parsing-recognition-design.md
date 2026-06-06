@@ -35,11 +35,12 @@ Scrapers currently return `str`. To thread structured fields deterministically t
 ```python
 # models/job_posting.py
 class JobHints(BaseModel):
-    """Structured fields harvested deterministically from the page (JSON-LD/meta/header)."""
+    """Structured fields harvested deterministically from the page (JSON-LD/meta)."""
     title: str | None = None
     company: str | None = None
     location: str | None = None
-    source: str | None = None   # "json-ld" | "meta" | "header" — for logs/diagnostics
+    company_source: str | None = None  # "json-ld" | "meta" — company precedence vs URL slug
+    title_source: str | None = None    # "json-ld" | "meta" — json-ld title authoritative; meta is fallback
 
 # services/scrapers/base.py
 @dataclass
@@ -107,32 +108,34 @@ Each populated field sets `hints.source` for log visibility.
 
 `parse_job_posting(text, url=None, hints=None)`. After the LLM run, each of the three fields follows a single precedence ladder:
 
-**company** (extends current logic):
+**company** (source-aware — only JSON-LD beats the URL slug):
 
 ```
-1. hints.company (JSON-LD/meta)         ← authoritative, if present
-2. URL slug (extract_company_from_url)  ← as today
-3. LLM company, if grounded in text
-4. "Not Specified" + review flag
+1. hints.company  (company_source == "json-ld")   ← authoritative
+2. LLM company, if grounded (URL slug wins on conflict, as today)
+3. URL slug
+4. hints.company  (company_source == "meta")      ← below URL: og:site_name is often the board
+5. "Not Specified" + review flag
 ```
 
-**title** (currently grounding only, no fallback):
+**title** (JSON-LD authoritative; meta only as a fallback):
 
 ```
-1. hints.title                          ← authoritative
+1. hints.title  (title_source == "json-ld")       ← authoritative
 2. LLM title, if grounded
-3. LLM title + review flag (kept, but flagged)
+3. hints.title  (title_source == "meta")          ← fallback only when LLM ungrounded
+4. LLM title + review flag
 ```
 
-**location** (currently nothing):
+**location** (conservative — no regression to v1):
 
 ```
-1. hints.location                       ← authoritative
-2. LLM location, if grounded
-3. "" + review flag
+1. hints.location                                  ← authoritative
+2. LLM location kept as-is (grounding logged, not enforced)
 ```
+Location is never blanked and never flagged: the UI cannot edit it, so a review flag is inert, and blanking risks dropping correct-but-paraphrased values ("San Francisco" vs "SF").
 
-`needs_review` may now contain any of `company` / `title` / `location`. Frontend / CLI already render this list for manual review.
+`needs_review` may contain `company` / `title` (as before). Frontend / CLI already render this list for manual review.
 
 **Logging (the cheap diagnostic):** one line per field — `field=title source=json-ld value=...` (or `source=llm` / `source=url`). After deploy, logs reveal which source actually fires on real URLs.
 
