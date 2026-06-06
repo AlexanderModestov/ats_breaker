@@ -12,6 +12,7 @@ from hr_breaker.agents.job_parser import (
     parse_job_posting,
 )
 from hr_breaker.models import JobPosting
+from hr_breaker.models import JobHints
 
 
 class TestNormalize:
@@ -236,3 +237,110 @@ class TestParseJobPostingMerge:
         ):
             job, needs_review = await parse_job_posting(text)
         assert "title" in needs_review
+
+    async def test_jsonld_company_beats_url(self):
+        # JSON-LD company is authoritative even over a known URL slug
+        llm_job = JobPosting(title="Backend Eng", company="Wrong Co")
+        text = "Wrong Co is hiring a Backend Eng."  # LLM grounded, but JSON-LD wins
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, _ = await parse_job_posting(
+                text,
+                url="https://podcastle.bamboohr.com/careers/56",
+                hints=JobHints(company="Acme", company_source="json-ld"),
+            )
+        assert job.company == "Acme"
+
+    async def test_meta_company_ranks_below_url(self):
+        # og:site_name often = the job board; URL slug must win over a meta hint
+        llm_job = JobPosting(title="Backend Eng", company="Microsoft")
+        text = "Looking for a Backend Eng."  # LLM ungrounded
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, _ = await parse_job_posting(
+                text,
+                url="https://podcastle.bamboohr.com/careers/56",
+                hints=JobHints(company="BambooHR", company_source="meta"),
+            )
+        assert job.company == "podcastle"
+
+    async def test_meta_company_used_when_no_url_and_llm_ungrounded(self):
+        llm_job = JobPosting(title="Backend Eng", company="Microsoft")
+        text = "Looking for a Backend Eng."  # LLM ungrounded, no URL slug
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(
+                text, hints=JobHints(company="Acme", company_source="meta")
+            )
+        assert job.company == "Acme"
+        assert "company" not in needs_review
+
+    async def test_jsonld_title_overrides_llm(self):
+        llm_job = JobPosting(title="Vague Title", company="Acme")
+        text = "Acme is hiring."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(
+                text, hints=JobHints(title="Senior Backend Engineer", title_source="json-ld")
+            )
+        assert job.title == "Senior Backend Engineer"
+        assert "title" not in needs_review
+
+    async def test_meta_title_only_used_when_llm_ungrounded(self):
+        # grounded LLM title beats a meta-sourced hint (avoids "… | Board" junk)
+        llm_job = JobPosting(title="Backend Eng", company="Acme")
+        text = "Acme is hiring a Backend Eng."  # LLM grounded
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, _ = await parse_job_posting(
+                text, hints=JobHints(title="Backend Eng - Acme | JobBoard", title_source="meta")
+            )
+        assert job.title == "Backend Eng"
+
+    async def test_hint_location_used(self):
+        llm_job = JobPosting(title="Eng", company="Acme", location="")
+        text = "Acme is hiring an Eng."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(
+                text, hints=JobHints(location="Berlin, DE")
+            )
+        assert job.location == "Berlin, DE"
+        assert "location" not in needs_review
+
+    async def test_ungrounded_llm_location_kept_conservatively(self):
+        # No hint, LLM location not grounded → kept as-is, never blanked or flagged
+        llm_job = JobPosting(title="Eng", company="Acme", location="San Francisco")
+        text = "Acme is hiring an Eng in SF."  # "San Francisco" not literally present
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, needs_review = await parse_job_posting(text)
+        assert job.location == "San Francisco"
+        assert "location" not in needs_review
+
+    async def test_no_hints_reproduces_old_company_behavior(self):
+        # hints=None path must match the pre-existing URL-fallback behavior
+        llm_job = JobPosting(title="Backend Eng", company="Microsoft")
+        text = "Looking for a Backend Eng."
+        with patch(
+            "hr_breaker.agents.job_parser.get_job_parser_agent",
+            return_value=_mock_agent_returning(llm_job),
+        ):
+            job, _ = await parse_job_posting(
+                text, url="https://podcastle.bamboohr.com/careers/56", hints=None
+            )
+        assert job.company == "podcastle"
