@@ -9,6 +9,7 @@ import { useOptimizationStatus } from "@/hooks/useOptimization";
 import RequirementsChecklist from "@/components/RequirementsChecklist";
 import EditPopup from "@/components/EditPopup";
 import { downloadPdfFromHtml } from "@/lib/api";
+import { downloadBlob } from "@/lib/utils";
 
 // Script injected into iframe to detect double-clicks on editable elements
 const IFRAME_SCRIPT = `
@@ -131,14 +132,7 @@ export default function EditorPage({
     setDownloading(true);
     try {
       const blob = await downloadPdfFromHtml(id, html);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "resume.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, "resume.pdf");
     } finally {
       setDownloading(false);
     }
