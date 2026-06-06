@@ -72,6 +72,31 @@ def test_job_posting():
     assert len(job.keywords) == 2
 
 
+# --- JobHints Tests ---
+
+
+def test_job_hints_defaults_all_none():
+    from hr_breaker.models import JobHints
+    hints = JobHints()
+    assert hints.title is None
+    assert hints.company is None
+    assert hints.location is None
+    assert hints.company_source is None
+    assert hints.title_source is None
+
+
+def test_job_hints_holds_values():
+    from hr_breaker.models import JobHints
+    hints = JobHints(
+        title="Backend Eng", company="Acme", location="Berlin, DE",
+        company_source="json-ld", title_source="json-ld",
+    )
+    assert hints.company == "Acme"
+    assert hints.location == "Berlin, DE"
+    assert hints.company_source == "json-ld"
+    assert hints.title_source == "json-ld"
+
+
 # --- FilterResult Tests ---
 
 
