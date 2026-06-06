@@ -38,6 +38,10 @@ async def lifespan(app: FastAPI):
         json.dump(json.loads(creds_json), _gcp_key_file)
         _gcp_key_file.flush()
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _gcp_key_file.name
+
+    import vertexai
+    vertexai.init(project=settings.gcp_project, location=settings.gcp_location)
+
     yield
     if _gcp_key_file:
         os.unlink(_gcp_key_file.name)
