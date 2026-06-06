@@ -11,7 +11,7 @@ from hr_breaker.analytics import capture, shutdown
 from hr_breaker.config import get_settings
 from hr_breaker.models import GeneratedPDF, ResumeSource
 from hr_breaker.orchestration import optimize_for_job
-from hr_breaker.services import PDFStorage, scrape_job_posting, ScrapingError, CloudflareBlockedError
+from hr_breaker.services import PDFStorage, scrape_job_posting, ScrapingError, CloudflareBlockedError, ScrapedJob
 
 
 @click.group()
@@ -50,7 +50,7 @@ def optimize(
     resume_content = resume_path.read_text()
 
     # Get job text (sync - may need user interaction for Cloudflare)
-    job_text = _get_job_text(job_input)
+    scraped = _get_job_text(job_input)
 
     pdf_storage = PDFStorage()
     debug_dir: Path | None = None
@@ -83,7 +83,8 @@ def optimize(
         click.echo(f"Resume: {first_name or 'Unknown'} {last_name or ''}")
 
         # Parse job first to get company/role for debug dir
-        job, _ = await parse_job_posting(job_text)
+        job_url = job_input if job_input.startswith(("http://", "https://")) else None
+        job, _ = await parse_job_posting(scraped.text, url=job_url, hints=scraped.hints)
         if job.company == COMPANY_NOT_SPECIFIED:
             job.company = click.prompt(
                 "Could not detect company name. Please enter it"
@@ -177,12 +178,12 @@ def list_history():
         )
 
 
-def _get_job_text(job_input: str) -> str:
-    """Get job text from URL or file path."""
+def _get_job_text(job_input: str) -> ScrapedJob:
+    """Get job text (+ structured hints) from URL, file path, or raw text."""
     # Check if file
     path = Path(job_input)
     if path.exists():
-        return path.read_text()
+        return ScrapedJob(text=path.read_text(), hints=None)
 
     # Check if URL
     if job_input.startswith(("http://", "https://")):
@@ -193,12 +194,12 @@ def _get_job_text(job_input: str) -> str:
             click.launch(job_input)
             click.echo("Please copy the job description and paste below.")
             click.echo("(Press Enter twice when done)")
-            return _read_multiline_input()
+            return ScrapedJob(text=_read_multiline_input(), hints=None)
         except ScrapingError as e:
             raise click.ClickException(str(e))
 
     # Treat as raw text
-    return job_input
+    return ScrapedJob(text=job_input, hints=None)
 
 
 def _read_multiline_input() -> str:

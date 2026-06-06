@@ -88,10 +88,13 @@ async def _run_optimization(
         # Check if job_input is a URL or text
         job_url = _extract_job_url(job_input)
         job_text = job_input
+        job_hints = None
         if job_url:
             try:
                 scrape_start = time.perf_counter()
-                job_text = scrape_job_posting(job_url)
+                scraped = scrape_job_posting(job_url)
+                job_text = scraped.text
+                job_hints = scraped.hints
                 timing["scrape_job"] = time.perf_counter() - scrape_start
                 print(f"⏱️  Scrape job: {timing['scrape_job']:.2f}s")
             except CloudflareBlockedError:
@@ -112,7 +115,7 @@ async def _run_optimization(
         # Parse job posting
         parse_start = time.perf_counter()
         print(f"📋 Parsing job posting...")
-        job, needs_review = await parse_job_posting(job_text, url=job_url)
+        job, needs_review = await parse_job_posting(job_text, url=job_url, hints=job_hints)
         timing["parse_job"] = time.perf_counter() - parse_start
         print(f"⏱️  Parse job: {timing['parse_job']:.2f}s - {job.title} at {job.company}")
         logger.info(f"[{run_id}] Job parsed: {job.title} at {job.company}")
