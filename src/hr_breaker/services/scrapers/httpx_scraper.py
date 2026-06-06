@@ -7,7 +7,7 @@ import httpx
 
 from hr_breaker.config import get_settings
 
-from .base import BaseScraper, CloudflareBlockedError, ScrapingError
+from .base import BaseScraper, CloudflareBlockedError, ScrapingError, ScrapedJob
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class HttpxScraper(BaseScraper):
         self.max_retries = max_retries if max_retries is not None else settings.scraper_httpx_max_retries
         self.timeout = timeout if timeout is not None else settings.scraper_httpx_timeout
 
-    def scrape(self, url: str) -> str:
+    def scrape(self, url: str) -> ScrapedJob:
         """Scrape job posting with retry and backoff."""
         last_error: Exception | None = None
 
@@ -60,7 +60,7 @@ class HttpxScraper(BaseScraper):
             f"Failed to scrape {url} after {self.max_retries} attempts: {last_error}"
         )
 
-    def _fetch_and_parse(self, url: str, verify_ssl: bool = True) -> str:
+    def _fetch_and_parse(self, url: str, verify_ssl: bool = True) -> ScrapedJob:
         """Fetch URL and extract job posting text."""
         headers = {
             "User-Agent": random.choice(USER_AGENTS),
@@ -87,7 +87,7 @@ class HttpxScraper(BaseScraper):
 
         response.raise_for_status()
 
-        return self.extract_job_text(html)
+        return self._build_result(html)
 
     def _backoff(self, attempt: int):
         """Exponential backoff between retries."""

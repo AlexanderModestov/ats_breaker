@@ -2,6 +2,7 @@
 
 import pytest
 import httpx
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock, patch
 
 from hr_breaker.services.job_scraper import (
@@ -119,10 +120,10 @@ class TestHttpxScraper:
             scraper = HttpxScraper()
             result = scraper.scrape('https://example.com/job')
 
-            assert 'Software Engineer' in result
-            assert 'Python' in result
-            assert 'Navigation' not in result
-            assert 'Copyright' not in result
+            assert 'Software Engineer' in result.text
+            assert 'Python' in result.text
+            assert 'Navigation' not in result.text
+            assert 'Copyright' not in result.text
 
     def test_extracts_job_content_from_job_div(self):
         html = '''
@@ -147,8 +148,8 @@ class TestHttpxScraper:
             scraper = HttpxScraper()
             result = scraper.scrape('https://example.com/job')
 
-            assert 'Data Scientist' in result
-            assert 'Machine Learning' in result
+            assert 'Data Scientist' in result.text
+            assert 'Machine Learning' in result.text
 
 
 class TestScrapeJobPosting:
@@ -237,7 +238,24 @@ class TestScrapeJobPosting:
 
             result = scrape_job_posting('https://example.com/job')
 
-            assert 'Great Job' in result
+            assert 'Great Job' in result.text
+
+    def test_scrape_job_posting_returns_hints(self):
+        html = '''<html><head><script type="application/ld+json">
+        {"@type":"JobPosting","title":"Engineer","hiringOrganization":{"name":"Acme"}}
+        </script></head><body><article>
+        <h1>Engineer</h1><p>Plenty of descriptive job content to pass the length gate.</p>
+        </article></body></html>'''
+        mock_response = Mock()
+        mock_response.text = html
+        mock_response.status_code = 200
+        mock_response.raise_for_status = Mock()
+        with patch('hr_breaker.services.scrapers.httpx_scraper.httpx.Client') as mock_client:
+            mock_client.return_value.__enter__.return_value.get.return_value = mock_response
+            result = scrape_job_posting('https://example.com/job')
+        assert isinstance(result, ScrapedJob)
+        assert result.hints.company == "Acme"
+        assert result.hints.title == "Engineer"
 
     def test_skips_wayback_on_cloudflare(self):
         """Wayback should be skipped when httpx fails with Cloudflare (optimization)."""
@@ -303,11 +321,12 @@ class TestScrapeJobPosting:
         wayback_response.raise_for_status = Mock()
 
         # CDX API response
+        recent_ts = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d%H%M%S")
         cdx_response = Mock()
         cdx_response.status_code = 200
         cdx_response.json = Mock(return_value=[
             ["urlkey", "timestamp", "original", "mimetype", "statuscode", "digest", "length"],
-            ["com,example)/job", "20260101120000", "https://example.com/job", "text/html", "200", "abc", "1000"]
+            ["com,example)/job", recent_ts, "https://example.com/job", "text/html", "200", "abc", "1000"]
         ])
         cdx_response.raise_for_status = Mock()
 
@@ -330,7 +349,7 @@ class TestScrapeJobPosting:
                     use_playwright=False,
                 )
 
-                assert 'Archived Job' in result
+                assert 'Archived Job' in result.text
 
     def test_error_includes_all_methods_tried(self):
         """Error message should list all fallback methods attempted."""

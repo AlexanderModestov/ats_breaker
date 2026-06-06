@@ -1,7 +1,7 @@
 import logging
 
 from ..config import get_settings
-from .scrapers.base import CloudflareBlockedError, ScrapingError
+from .scrapers.base import CloudflareBlockedError, ScrapingError, ScrapedJob
 from .scrapers.httpx_scraper import HttpxScraper
 from .scrapers.wayback_scraper import WaybackScraper
 from .scrapers.playwright_scraper import PlaywrightScraper, PLAYWRIGHT_AVAILABLE
@@ -17,10 +17,11 @@ def scrape_job_posting(
     max_retries: int = 3,
     use_wayback: bool = True,
     use_playwright: bool = True,
-) -> str:
+) -> ScrapedJob:
     """
-    Scrape job posting text from URL with fallback chain.
+    Scrape job posting from URL with fallback chain.
 
+    Returns a ScrapedJob (text + optional hints).
     Order: httpx -> wayback (skipped if cloudflare) -> playwright
     """
     settings = get_settings()
