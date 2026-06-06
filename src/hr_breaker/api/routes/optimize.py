@@ -7,7 +7,14 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response
 
-from hr_breaker.api.deps import CurrentUser, CurrentUserWithEmail, SupabaseServiceDep, require_feature
+from hr_breaker.api.deps import (
+    CurrentUser,
+    CurrentUserWithEmail,
+    SupabaseServiceDep,
+    get_profile_or_404,
+    get_run_or_404,
+    require_feature,
+)
 from hr_breaker.services.access_control import check_quota, consume_request
 from hr_breaker.services.tiers import Feature
 from hr_breaker.api.schemas import (
@@ -27,6 +34,31 @@ from hr_breaker.services.supabase import SupabaseError, SupabaseService
 from hr_breaker.agents import parse_job_posting, extract_name
 
 router = APIRouter(dependencies=[Depends(require_feature(Feature.OPTIMIZE))])
+
+
+def _extract_job_url(job_input: str | None) -> str | None:
+    """Return the job input as a URL if it looks like one, else None."""
+    job_input = job_input or ""
+    return job_input if job_input.startswith(("http://", "https://")) else None
+
+
+def _run_to_status(run: dict, job_parsed: dict | None) -> OptimizationStatus:
+    """Build an OptimizationStatus response from a stored run row."""
+    return OptimizationStatus(
+        id=run["id"],
+        status=run["status"],
+        current_step=run.get("current_step"),
+        iterations=run.get("iterations", 0),
+        job_parsed=job_parsed,
+        job_url=_extract_job_url(run.get("job_input")),
+        first_name=run.get("first_name"),
+        last_name=run.get("last_name"),
+        feedback=run.get("feedback"),
+        result_html=run.get("result_html"),
+        error=run.get("error"),
+        timing=run.get("timing"),
+        created_at=run["created_at"],
+    )
 
 
 async def _run_optimization(
@@ -54,11 +86,7 @@ async def _run_optimization(
         })
 
         # Check if job_input is a URL or text
-        job_url = (
-            job_input
-            if job_input.startswith(("http://", "https://"))
-            else None
-        )
+        job_url = _extract_job_url(job_input)
         job_text = job_input
         if job_url:
             try:
@@ -228,9 +256,7 @@ async def list_optimization_runs(
     summaries = []
     for run in runs:
         job_parsed = run.get("job_parsed") or {}
-        # Extract job_url if job_input looks like a URL
-        job_input = run.get("job_input") or ""
-        job_url = job_input if job_input.startswith(("http://", "https://")) else None
+        job_url = _extract_job_url(run.get("job_input"))
         summaries.append(
             OptimizationSummary(
                 id=run["id"],
@@ -256,9 +282,7 @@ async def start_optimization(
     """Start a new optimization run."""
     user_id, user_email = user
 
-    profile = supabase.get_profile(user_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+    profile = get_profile_or_404(supabase, user_id)
 
     quota = check_quota(user_email or "", profile)
     if not quota.allowed:
@@ -273,35 +297,31 @@ async def start_optimization(
     if not cv_content:
         raise HTTPException(status_code=400, detail="CV has no extracted text content")
 
-    try:
-        # Create optimization run
-        run = supabase.create_optimization_run(
-            user_id=user_id,
-            cv_id=request.cv_id,
-            job_input=request.job_input,
-        )
+    # Create optimization run
+    run = supabase.create_optimization_run(
+        user_id=user_id,
+        cv_id=request.cv_id,
+        job_input=request.job_input,
+    )
 
-        # Consume a Free-tier request (no-op for paid/admin users)
-        consume_updates = consume_request(user_email or "", profile)
-        if consume_updates:
-            supabase.update_profile(user_id, consume_updates)
+    # Consume a Free-tier request (no-op for paid/admin users)
+    consume_updates = consume_request(user_email or "", profile)
+    if consume_updates:
+        supabase.update_profile(user_id, consume_updates)
 
-        # Start background task
-        background_tasks.add_task(
-            _run_optimization,
-            run_id=run["id"],
-            user_id=user_id,
-            cv_content=cv_content,
-            job_input=request.job_input,
-            max_iterations=request.max_iterations,
-            parallel=request.parallel,
-            supabase=supabase,
-        )
+    # Start background task
+    background_tasks.add_task(
+        _run_optimization,
+        run_id=run["id"],
+        user_id=user_id,
+        cv_content=cv_content,
+        job_input=request.job_input,
+        max_iterations=request.max_iterations,
+        parallel=request.parallel,
+        supabase=supabase,
+    )
 
-        return OptimizationStartResponse(run_id=run["id"], status="pending")
-
-    except SupabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return OptimizationStartResponse(run_id=run["id"], status="pending")
 
 
 @router.get("/{run_id}", response_model=OptimizationStatus)
@@ -311,29 +331,8 @@ async def get_optimization_status(
     supabase: SupabaseServiceDep,
 ) -> OptimizationStatus:
     """Get the status of an optimization run."""
-    run = supabase.get_optimization_run(run_id, user_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Optimization run not found")
-
-    # Extract job_url if job_input looks like a URL
-    job_input = run.get("job_input") or ""
-    job_url = job_input if job_input.startswith(("http://", "https://")) else None
-
-    return OptimizationStatus(
-        id=run["id"],
-        status=run["status"],
-        current_step=run.get("current_step"),
-        iterations=run.get("iterations", 0),
-        job_parsed=run.get("job_parsed"),
-        job_url=job_url,
-        first_name=run.get("first_name"),
-        last_name=run.get("last_name"),
-        feedback=run.get("feedback"),
-        result_html=run.get("result_html"),
-        error=run.get("error"),
-        timing=run.get("timing"),
-        created_at=run["created_at"],
-    )
+    run = get_run_or_404(supabase, run_id, user_id)
+    return _run_to_status(run, run.get("job_parsed"))
 
 
 @router.get("/{run_id}/pdf")
@@ -343,9 +342,7 @@ async def get_optimization_pdf(
     supabase: SupabaseServiceDep,
 ) -> Response:
     """Download the result PDF for an optimization run."""
-    run = supabase.get_optimization_run(run_id, user_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Optimization run not found")
+    run = get_run_or_404(supabase, run_id, user_id)
 
     if run["status"] != "complete":
         raise HTTPException(status_code=400, detail="Optimization not complete")
@@ -354,17 +351,14 @@ async def get_optimization_pdf(
     if not pdf_path:
         raise HTTPException(status_code=404, detail="No PDF available")
 
-    try:
-        pdf_bytes = supabase.download_result_pdf(pdf_path)
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename=resume_{run_id}.pdf",
-            },
-        )
-    except SupabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    pdf_bytes = supabase.download_result_pdf(pdf_path)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=resume_{run_id}.pdf",
+        },
+    )
 
 
 @router.delete("/{run_id}")
@@ -374,24 +368,19 @@ async def delete_optimization(
     supabase: SupabaseServiceDep,
 ) -> dict[str, bool]:
     """Delete an optimization run."""
-    run = supabase.get_optimization_run(run_id, user_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Optimization run not found")
+    run = get_run_or_404(supabase, run_id, user_id)
 
-    try:
-        # Delete the PDF from storage if it exists
-        pdf_path = run.get("result_pdf_path")
-        if pdf_path:
-            try:
-                supabase.delete_result_pdf(pdf_path)
-            except SupabaseError:
-                pass  # Ignore storage deletion errors
+    # Delete the PDF from storage if it exists
+    pdf_path = run.get("result_pdf_path")
+    if pdf_path:
+        try:
+            supabase.delete_result_pdf(pdf_path)
+        except SupabaseError:
+            pass  # Ignore storage deletion errors
 
-        # Delete the optimization run record
-        supabase.delete_optimization_run(run_id)
-        return {"success": True}
-    except SupabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    # Delete the optimization run record
+    supabase.delete_optimization_run(run_id)
+    return {"success": True}
 
 
 @router.patch("/{run_id}/job", response_model=OptimizationStatus)
@@ -405,9 +394,7 @@ async def update_optimization_job(
 
     Updates only labels in `job_parsed` — does not re-run optimization.
     """
-    run = supabase.get_optimization_run(run_id, user_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Optimization run not found")
+    run = get_run_or_404(supabase, run_id, user_id)
 
     if run["status"] in ("pending", "parse_job"):
         raise HTTPException(
@@ -429,21 +416,4 @@ async def update_optimization_job(
     job_parsed["needs_review"] = needs_review
     supabase.update_optimization_run(run_id, {"job_parsed": job_parsed})
 
-    job_input = run.get("job_input") or ""
-    job_url = job_input if job_input.startswith(("http://", "https://")) else None
-
-    return OptimizationStatus(
-        id=run["id"],
-        status=run["status"],
-        current_step=run.get("current_step"),
-        iterations=run.get("iterations", 0),
-        job_parsed=job_parsed,
-        job_url=job_url,
-        first_name=run.get("first_name"),
-        last_name=run.get("last_name"),
-        feedback=run.get("feedback"),
-        result_html=run.get("result_html"),
-        error=run.get("error"),
-        timing=run.get("timing"),
-        created_at=run["created_at"],
-    )
+    return _run_to_status(run, job_parsed)

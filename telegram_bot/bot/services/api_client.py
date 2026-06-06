@@ -35,6 +35,35 @@ class APIClient:
     def _user_headers(self, telegram_id: int) -> dict:
         return {**self._headers, "X-Telegram-User-Id": str(telegram_id)}
 
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        telegram_id: int,
+        timeout: float | None = None,
+        **kwargs,
+    ) -> httpx.Response:
+        """Make a user-authenticated request, mapping failures to BackendError.
+
+        ``timeout=None`` keeps httpx's default; pass a number to override.
+        """
+        client_kwargs = {} if timeout is None else {"timeout": timeout}
+        try:
+            async with httpx.AsyncClient(**client_kwargs) as client:
+                r = await client.request(
+                    method,
+                    f"{self._base_url}{path}",
+                    headers=self._user_headers(telegram_id),
+                    **kwargs,
+                )
+                r.raise_for_status()
+                return r
+        except httpx.HTTPStatusError as e:
+            raise BackendError(f"{e.response.status_code}: {e.response.text}") from e
+        except httpx.RequestError as e:
+            raise BackendError(f"Network error: {e}") from e
+
     async def get_user(self, telegram_id: int) -> dict | None:
         try:
             async with httpx.AsyncClient() as client:
@@ -76,33 +105,17 @@ class APIClient:
                 )
 
     async def get_cvs(self, telegram_id: int) -> list[dict]:
-        try:
-            async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    f"{self._base_url}/api/cvs",
-                    headers=self._user_headers(telegram_id),
-                )
-                r.raise_for_status()
-                return r.json().get("cvs", [])
-        except httpx.HTTPStatusError as e:
-            raise BackendError(f"{e.response.status_code}: {e.response.text}") from e
-        except httpx.RequestError as e:
-            raise BackendError(f"Network error: {e}") from e
+        r = await self._request("GET", "/api/cvs", telegram_id=telegram_id)
+        return r.json().get("cvs", [])
 
     async def upload_cv(self, telegram_id: int, filename: str, content: bytes) -> dict:
-        try:
-            async with httpx.AsyncClient() as client:
-                r = await client.post(
-                    f"{self._base_url}/api/cvs",
-                    headers=self._user_headers(telegram_id),
-                    files={"file": (filename, content)},
-                )
-                r.raise_for_status()
-                return r.json()
-        except httpx.HTTPStatusError as e:
-            raise BackendError(f"{e.response.status_code}: {e.response.text}") from e
-        except httpx.RequestError as e:
-            raise BackendError(f"Network error: {e}") from e
+        r = await self._request(
+            "POST",
+            "/api/cvs",
+            telegram_id=telegram_id,
+            files={"file": (filename, content)},
+        )
+        return r.json()
 
     async def start_optimization(
         self, telegram_id: int, cv_id: str, job_input: str
@@ -129,61 +142,26 @@ class APIClient:
     async def get_optimization_status(
         self, telegram_id: int, run_id: str
     ) -> dict:
-        try:
-            async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    f"{self._base_url}/api/optimize/{run_id}",
-                    headers=self._user_headers(telegram_id),
-                    timeout=10,
-                )
-                r.raise_for_status()
-                return r.json()
-        except httpx.HTTPStatusError as e:
-            raise BackendError(f"{e.response.status_code}: {e.response.text}") from e
-        except httpx.RequestError as e:
-            raise BackendError(f"Network error: {e}") from e
+        r = await self._request(
+            "GET", f"/api/optimize/{run_id}", telegram_id=telegram_id, timeout=10
+        )
+        return r.json()
 
     async def get_optimization_pdf(
         self, telegram_id: int, run_id: str
     ) -> bytes:
-        try:
-            async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    f"{self._base_url}/api/optimize/{run_id}/pdf",
-                    headers=self._user_headers(telegram_id),
-                    timeout=30,
-                )
-                r.raise_for_status()
-                return r.content
-        except httpx.HTTPStatusError as e:
-            raise BackendError(f"{e.response.status_code}: {e.response.text}") from e
-        except httpx.RequestError as e:
-            raise BackendError(f"Network error: {e}") from e
+        r = await self._request(
+            "GET", f"/api/optimize/{run_id}/pdf", telegram_id=telegram_id, timeout=30
+        )
+        return r.content
 
     async def get_recent_runs(self, telegram_id: int) -> list[dict]:
-        try:
-            async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    f"{self._base_url}/api/optimize?limit=5",
-                    headers=self._user_headers(telegram_id),
-                )
-                r.raise_for_status()
-                return r.json().get("runs", [])
-        except httpx.HTTPStatusError as e:
-            raise BackendError(f"{e.response.status_code}: {e.response.text}") from e
-        except httpx.RequestError as e:
-            raise BackendError(f"Network error: {e}") from e
+        r = await self._request(
+            "GET", "/api/optimize?limit=5", telegram_id=telegram_id
+        )
+        return r.json().get("runs", [])
 
     async def set_default_cv(self, telegram_id: int, cv_id: str) -> None:
-        try:
-            async with httpx.AsyncClient() as client:
-                r = await client.patch(
-                    f"{self._base_url}/api/me",
-                    headers=self._user_headers(telegram_id),
-                    json={"default_cv_id": cv_id},
-                )
-                r.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            raise BackendError(f"{e.response.status_code}: {e.response.text}") from e
-        except httpx.RequestError as e:
-            raise BackendError(f"Network error: {e}") from e
+        await self._request(
+            "PATCH", "/api/me", telegram_id=telegram_id, json={"default_cv_id": cv_id}
+        )

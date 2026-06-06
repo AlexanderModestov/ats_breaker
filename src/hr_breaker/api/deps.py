@@ -16,6 +16,22 @@ def get_supabase_service() -> SupabaseService:
     return SupabaseService()
 
 
+def get_profile_or_404(supabase: SupabaseService, user_id: str) -> dict:
+    """Fetch the user's profile or raise 404."""
+    profile = supabase.get_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
+
+
+def get_run_or_404(supabase: SupabaseService, run_id: str, user_id: str) -> dict:
+    """Fetch an optimization run owned by the user or raise 404."""
+    run = supabase.get_optimization_run(run_id, user_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Optimization run not found")
+    return run
+
+
 def _resolve_bot_user(
     supabase: SupabaseService,
     x_bot_api_key: str | None,
@@ -117,9 +133,7 @@ def require_feature(feature: Feature):
         supabase: SupabaseServiceDep,
     ) -> tuple[str, str | None]:
         user_id, user_email = user
-        profile = supabase.get_profile(user_id)
-        if not profile:
-            raise HTTPException(404, "Profile not found")
+        profile = get_profile_or_404(supabase, user_id)
         result = check_feature_access(feature, user_email or "", profile)
         if not result.allowed:
             raise HTTPException(402, detail=result.to_dict())
