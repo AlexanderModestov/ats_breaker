@@ -34,17 +34,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-from pydantic_ai import Agent
 
 from hr_breaker.agents import parse_job_posting
-from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.agents.auditor import audit_resume
+from hr_breaker.config import get_settings
 from hr_breaker.models import JobPosting, ResumeSource
 from hr_breaker.models.audit import AuditScore
 from hr_breaker.orchestration import optimize_for_job
 from hr_breaker.services import scrape_job_posting
 from hr_breaker.services.pdf_parser import extract_text_from_pdf
 from hr_breaker.services.renderer import HTMLRenderer
-from hr_breaker.utils.html_text import extract_text_from_html
 
 pytestmark = pytest.mark.benchmark
 
@@ -105,76 +104,16 @@ def _bootstrap_vertex() -> str | None:
     return project
 
 
-# ─── independent auditor ─────────────────────────────────────────────────────
-
-AUDIT_PROMPT = r"""
-You are a resume reviewer. You are given a FINISHED resume and a job posting.
-Rate the resume across all 8 dimensions below for THIS specific job. Do NOT rewrite
-or suggest HTML — only score. Be honest: if a dimension is Weak, say Weak.
-
-1. ATS COMPATIBILITY (ATS-Ready / ATS-Risky / ATS-Broken)
-   - Standard section headers ("Professional Experience", "Education", "Skills")
-   - No tables, columns, text boxes, or graphics
-   - Contact info in the body, target-role keywords present in the body
-
-2. RECRUITER SCAN (Strong / Moderate / Weak) — 7-second F-pattern
-   - Name and current title prominent; quantified achievement as first bullet of each role
-   - Bullets not paragraphs; gaps present but not over-explained
-
-3. BULLET QUALITY (Strong / Moderate / Weak)
-   - XYZ formula ("Accomplished X measured by Y by doing Z"); passes the "so what?" test
-   - Quantified (hard or proxy metrics); varied action verbs
-   - Avoids "responsible for", "helped with", "worked on"
-
-4. SENIORITY CALIBRATION (Aligned / Mismatched)
-   - Verb tier matches candidate's evident level (IC/Manager/Director/VP+)
-   - Impact scope grows across roles
-
-5. KEYWORD COVERAGE (Strong / Moderate / Weak)
-   - Job-posting keywords present in the body; skills ordered by relevance; specific beats generic
-
-6. STRUCTURE (Strong / Moderate / Weak)
-   - Single column; Summary -> Experience -> Education -> Skills; ~1 page; hooking 2-3 line summary
-
-7. CONCERN MANAGEMENT (Strong / Moderate / Weak / NA)
-   - Gaps framed neutrally; short tenures get a one-line rationale; career switch bridged
-   - Use "NA" only if the resume presents no gaps, short tenures, or switches
-
-8. CONSISTENCY (Strong / Moderate / Weak)
-   - Tense (present current / past prior), punctuation, no first person, consistent dates
-
-overall: Strong / Needs Work / Weak — holistic fit of this resume for this job.
-top_fixes: the 3 highest-impact remaining improvements, priority-ordered.
-"""
-
-
-def get_auditor_agent() -> Agent:
-    settings = get_settings()
-    return Agent(
-        f"google-vertex:{settings.gemini_pro_model}",
-        output_type=AuditScore,
-        system_prompt=AUDIT_PROMPT,
-        model_settings=get_model_settings(),
-    )
-
-
-async def audit_resume(text_or_html: str, job: JobPosting) -> AuditScore:
-    """Score a resume against a job posting on the 8-dimension rubric."""
-    resume_text = extract_text_from_html(text_or_html) if "<" in text_or_html else text_or_html
-    prompt = f"""## Job Posting
-Title: {job.title}
-Company: {job.company}
-Requirements: {', '.join(job.requirements)}
-Keywords: {', '.join(job.keywords)}
-Description: {job.description}
-
-## Finished Resume (rendered text)
-{resume_text}
-
-Rate this finished resume across all 8 dimensions for this job."""
-    agent = get_auditor_agent()
-    result = await agent.run(prompt)
-    return result.output
+async def audit_resume_avg(
+    text_or_html: str, job: JobPosting, model: str | None = None, runs: int = 2
+) -> tuple[float, AuditScore]:
+    """Run the audit `runs` times and return (averaged quality%, first AuditScore for dims)."""
+    audits = []
+    for _ in range(runs):
+        a = await _with_retry(lambda: audit_resume(text_or_html, job, model=model))
+        audits.append(a)
+    avg_q = statistics.mean(quality_score(a) for a in audits)
+    return avg_q, audits[0]
 
 
 # ─── scoring ─────────────────────────────────────────────────────────────────
@@ -227,11 +166,14 @@ class VersionResult:
     filters_passed: int = 0
     filters_total: int = 0
     audit: AuditScore | None = None
+    quality_avg: float | None = None
     pdf_path: str | None = None
     error: str | None = None
 
     @property
     def quality(self) -> float:
+        if self.quality_avg is not None:
+            return self.quality_avg
         return quality_score(self.audit) if self.audit else 0.0
 
 
@@ -239,6 +181,7 @@ class VersionResult:
 class JobResult:
     label: str
     baseline: AuditScore | None = None
+    baseline_quality: float | None = None
     by_version: dict[str, VersionResult] = field(default_factory=dict)
 
 
@@ -300,10 +243,12 @@ async def _with_retry(coro_fn, *, retries: int = 3, base_delay: float = 60.0):
 
 
 async def _run_version(
-    version: str, source: ResumeSource, job: JobPosting, label: str, monkeypatch
+    version: str, source: ResumeSource, job: JobPosting, label: str, monkeypatch,
+    version_config: dict | None = None,
+    audit_model: str | None = None,
 ) -> VersionResult:
     """Run the full optimize loop under one optimizer version, save PDF, audit it."""
-    cfg = VERSION_CONFIG[version]
+    cfg = (version_config or VERSION_CONFIG)[version]
     monkeypatch.setenv("OPTIMIZER_VERSION", cfg["OPTIMIZER_VERSION"])
     monkeypatch.setenv("OPTIMIZATION_MODEL", cfg.get("OPTIMIZATION_MODEL", _ORIGINAL_OPTIMIZATION_MODEL))
     get_settings.cache_clear()
@@ -337,10 +282,10 @@ async def _run_version(
         except Exception as e:  # rendering already happened in the loop; saving is best-effort
             res.error = f"save_pdf: {type(e).__name__}: {e}"
 
-        # Independent audit on the final HTML.
+        # Independent audit on the final HTML (2 runs, averaged).
         try:
             with contextlib.redirect_stdout(io.StringIO()):
-                res.audit = await _with_retry(lambda: audit_resume(optimized.html, job))
+                res.quality_avg, res.audit = await audit_resume_avg(optimized.html, job, model=audit_model)
         except Exception as e:
             res.error = (res.error + " | " if res.error else "") + f"audit: {type(e).__name__}: {e}"
 
@@ -350,7 +295,8 @@ async def _run_version(
 # ─── reporting ───────────────────────────────────────────────────────────────
 
 
-def _print_report(results: list[JobResult]) -> None:
+def _print_report(results: list[JobResult], versions: tuple[str, ...] | None = None) -> None:
+    versions = versions or VERSIONS
     # 1. Per-job rows.
     header = (
         f"{'job':<34}{'ver':<8}{'time':>9}{'iters':>7}{'filters':>9}"
@@ -361,7 +307,7 @@ def _print_report(results: list[JobResult]) -> None:
     print("-" * len(header))
     for jr in results:
         label = jr.label[:32]
-        base_q = quality_score(jr.baseline) if jr.baseline else None
+        base_q = jr.baseline_quality if jr.baseline_quality is not None else (quality_score(jr.baseline) if jr.baseline else None)
 
         if jr.baseline:
             print(
@@ -369,7 +315,7 @@ def _print_report(results: list[JobResult]) -> None:
                 f"{base_q:>7.0f}%{'':>7}  {jr.baseline.overall:<14}"
             )
 
-        for v in VERSIONS:
+        for v in versions:
             r = jr.by_version.get(v)
             if r is None or r.audit is None:
                 status = (r.error if r else "missing") or "no audit"
@@ -391,7 +337,7 @@ def _print_report(results: list[JobResult]) -> None:
     dims = list(DIM_LABELS)
     dim_header = f"{'':<10}" + "".join(f"{DIM_LABELS[d]:>11}" for d in dims)
     for jr in results:
-        if not jr.baseline and not any(jr.by_version.get(v) and jr.by_version[v].audit for v in VERSIONS):
+        if not jr.baseline and not any(jr.by_version.get(v) and jr.by_version[v].audit for v in versions):
             continue
         print()
         print(f"  {jr.label}")
@@ -399,7 +345,7 @@ def _print_report(results: list[JobResult]) -> None:
         if jr.baseline:
             cells = "".join(f"{getattr(jr.baseline, d):>11}" for d in dims)
             print(f"  {'base':<10}{cells}")
-        for v in VERSIONS:
+        for v in versions:
             r = jr.by_version.get(v)
             if not r or not r.audit:
                 continue
@@ -420,7 +366,7 @@ def _print_report(results: list[JobResult]) -> None:
     print("-" * len(agg_header))
     if avg_base is not None:
         print(f"{'base':<8}{len(baselines):>4}{'':>9}{'':>9}{'':>9}{'':>10}{avg_base:>9.0f}%{'':>8}")
-    for v in VERSIONS:
+    for v in versions:
         rs = [jr.by_version[v] for jr in results if jr.by_version.get(v) and jr.by_version[v].audit]
         if not rs:
             print(f"{v:<8}{'no successful runs':<40}")
@@ -439,11 +385,11 @@ def _print_report(results: list[JobResult]) -> None:
         )
 
     # Win counts per job (best quality version).
-    qual_wins = {v: 0 for v in VERSIONS}
-    speed_wins = {v: 0 for v in VERSIONS}
+    qual_wins = {v: 0 for v in versions}
+    speed_wins = {v: 0 for v in versions}
     ties = comparable = 0
     for jr in results:
-        audited = [v for v in VERSIONS if jr.by_version.get(v) and jr.by_version[v].audit]
+        audited = [v for v in versions if jr.by_version.get(v) and jr.by_version[v].audit]
         if len(audited) < 2:
             continue
         comparable += 1
@@ -458,8 +404,8 @@ def _print_report(results: list[JobResult]) -> None:
     print()
     print(f"comparable jobs: {comparable}")
     if comparable:
-        print("  quality wins: " + ", ".join(f"{v} {qual_wins[v]}" for v in VERSIONS) + (f", ties {ties}" if ties else ""))
-        print("  speed wins:   " + ", ".join(f"{v} {speed_wins[v]}" for v in VERSIONS))
+        print("  quality wins: " + ", ".join(f"{v} {qual_wins[v]}" for v in versions) + (f", ties {ties}" if ties else ""))
+        print("  speed wins:   " + ", ".join(f"{v} {speed_wins[v]}" for v in versions))
 
 
 # ─── the test ────────────────────────────────────────────────────────────────
@@ -500,10 +446,10 @@ async def test_optimizer_v1_v2_comparison(capsys, monkeypatch):
 
         jr = JobResult(label=label)
         try:
-            print(f"    base: scoring original...", flush=True)
+            print(f"    base: scoring original (2 runs)...", flush=True)
             with contextlib.redirect_stdout(io.StringIO()):
-                jr.baseline = await _with_retry(lambda: audit_resume(resume_text, job))
-            print(f"    base: {quality_score(jr.baseline):.0f}% {jr.baseline.overall}", flush=True)
+                jr.baseline_quality, jr.baseline = await audit_resume_avg(resume_text, job)
+            print(f"    base: {jr.baseline_quality:.0f}% {jr.baseline.overall}", flush=True)
         except Exception as e:
             print(f"    base: error {type(e).__name__}: {e}", flush=True)
 

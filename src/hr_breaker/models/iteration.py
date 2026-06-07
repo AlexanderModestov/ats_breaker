@@ -10,6 +10,7 @@ class IterationContext(BaseModel):
     original_resume: str  # Original source LaTeX/text
     last_attempt: str | None = None  # Previous iteration's LaTeX output
     validation: ValidationResult | None = None  # Full filter results with scores
+    audit_guidance: str | None = None  # Preserve/improve guidance from baseline audit
 
     def format_filter_results(self) -> str:
         """Format filter results for the optimizer prompt.

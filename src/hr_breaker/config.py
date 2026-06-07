@@ -47,7 +47,7 @@ class Settings(BaseModel):
     gemini_thinking_budget: int | None = None
     cache_dir: Path = Path(".cache/resumes")
     output_dir: Path = Path("output")
-    max_iterations: int = 5
+    max_iterations: int = 3
     pass_threshold: float = 0.7
     fast_mode: bool = True
     optimizer_version: str = "v1"

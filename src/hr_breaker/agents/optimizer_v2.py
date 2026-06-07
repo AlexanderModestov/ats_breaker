@@ -256,6 +256,10 @@ Requirements: {', '.join(job.requirements)}
 Keywords: {', '.join(job.keywords)}
 Description: {job.description}
 """
+    if context.audit_guidance:
+        prompt += f"""
+## {context.audit_guidance}
+"""
 
     if context.last_attempt:
         estimate = estimate_content_length(context.last_attempt)
