@@ -10,9 +10,20 @@ from hr_breaker.api.schemas import (
     UserProfileUpdate,
 )
 from hr_breaker.api.auth import AuthError, get_user_id_from_token, get_email_from_token
-from hr_breaker.services.supabase import SupabaseError
 
 router = APIRouter()
+
+
+def _profile_to_schema(profile: dict) -> UserProfile:
+    """Build a UserProfile response from a stored profile row."""
+    return UserProfile(
+        id=profile["id"],
+        email=profile["email"],
+        name=profile.get("name"),
+        theme=profile.get("theme", "minimal"),
+        default_cv_id=profile.get("default_cv_id"),
+        created_at=profile["created_at"],
+    )
 
 
 @router.post("/auth/verify", response_model=AuthVerifyResponse)
@@ -38,19 +49,9 @@ async def get_current_profile(
 
     if not profile:
         # Create profile if it doesn't exist
-        try:
-            profile = supabase.create_profile(user_id, email)
-        except SupabaseError as e:
-            raise HTTPException(status_code=500, detail=str(e)) from e
+        profile = supabase.create_profile(user_id, email)
 
-    return UserProfile(
-        id=profile["id"],
-        email=profile["email"],
-        name=profile.get("name"),
-        theme=profile.get("theme", "minimal"),
-        default_cv_id=profile.get("default_cv_id"),
-        created_at=profile["created_at"],
-    )
+    return _profile_to_schema(profile)
 
 
 @router.patch("/me", response_model=UserProfile)
@@ -79,18 +80,8 @@ async def update_current_profile(
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates provided")
 
-    try:
-        profile = supabase.update_profile(user_id, update_data)
-        if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
+    profile = supabase.update_profile(user_id, update_data)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
 
-        return UserProfile(
-            id=profile["id"],
-            email=profile["email"],
-            name=profile.get("name"),
-            theme=profile.get("theme", "minimal"),
-            default_cv_id=profile.get("default_cv_id"),
-            created_at=profile["created_at"],
-        )
-    except SupabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return _profile_to_schema(profile)

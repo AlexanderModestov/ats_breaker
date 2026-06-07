@@ -5,7 +5,7 @@ import { Plus, ChevronDown, ChevronRight, Lock } from "lucide-react";
 import { ThreadListItem } from "./ThreadListItem";
 import type { CoachSession, OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
-import { useSubscription, useCheckout } from "@/hooks/useSubscription";
+import { useCoachTrialStatus } from "@/hooks/useCoachTrialStatus";
 import { usePricingModal } from "@/context/PricingModalContext";
 
 interface Props {
@@ -31,11 +31,8 @@ export function CoachSidebar({
 }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const { data: sub } = useSubscription();
   const { open: openPricing } = usePricingModal();
-  const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
-  const lockedCompany = sub?.coach?.locked_company ?? null;
-  const checkout = useCheckout();
+  const { isTrialUser, lockedCompany, isPositionLocked } = useCoachTrialStatus();
 
   const groups = useMemo(() => {
     const positionsById = new Map(positions.map((p) => [p.id, p]));
@@ -108,11 +105,7 @@ export function CoachSidebar({
           const label = g.position
             ? `${g.position.job_company ?? ""} — ${g.position.job_title ?? ""}`.trim()
             : "Unknown position";
-          const positionCompany = (g.position?.job_company ?? "").toLowerCase().trim();
-          const isCompanyLocked =
-            isTrialUser &&
-            !!lockedCompany &&
-            positionCompany !== lockedCompany.toLowerCase().trim();
+          const isCompanyLocked = isPositionLocked(g.position?.job_company);
           return (
             <div key={runId}>
               <div className="flex items-center justify-between px-1 py-1 text-xs font-semibold text-muted-foreground">

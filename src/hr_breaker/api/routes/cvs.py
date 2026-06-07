@@ -8,11 +8,21 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
 from hr_breaker.api.schemas import CVDeleteResponse, CVListResponse, CVResponse
 from hr_breaker.services.pdf_parser import extract_text_from_pdf
-from hr_breaker.services.supabase import SupabaseError
 
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = {"pdf", "txt", "tex", "md", "html"}
+
+
+def _cv_to_response(cv: dict, *, include_text: bool = False) -> CVResponse:
+    """Build a CVResponse from a stored CV row."""
+    return CVResponse(
+        id=cv["id"],
+        name=cv["name"],
+        original_filename=cv["original_filename"],
+        content_text=cv.get("content_text") if include_text else None,
+        created_at=cv["created_at"],
+    )
 
 
 def _extract_text(file_content: bytes, filename: str) -> str:
@@ -39,21 +49,8 @@ async def list_cvs(
     supabase: SupabaseServiceDep,
 ) -> CVListResponse:
     """List all CVs for the current user."""
-    try:
-        cvs = supabase.list_cvs(user_id)
-        return CVListResponse(
-            cvs=[
-                CVResponse(
-                    id=cv["id"],
-                    name=cv["name"],
-                    original_filename=cv["original_filename"],
-                    created_at=cv["created_at"],
-                )
-                for cv in cvs
-            ]
-        )
-    except SupabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    cvs = supabase.list_cvs(user_id)
+    return CVListResponse(cvs=[_cv_to_response(cv) for cv in cvs])
 
 
 @router.get("/{cv_id}", response_model=CVResponse)
@@ -67,13 +64,7 @@ async def get_cv(
     if not cv:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    return CVResponse(
-        id=cv["id"],
-        name=cv["name"],
-        original_filename=cv["original_filename"],
-        content_text=cv.get("content_text"),
-        created_at=cv["created_at"],
-    )
+    return _cv_to_response(cv, include_text=True)
 
 
 @router.post("", response_model=CVResponse)
@@ -107,28 +98,19 @@ async def upload_cv(
     # Use filename as name if not provided
     cv_name = name or file.filename.rsplit(".", 1)[0]
 
-    try:
-        # Upload to storage
-        file_path = supabase.upload_cv_file(user_id, file_content, file.filename)
+    # Upload to storage
+    file_path = supabase.upload_cv_file(user_id, file_content, file.filename)
 
-        # Create database record
-        cv = supabase.create_cv(
-            user_id=user_id,
-            name=cv_name,
-            file_path=file_path,
-            original_filename=file.filename,
-            content_text=content_text,
-        )
+    # Create database record
+    cv = supabase.create_cv(
+        user_id=user_id,
+        name=cv_name,
+        file_path=file_path,
+        original_filename=file.filename,
+        content_text=content_text,
+    )
 
-        return CVResponse(
-            id=cv["id"],
-            name=cv["name"],
-            original_filename=cv["original_filename"],
-            content_text=cv.get("content_text"),
-            created_at=cv["created_at"],
-        )
-    except SupabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return _cv_to_response(cv, include_text=True)
 
 
 @router.delete("/{cv_id}", response_model=CVDeleteResponse)
@@ -138,10 +120,7 @@ async def delete_cv(
     supabase: SupabaseServiceDep,
 ) -> CVDeleteResponse:
     """Delete a CV."""
-    try:
-        success = supabase.delete_cv(cv_id, user_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="CV not found")
-        return CVDeleteResponse(success=True, message="CV deleted successfully")
-    except SupabaseError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    success = supabase.delete_cv(cv_id, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="CV not found")
+    return CVDeleteResponse(success=True, message="CV deleted successfully")

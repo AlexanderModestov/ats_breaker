@@ -11,7 +11,7 @@ from pydantic_ai import ModelMessagesTypeAdapter
 from pydantic_core import to_jsonable_python
 
 from hr_breaker.agents.coach import CoachDeps, create_coach_agent
-from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep
+from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep, get_run_or_404
 from hr_breaker.api.schemas import (
     CoachChatRequest,
     CoachMessageResponse,
@@ -119,9 +119,7 @@ async def create_thread(
 ):
     """Create an empty coach thread for a position."""
     profile = supabase.get_profile(user_id) or {}
-    run = supabase.get_optimization_run(body.optimization_run_id, user_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Optimization run not found")
+    run = get_run_or_404(supabase, body.optimization_run_id, user_id)
     _check_company_cap(profile, run, supabase, user_id)
     session = supabase.create_coach_session(user_id, body.optimization_run_id)
     return {**session, "preview": None, "message_count": 0}
@@ -174,9 +172,7 @@ async def chat(
     else:
         # Lazy create: enforce company cap, then ensure run is owned by the user.
         profile = supabase.get_profile(user_id) or {}
-        check_run = supabase.get_optimization_run(body.optimization_run_id, user_id)
-        if not check_run:
-            raise HTTPException(status_code=404, detail="Optimization run not found")
+        check_run = get_run_or_404(supabase, body.optimization_run_id, user_id)
         _check_company_cap(profile, check_run, supabase, user_id)
         session = supabase.create_coach_session(user_id, body.optimization_run_id)
         optimization_run_id = body.optimization_run_id
@@ -184,9 +180,7 @@ async def chat(
     session_id = session["id"]
 
     # Load optimization run for context (already verified above for lazy path).
-    run = supabase.get_optimization_run(optimization_run_id, user_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Optimization run not found")
+    run = get_run_or_404(supabase, optimization_run_id, user_id)
 
     job_parsed = run.get("job_parsed") or {}
 

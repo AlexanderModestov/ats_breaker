@@ -5,7 +5,7 @@ import httpx
 
 from hr_breaker.config import get_settings
 
-from .base import BaseScraper, ScrapingError
+from .base import BaseScraper, ScrapingError, ScrapedJob
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class WaybackScraper(BaseScraper):
         self.max_age_days = max_age_days if max_age_days is not None else settings.scraper_wayback_max_age_days
         self.timeout = timeout if timeout is not None else settings.scraper_wayback_timeout
 
-    def scrape(self, url: str) -> str:
+    def scrape(self, url: str) -> ScrapedJob:
         """Fetch job posting from Wayback Machine."""
         snapshot_url = self._get_latest_snapshot(url)
         if not snapshot_url:
@@ -37,7 +37,7 @@ class WaybackScraper(BaseScraper):
             response.raise_for_status()
             html = response.text
 
-        return self.extract_job_text(html)
+        return self._build_result(html)
 
     def _get_latest_snapshot(self, url: str) -> str | None:
         """Query CDX API for most recent snapshot."""

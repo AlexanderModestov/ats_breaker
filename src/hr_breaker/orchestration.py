@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from hr_breaker.agents import optimize_resume, optimize_resume_v2, parse_job_posting
+from hr_breaker.agents.auditor import audit_resume, audit_to_guidance
 from hr_breaker.config import get_settings, logger
 from hr_breaker.filters import (
     LLMChecker,
@@ -139,9 +140,22 @@ async def optimize_for_job(
             # TODO(url-signal): plumb url here if this branch is ever reached;
             # current callers pre-parse and pass job=, so URL signal flows via that path.
             job, _ = await parse_job_posting(job_text)
+    # Audit the original resume to guide the optimizer on what to preserve vs improve.
+    audit_guidance: str | None = None
+    try:
+        with log_time("audit_original"):
+            baseline_audit = await audit_resume(source.content, job)
+        audit_guidance = audit_to_guidance(baseline_audit)
+        print(f"  📋 Baseline audit: {baseline_audit.overall} — guidance ready")
+    except Exception as e:
+        logger.warning("Baseline audit failed, proceeding without guidance: %s", e)
+
     optimized = None
     validation = None
     last_attempt: str | None = None
+    best_optimized = None
+    best_validation = None
+    best_score = -1.0
 
     for i in range(max_iterations):
         iter_start = time.perf_counter()
@@ -154,6 +168,7 @@ async def optimize_for_job(
             original_resume=source.content,
             last_attempt=last_attempt,
             validation=validation,
+            audit_guidance=audit_guidance,
         )
         with log_time("optimize_resume (LLM)"):
             if settings.optimizer_version == "v2":
@@ -195,11 +210,21 @@ async def optimize_for_job(
         if on_iteration:
             on_iteration(i, optimized, validation)
 
+        # Track the best-scoring iteration to guard against regressions.
+        iter_score = sum(r.score for r in validation.results)
+        if iter_score > best_score:
+            best_score = iter_score
+            best_optimized = optimized
+            best_validation = validation
+
         if validation.passed:
             print(f"  ✅ All filters passed!")
             break
 
-    return optimized, validation, job
+    if best_optimized is not optimized:
+        print(f"  ↩️  Returning best iteration (score {best_score:.2f}) — last was worse")
+
+    return best_optimized, best_validation, job
 
 
 def _render_and_extract(optimized: OptimizedResume, renderer) -> OptimizedResume:

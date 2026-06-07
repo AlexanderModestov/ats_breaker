@@ -25,7 +25,7 @@ async def extract_name(content: str) -> tuple[str | None, str | None]:
     """Extract first and last name from resume content using LLM."""
     settings = get_settings()
     agent = Agent(
-        f"google-gla:{settings.gemini_flash_model}",
+        f"google-vertex:{settings.optimization_model}",
         output_type=ExtractedName,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),

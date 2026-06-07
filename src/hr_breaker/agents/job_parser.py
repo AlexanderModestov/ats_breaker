@@ -6,7 +6,7 @@ from pydantic_ai import Agent
 
 from hr_breaker.agents.url_company_extractor import extract_company_from_url
 from hr_breaker.config import get_model_settings, get_settings, logger
-from hr_breaker.models import JobPosting
+from hr_breaker.models import JobPosting, JobHints
 
 COMPANY_NOT_SPECIFIED = "Not Specified"
 
@@ -32,7 +32,7 @@ Rules:
 def get_job_parser_agent() -> Agent:
     settings = get_settings()
     return Agent(
-        f"google-gla:{settings.gemini_flash_model}",
+        f"google-vertex:{settings.optimization_model}",
         output_type=JobPosting,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),
@@ -116,39 +116,81 @@ def _company_matches(llm_value: str, url_value: str) -> bool:
 
 
 async def parse_job_posting(
-    text: str, url: str | None = None
+    text: str, url: str | None = None, hints: JobHints | None = None
 ) -> tuple[JobPosting, list[str]]:
     """Parse job posting text into structured data.
 
-    Returns the parsed JobPosting along with a list of field names whose
-    extraction failed and are recommended for manual review:
-      - "company" when the final value is COMPANY_NOT_SPECIFIED
-      - "title" when the LLM-extracted title is not grounded in the text
+    Precedence per field (authoritative-fallback):
+      company:  JSON-LD hint -> grounded LLM (URL wins on conflict)
+                -> URL slug -> meta hint -> "Not Specified" (review)
+      title:    JSON-LD hint -> grounded LLM -> meta hint -> ungrounded LLM (review)
+      location: hint -> LLM value kept as-is (conservative: never blanked/flagged)
+
+    Returns the JobPosting plus field names recommended for manual review.
     """
     agent = get_job_parser_agent()
     result = await agent.run(f"Parse this job posting:\n\n{text}")
     job = result.output
 
+    hints = hints or JobHints()
     url_company = extract_company_from_url(url) if url else None
     warnings: list[str] = []
     needs_review: list[str] = []
 
-    if _is_grounded(job.company, text, is_company=True):
+    # --- company ---
+    if hints.company and hints.company_source == "json-ld":
+        if _normalize(job.company) != _normalize(hints.company):
+            warnings.append(
+                f"company: using JSON-LD '{hints.company}' over LLM '{job.company}'"
+            )
+        job.company = hints.company
+        logger.info("field=company source=json-ld value=%s", job.company)
+    elif _is_grounded(job.company, text, is_company=True):
         if url_company and not _company_matches(job.company, url_company):
             warnings.append(
                 f"URL says '{url_company}' but LLM extracted '{job.company}' — trusting URL"
             )
             job.company = url_company
+            logger.info("field=company source=url value=%s", job.company)
+        else:
+            logger.info("field=company source=llm value=%s", job.company)
     else:
+        # LLM ungrounded: URL slug, then meta-sourced hint, then give up.
         warnings.append(f"company '{job.company}' not found in posting text")
-        job.company = url_company or COMPANY_NOT_SPECIFIED
+        if url_company:
+            job.company, src = url_company, "url"
+        elif hints.company:
+            job.company, src = hints.company, "meta"
+        else:
+            job.company, src = COMPANY_NOT_SPECIFIED, "none"
+        logger.info("field=company source=%s value=%s", src, job.company)
 
     if job.company == COMPANY_NOT_SPECIFIED:
         needs_review.append("company")
 
-    if not _is_grounded(job.title, text):
+    # --- title ---
+    if hints.title and hints.title_source == "json-ld":
+        job.title = hints.title
+        logger.info("field=title source=json-ld value=%s", job.title)
+    elif _is_grounded(job.title, text):
+        logger.info("field=title source=llm value=%s", job.title)
+    elif hints.title:  # meta/<title> fallback, only when LLM title is ungrounded
+        job.title = hints.title
+        logger.info("field=title source=meta value=%s", job.title)
+    else:
         warnings.append(f"title '{job.title}' not found in posting text")
         needs_review.append("title")
+        logger.info("field=title source=llm-ungrounded value=%s", job.title)
+
+    # --- location (conservative: hint wins, otherwise keep LLM value untouched) ---
+    if hints.location:
+        job.location = hints.location
+        logger.info("field=location source=json-ld value=%s", job.location)
+    elif job.location:
+        grounded = _is_grounded(job.location, text)
+        logger.info("field=location source=llm grounded=%s value=%s", grounded, job.location)
+    else:
+        logger.info("field=location source=none value=")
 
     if warnings:
         logger.warning("Job parser grounding issues: %s", "; ".join(warnings))

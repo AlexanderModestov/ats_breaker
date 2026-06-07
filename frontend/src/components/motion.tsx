@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, type Variants } from "framer-motion";
-import { type ReactNode, type ComponentProps } from "react";
+import { type ReactNode } from "react";
 
 // Easing curves
 export const ease = {
@@ -78,26 +78,6 @@ export const staggerItem: Variants = {
   },
 };
 
-// Page transition wrapper
-interface PageTransitionProps {
-  children: ReactNode;
-  className?: string;
-}
-
-export function PageTransition({ children, className }: PageTransitionProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.4, ease: ease.smooth }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 // Stagger wrapper for lists
 interface StaggerListProps {
   children: ReactNode;
@@ -143,26 +123,6 @@ export function StaggerItem({ children, className }: StaggerItemProps) {
   );
 }
 
-// Fade wrapper
-interface FadeInProps {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-}
-
-export function FadeIn({ children, className, delay = 0 }: FadeInProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4, delay, ease: ease.smooth }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 // Slide up fade wrapper
 interface SlideUpProps {
   children: ReactNode;
@@ -180,40 +140,6 @@ export function SlideUp({ children, className, delay = 0 }: SlideUpProps) {
     >
       {children}
     </motion.div>
-  );
-}
-
-// Hover scale effect
-interface HoverScaleProps extends ComponentProps<typeof motion.div> {
-  children: ReactNode;
-  scale?: number;
-}
-
-export function HoverScale({ children, scale = 1.02, ...props }: HoverScaleProps) {
-  return (
-    <motion.div
-      whileHover={{ scale }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.2, ease: ease.snappy }}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-// Loading skeleton with shimmer
-interface SkeletonProps {
-  className?: string;
-}
-
-export function Skeleton({ className }: SkeletonProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className={`shimmer rounded-lg ${className}`}
-    />
   );
 }
 

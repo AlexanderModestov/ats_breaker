@@ -164,18 +164,6 @@ export interface CoachMessage {
   content: string;
 }
 
-export interface CoachChatRequest {
-  message: string;
-  thread_id?: string;
-  optimization_run_id?: string;
-}
-
-export interface CoachSSEEvent {
-  type: "delta" | "done" | "error";
-  content?: string;
-  thread_id?: string;
-}
-
 export type FeedbackType = "refund" | "bug" | "idea";
 
 export interface FeedbackRequest {

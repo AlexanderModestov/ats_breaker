@@ -5,7 +5,11 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from hr_breaker.api.deps import CurrentUserWithEmail, SupabaseServiceDep
+from hr_breaker.api.deps import (
+    CurrentUserWithEmail,
+    SupabaseServiceDep,
+    get_profile_or_404,
+)
 from hr_breaker.config import logger
 from hr_breaker.services.access_control import check_quota
 from hr_breaker.services.stripe_service import StripeService, StripeError
@@ -63,9 +67,7 @@ async def get_subscription_status(
     """Return the current user's tier, status, and quota."""
     user_id, user_email = user
 
-    profile = supabase.get_profile(user_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+    profile = get_profile_or_404(supabase, user_id)
 
     quota = check_quota(user_email or "", profile)
     unlimited = coach_is_unlimited(profile)

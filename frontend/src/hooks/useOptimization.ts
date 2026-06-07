@@ -11,6 +11,7 @@ import {
   updateOptimizationJob,
 } from "@/lib/api";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { downloadBlob } from "@/lib/utils";
 import type { OptimizationStatus, OptimizationSummary, OptimizeRequest } from "@/types";
 
 // Optimization runs ~3-5 minutes. Poll fast at the start so early status
@@ -135,15 +136,8 @@ export function useDownloadPDF() {
     setDownloading(true);
     try {
       const blob = await downloadOptimizationPDF(runId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename || `resume_${runId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
+      downloadBlob(blob, filename || `resume_${runId}.pdf`);
       track("pdf_downloaded");
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } finally {
       setDownloading(false);
     }

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Lock, Zap } from "lucide-react";
 import type { OptimizationSummary } from "@/types";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useCoachTrialStatus } from "@/hooks/useCoachTrialStatus";
 import { usePricingModal } from "@/context/PricingModalContext";
 
 interface Props {
@@ -21,10 +21,8 @@ export function AddPositionDialog({
   onPick,
   onClose,
 }: Props) {
-  const { data: sub } = useSubscription();
   const { open: openPricing } = usePricingModal();
-  const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
-  const lockedCompany = sub?.coach?.locked_company ?? null;
+  const { isPositionLocked } = useCoachTrialStatus();
 
   const candidates = useMemo(
     () =>
@@ -36,12 +34,7 @@ export function AddPositionDialog({
 
   if (!open) return null;
 
-  const isPositionLocked = (p: OptimizationSummary) =>
-    isTrialUser &&
-    !!lockedCompany &&
-    (p.job_company ?? "").toLowerCase().trim() !== lockedCompany.toLowerCase().trim();
-
-  const hasLocked = candidates.some(isPositionLocked);
+  const hasLocked = candidates.some((p) => isPositionLocked(p.job_company));
 
   const handleUpgrade = () => {
     onClose();
@@ -67,7 +60,7 @@ export function AddPositionDialog({
             ) : (
               <ul className="max-h-64 overflow-y-auto divide-y divide-border">
                 {candidates.map((p) => {
-                  const locked = isPositionLocked(p);
+                  const locked = isPositionLocked(p.job_company);
                   return (
                     <li key={p.id}>
                       <button

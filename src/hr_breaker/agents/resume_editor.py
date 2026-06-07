@@ -30,7 +30,7 @@ async def edit_resume(html: str, original_resume: str, instruction: str) -> Edit
     """Edit resume HTML based on instruction, returning patches."""
     settings = get_settings()
     agent = Agent(
-        f"google-gla:{settings.gemini_flash_model}",
+        f"google-vertex:{settings.optimization_model}",
         system_prompt=_SYSTEM_PROMPT,
         output_type=EditResult,
         model_settings=get_model_settings(),

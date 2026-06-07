@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from .base import BaseScraper, CloudflareBlockedError, ScrapingError
+from .base import BaseScraper, CloudflareBlockedError, ScrapingError, ScrapedJob
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class PlaywrightScraper(BaseScraper):
     def __init__(self, timeout: float = 60000):  # ms for playwright
         self.timeout = timeout
 
-    async def scrape_async(self, url: str) -> str:
+    async def scrape_async(self, url: str) -> ScrapedJob:
         """Scrape job posting using headless browser (async)."""
         if not PLAYWRIGHT_AVAILABLE:
             raise ScrapingError(
@@ -87,7 +87,7 @@ class PlaywrightScraper(BaseScraper):
                             f"Cloudflare blocked even with browser: {url}"
                         )
 
-                    return self.extract_job_text(html)
+                    return self._build_result(html)
                 finally:
                     await browser.close()
         except PlaywrightTimeout:
@@ -97,7 +97,7 @@ class PlaywrightScraper(BaseScraper):
                 raise
             raise ScrapingError(f"Playwright error: {e}")
 
-    def scrape(self, url: str) -> str:
+    def scrape(self, url: str) -> ScrapedJob:
         """Scrape job posting using headless browser (sync wrapper)."""
         try:
             loop = asyncio.get_running_loop()

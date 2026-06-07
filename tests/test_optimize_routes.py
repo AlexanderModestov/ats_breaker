@@ -14,6 +14,7 @@ from hr_breaker.api.main import app
 from hr_breaker.api.routes.optimize import _run_optimization
 from hr_breaker.models.audit import AuditScore
 from hr_breaker.models.resume import OptimizedResume
+from hr_breaker.services import ScrapedJob
 
 USER = "user-uuid"
 EMAIL = "user@example.com"
@@ -208,6 +209,10 @@ async def test_run_optimization_persists_audit():
         ),
         patch("hr_breaker.api.routes.optimize.capture"),
         patch("hr_breaker.api.routes.optimize.consume_request", return_value=None),
+        patch(
+            "hr_breaker.api.routes.optimize.scrape_job_posting",
+            return_value=ScrapedJob(text="job text", hints=None),
+        ),
     ):
         await _run_optimization(
             run_id=RUN_ID,

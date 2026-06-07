@@ -40,13 +40,14 @@ logger = setup_logging()
 class Settings(BaseModel):
     """Application settings."""
 
-    google_api_key: str = ""
-    gemini_pro_model: str = "gemini-3-pro-preview"
-    gemini_flash_model: str = "gemini-3-flash-preview"
+    gcp_project: str = ""
+    gcp_location: str = "us-central1"
+    optimization_model: str = "gemini-2.5-flash"
+    coach_model: str = "gemini-2.5-pro"
     gemini_thinking_budget: int | None = None
     cache_dir: Path = Path(".cache/resumes")
     output_dir: Path = Path("output")
-    max_iterations: int = 5
+    max_iterations: int = 3
     pass_threshold: float = 0.7
     fast_mode: bool = True
     optimizer_version: str = "v1"
@@ -133,12 +134,13 @@ def get_settings() -> Settings:
     thinking_env = os.getenv("GEMINI_THINKING_BUDGET")
     thinking_budget: int | None = int(thinking_env) if thinking_env else None
     return Settings(
-        google_api_key=os.getenv("GOOGLE_API_KEY", ""),
-        gemini_pro_model=os.getenv("GEMINI_PRO_MODEL") or _field_default("gemini_pro_model"),
-        gemini_flash_model=os.getenv("GEMINI_FLASH_MODEL") or _field_default("gemini_flash_model"),
+        gcp_project=os.getenv("GOOGLE_CLOUD_PROJECT", ""),
+        gcp_location=os.getenv("GOOGLE_CLOUD_LOCATION") or _field_default("gcp_location"),
+        optimization_model=os.getenv("OPTIMIZATION_MODEL") or _field_default("optimization_model"),
+        coach_model=os.getenv("COACH_MODEL") or _field_default("coach_model"),
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
-        optimizer_version=os.getenv("OPTIMIZER_VERSION") or "v1",
+        optimizer_version=os.getenv("OPTIMIZER_VERSION") or "v2",
         # Scraper settings
         scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT") or _field_default("scraper_httpx_timeout")),
         scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT") or _field_default("scraper_wayback_timeout")),

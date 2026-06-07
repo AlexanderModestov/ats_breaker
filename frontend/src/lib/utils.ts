@@ -5,6 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Trigger a browser download for a blob via a temporary anchor.
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // Shared className for amber "missing field" edit buttons (compact size).
 // Use cn(AMBER_FIELD_BTN, "text-base") to bump the text size.
 export const AMBER_FIELD_BTN =

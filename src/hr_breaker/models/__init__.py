@@ -9,7 +9,7 @@ from .resume_data import (
     Education,
     Project,
 )
-from .job_posting import JobPosting
+from .job_posting import JobPosting, JobHints
 from .feedback import FilterResult, ValidationResult, GeneratedPDF
 from .iteration import IterationContext
 
@@ -22,6 +22,7 @@ __all__ = [
     "FilterResult",
     "GeneratedPDF",
     "IterationContext",
+    "JobHints",
     "JobPosting",
     "OptimizedResume",
     "Project",
