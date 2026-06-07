@@ -11,6 +11,7 @@ tests
 .worktrees/
 __pycache__/
 *.pyc
+hr-breaker-498422-5d0e79841364.json
 
 # Virtual environments
 .venv/
@@ -23,6 +24,9 @@ __pycache__/
 
 # Output PDFs
 output/
+
+# Local optimizer-comparison job postings
+positions.txt
 
 # IDE
 .idea/

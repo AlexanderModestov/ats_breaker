@@ -142,6 +142,9 @@ async def optimize_for_job(
     optimized = None
     validation = None
     last_attempt: str | None = None
+    best_optimized = None
+    best_validation = None
+    best_score = -1.0
 
     for i in range(max_iterations):
         iter_start = time.perf_counter()
@@ -195,11 +198,21 @@ async def optimize_for_job(
         if on_iteration:
             on_iteration(i, optimized, validation)
 
+        # Track the best-scoring iteration to guard against regressions.
+        iter_score = sum(r.score for r in validation.results)
+        if iter_score > best_score:
+            best_score = iter_score
+            best_optimized = optimized
+            best_validation = validation
+
         if validation.passed:
             print(f"  ✅ All filters passed!")
             break
 
-    return optimized, validation, job
+    if best_optimized is not optimized:
+        print(f"  ↩️  Returning best iteration (score {best_score:.2f}) — last was worse")
+
+    return best_optimized, best_validation, job
 
 
 def _render_and_extract(optimized: OptimizedResume, renderer) -> OptimizedResume:

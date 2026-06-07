@@ -124,7 +124,7 @@ def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
     resume_guide = _load_resume_guide()
     system_prompt = OPTIMIZER_PROMPT.format(resume_guide=resume_guide)
     agent = Agent(
-        f"google-vertex:{settings.gemini_pro_model}",
+        f"google-vertex:{settings.optimization_model}",
         output_type=OptimizerResult,
         system_prompt=system_prompt,
         model_settings=get_model_settings(),
