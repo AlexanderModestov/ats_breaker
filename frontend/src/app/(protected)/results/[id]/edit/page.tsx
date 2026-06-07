@@ -1,7 +1,7 @@
 "use client";
 import { use, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Undo2, Redo2, Download, ArrowLeft } from "lucide-react";
+import { Undo2, Redo2, Download, ArrowLeft, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useResumeEditor } from "@/hooks/useResumeEditor";
@@ -75,6 +75,7 @@ export default function EditorPage({
   const { status } = useOptimizationStatus(id);
   const [downloading, setDownloading] = useState(false);
   const [instruction, setInstruction] = useState("");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [editPopup, setEditPopup] = useState<{
     text: string;
     selector: string;
@@ -158,8 +159,22 @@ export default function EditorPage({
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+      {/* Mobile backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-10 bg-black/20 md:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Left panel — Requirements */}
-      <div className="w-72 border-r overflow-y-auto p-4 flex flex-col gap-4">
+      <div
+        className={`
+          ${mobileSidebarOpen ? "flex" : "hidden"} md:flex
+          absolute md:relative inset-y-0 left-0 z-20 md:z-auto
+          w-72 shrink-0 border-r overflow-y-auto p-4 flex-col gap-4 bg-background
+        `}
+      >
         <Button
           variant="ghost"
           size="sm"
@@ -199,6 +214,14 @@ export default function EditorPage({
       <div className="flex-1 flex flex-col">
         {/* Toolbar */}
         <div className="flex items-center gap-2 border-b p-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileSidebarOpen((v) => !v)}
+          >
+            <PanelLeft className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

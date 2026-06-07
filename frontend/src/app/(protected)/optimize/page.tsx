@@ -248,7 +248,7 @@ function OptimizeContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="fixed bottom-6 left-6 z-50 flex items-center gap-3 rounded-lg border border-border/50 bg-background px-4 py-3 shadow-lg"
+            className="fixed bottom-6 left-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border/50 bg-background px-4 py-3 shadow-lg sm:left-6 sm:right-auto"
           >
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             <p className="text-sm text-muted-foreground">
