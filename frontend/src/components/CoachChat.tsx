@@ -172,10 +172,7 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
                   <button
                     key={s}
                     type="button"
-                    onClick={() => {
-                      setInput(s);
-                      textareaRef.current?.focus();
-                    }}
+                    onClick={() => onSend(s)}
                     className="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
                   >
                     {s}
