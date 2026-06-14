@@ -1,4 +1,4 @@
-"""Tests for tier feature matrix and effective-tier logic."""
+"""Tests for tier feature matrix, effective-tier logic, and per-tier limits."""
 
 from datetime import datetime, timezone, timedelta
 
@@ -7,14 +7,14 @@ import pytest
 from hr_breaker.services.tiers import (
     Feature,
     TIER_RANK,
+    TIER_LIMITS,
     FEATURE_MIN_TIER,
-    FREE_COACH_THREADS,
-    FREE_COACH_TURNS,
-    FREE_WEEKLY_LIMIT,
-    coach_is_unlimited,
+    limits_for,
+    optimization_limit,
+    coach_chat_limit,
+    coach_msg_limit,
     effective_tier,
     has_feature_access,
-    maybe_reset_weekly_window,
 )
 
 
@@ -24,7 +24,6 @@ def _profile(**overrides) -> dict:
         "subscription_status": "none",
         "current_period_end": None,
         "period_request_count": 0,
-        "weekly_reset_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
     }
     base.update(overrides)
     return base
@@ -39,9 +38,8 @@ class TestFeatureMatrix:
     def test_optimize_available_to_free(self):
         assert FEATURE_MIN_TIER[Feature.OPTIMIZE] == "free"
 
-    def test_coach_open_to_free_for_trial(self):
-        # Tier gate passes everyone signed-in; quota check enforces the trial caps.
-        # See FREE_COACH_THREADS / FREE_COACH_TURNS.
+    def test_coach_open_to_free(self):
+        # Tier gate passes everyone signed-in; quota check enforces the caps.
         assert FEATURE_MIN_TIER[Feature.COACH] == "free"
 
 
@@ -76,11 +74,11 @@ class TestHasFeatureAccess:
     def test_free_can_optimize(self):
         assert has_feature_access(Feature.OPTIMIZE, _profile()) is True
 
-    def test_free_can_coach_via_trial(self):
+    def test_free_can_coach(self):
         # Trial gate is on the quota check, not the tier matrix.
         assert has_feature_access(Feature.COACH, _profile()) is True
 
-    def test_job_hunter_can_coach_via_trial(self):
+    def test_job_hunter_can_coach(self):
         p = _profile(subscription_tier="job_hunter", subscription_status="active")
         assert has_feature_access(Feature.COACH, p) is True
 
@@ -89,55 +87,30 @@ class TestHasFeatureAccess:
         assert has_feature_access(Feature.COACH, p) is True
 
 
-class TestCoachTrialConstants:
-    def test_thread_limit_is_3(self):
-        assert FREE_COACH_THREADS == 3
+class TestTierLimits:
+    def test_free_limits(self):
+        assert TIER_LIMITS["free"] == {"optimizations": 3, "coach_chats": 1, "coach_msgs": 15}
 
-    def test_turn_limit_is_5(self):
-        assert FREE_COACH_TURNS == 5
+    def test_job_hunter_limits(self):
+        assert TIER_LIMITS["job_hunter"] == {"optimizations": 20, "coach_chats": 1, "coach_msgs": 15}
 
+    def test_offer_mode_limits(self):
+        assert TIER_LIMITS["offer_mode"] == {"optimizations": 40, "coach_chats": 10, "coach_msgs": 20}
 
-class TestCoachIsUnlimited:
-    def test_free_is_not_unlimited(self):
-        assert coach_is_unlimited(_profile()) is False
-
-    def test_job_hunter_is_not_unlimited(self):
-        p = _profile(subscription_tier="job_hunter", subscription_status="active")
-        assert coach_is_unlimited(p) is False
-
-    def test_offer_mode_active_is_unlimited(self):
-        p = _profile(subscription_tier="offer_mode", subscription_status="active")
-        assert coach_is_unlimited(p) is True
-
-    def test_offer_mode_cancelled_within_grace_is_unlimited(self):
+    def test_limits_for_uses_effective_tier(self):
+        # Cancelled-but-in-grace offer_mode still gets offer_mode limits.
         future = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
-        p = _profile(
-            subscription_tier="offer_mode",
-            subscription_status="cancelled",
-            current_period_end=future,
-        )
-        assert coach_is_unlimited(p) is True
+        p = _profile(subscription_tier="offer_mode", subscription_status="cancelled",
+                     current_period_end=future)
+        assert limits_for(p)["optimizations"] == 40
 
-    def test_offer_mode_cancelled_after_grace_is_not_unlimited(self):
-        past = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
-        p = _profile(
-            subscription_tier="offer_mode",
-            subscription_status="cancelled",
-            current_period_end=past,
-        )
-        assert coach_is_unlimited(p) is False
+    def test_optimization_limit_helper(self):
+        assert optimization_limit(_profile()) == 3
 
+    def test_coach_chat_limit_helper(self):
+        p = _profile(subscription_tier="offer_mode", subscription_status="active")
+        assert coach_chat_limit(p) == 10
 
-class TestWeeklyWindowReset:
-    def test_does_not_reset_before_due(self):
-        p = _profile(period_request_count=2)
-        result = maybe_reset_weekly_window(p)
-        assert result["period_request_count"] == 2
-
-    def test_resets_after_due(self):
-        past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-        p = _profile(period_request_count=3, weekly_reset_at=past)
-        result = maybe_reset_weekly_window(p)
-        assert result["period_request_count"] == 0
-        new_reset = datetime.fromisoformat(result["weekly_reset_at"])
-        assert new_reset > datetime.now(timezone.utc) + timedelta(days=6)
+    def test_coach_msg_limit_helper(self):
+        p = _profile(subscription_tier="offer_mode", subscription_status="active")
+        assert coach_msg_limit(p) == 20
