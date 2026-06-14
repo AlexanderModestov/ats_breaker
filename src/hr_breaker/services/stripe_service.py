@@ -134,6 +134,21 @@ class StripeService:
         )
 
     @staticmethod
+    def get_invoice_subscription_id(invoice) -> str | None:
+        """Extract the subscription id from an invoice.
+
+        Stripe moved this field off the top-level Invoice in recent API versions;
+        it now lives under invoice.parent.subscription_details.subscription.
+        Falls back through both locations.
+        """
+        top_level = invoice.get("subscription")
+        if top_level:
+            return top_level
+        parent = invoice.get("parent") or {}
+        sub_details = parent.get("subscription_details") or {}
+        return sub_details.get("subscription")
+
+    @staticmethod
     def tier_from_subscription(subscription) -> str:
         """Read tier from price.metadata.tier on the first subscription item.
 

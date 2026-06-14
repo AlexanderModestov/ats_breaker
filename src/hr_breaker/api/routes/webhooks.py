@@ -118,7 +118,7 @@ async def handle_stripe_webhook(
             invoice = event.data.object
             if getattr(invoice, "billing_reason", None) != "subscription_cycle":
                 return {"status": "ok"}
-            sub_id = getattr(invoice, "subscription", None)
+            sub_id = stripe_service.get_invoice_subscription_id(invoice)
             if not sub_id:
                 return {"status": "ok"}
             subscription = stripe_service.get_subscription(sub_id)

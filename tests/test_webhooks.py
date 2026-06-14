@@ -7,10 +7,23 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 
 from hr_breaker.api.routes.webhooks import handle_stripe_webhook
+from hr_breaker.services.stripe_service import StripeService
 
 
 def _future_ts(days: int = 30) -> int:
     return int((datetime.now(timezone.utc) + timedelta(days=days)).timestamp())
+
+
+class _FakeInvoice(dict):
+    """Invoice fake supporting both attribute access (billing_reason) and
+    .get() chaining (subscription / parent.subscription_details.subscription),
+    matching how the real Stripe Invoice object behaves."""
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as e:
+            raise AttributeError(name) from e
 
 
 def _event(event_type: str, data_object) -> SimpleNamespace:
@@ -58,6 +71,10 @@ def mock_stripe():
         # Static method must still be callable on the instance for these tests
         instance.tier_from_subscription = MagicMock(side_effect=lambda sub: sub["items"]["data"][0]["price"]["metadata"]["tier"])
         instance.get_period_end = MagicMock(side_effect=lambda sub: sub["current_period_end"])
+        # Use the real implementation so tests exercise the cross-API-version logic.
+        instance.get_invoice_subscription_id = MagicMock(
+            side_effect=StripeService.get_invoice_subscription_id
+        )
         cls.return_value = instance
         yield instance
 
@@ -178,7 +195,7 @@ class TestSubscriptionDeleted:
 class TestInvoicePaid:
     @pytest.mark.asyncio
     async def test_subscription_cycle_resets_metered_quota(self, mock_supabase, mock_stripe, request_with_payload):
-        invoice = SimpleNamespace(
+        invoice = _FakeInvoice(
             billing_reason="subscription_cycle",
             subscription="sub_abc",
         )
@@ -204,8 +221,38 @@ class TestInvoicePaid:
         assert "current_period_end" in updates
 
     @pytest.mark.asyncio
+    async def test_subscription_cycle_resets_with_nested_subscription_id(
+        self, mock_supabase, mock_stripe, request_with_payload
+    ):
+        """Recent Stripe API versions drop top-level invoice.subscription and
+        nest it under parent.subscription_details.subscription. Quota reset must
+        still fire."""
+        invoice = _FakeInvoice(
+            billing_reason="subscription_cycle",
+            parent={"subscription_details": {"subscription": "sub_123"}},
+        )
+        mock_stripe.construct_webhook_event.return_value = _event("invoice.paid", invoice)
+        mock_stripe.get_subscription.return_value = SimpleNamespace(
+            metadata={"user_id": "user-1"},
+            current_period_end=_future_ts(30),
+        )
+        mock_stripe.get_period_end.side_effect = None
+        mock_stripe.get_period_end.return_value = _future_ts(30)
+
+        result = await handle_stripe_webhook(request_with_payload, "sig")
+
+        assert result == {"status": "ok"}
+        mock_stripe.get_subscription.assert_called_once_with("sub_123")
+        mock_supabase.update_profile.assert_called_once()
+        args, _ = mock_supabase.update_profile.call_args
+        user_id, updates = args
+        assert user_id == "user-1"
+        assert updates["period_request_count"] == 0
+        assert updates["coach_chats_used"] == 0
+
+    @pytest.mark.asyncio
     async def test_subscription_create_does_not_reset(self, mock_supabase, mock_stripe, request_with_payload):
-        invoice = SimpleNamespace(
+        invoice = _FakeInvoice(
             billing_reason="subscription_create",
             subscription="sub_abc",
         )
