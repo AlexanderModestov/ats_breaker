@@ -350,7 +350,7 @@ class SupabaseService:
         user_id: str,
         optimization_run_id: str,
     ) -> dict[str, Any]:
-        """Create a new coach session (thread) and bump the lifetime counter."""
+        """Create a new coach session (thread)."""
         try:
             session_id = str(uuid4())
             result = (
@@ -453,47 +453,6 @@ class SupabaseService:
             logger.error(f"Failed to list coach sessions: {e}")
             raise SupabaseError(f"Failed to list coach sessions: {e}") from e
 
-    def get_coach_lock(self, user_id: str) -> tuple[str | None, str | None]:
-        """
-        Return (locked_company, locked_run_id) for a trial user.
-
-        - (None, None): no sessions exist — no restriction.
-        - ("Google", None): locked to a known company name.
-        - (None, run_id): sessions exist but company is unknown — locked to that specific run.
-        """
-        try:
-            sessions = (
-                self._client.table("coach_sessions")
-                .select("optimization_run_id")
-                .eq("user_id", user_id)
-                .order("created_at", desc=False)
-                .execute()
-            )
-            if not sessions.data:
-                return (None, None)
-            run_ids = [s["optimization_run_id"] for s in sessions.data]
-            runs = (
-                self._client.table("optimization_runs")
-                .select("id, job_parsed")
-                .in_("id", run_ids)
-                .execute()
-            )
-            runs_by_id = {r["id"]: (r.get("job_parsed") or {}) for r in (runs.data or [])}
-            for run_id in run_ids:
-                company = (runs_by_id.get(run_id, {}).get("company") or "").strip()
-                if company and company.lower() != "unknown":
-                    return (company, None)
-            # Sessions exist but none have a known company.
-            return (None, run_ids[0])
-        except Exception as e:
-            logger.warning(f"Failed to get coach lock: {e}")
-            return (None, None)
-
-    def get_coach_locked_company(self, user_id: str) -> str | None:
-        """Return the known company name the user is locked to, or None."""
-        company, _ = self.get_coach_lock(user_id)
-        return company
-
     # Coach message operations
     def get_coach_messages(self, session_id: str) -> list:
         """Get messages for a coach session."""
@@ -535,6 +494,30 @@ class SupabaseService:
             raise SupabaseError(f"Failed to save coach messages: {e}") from e
 
     # Subscription operations
+    def consume_optimization_quota(self, user_id: str, limit: int) -> bool:
+        """Atomically consume one optimization. False if at/over limit."""
+        try:
+            res = self._client.rpc(
+                "consume_optimization_quota",
+                {"p_user_id": user_id, "p_limit": limit},
+            ).execute()
+            return bool(res.data)
+        except Exception as e:
+            logger.error(f"consume_optimization_quota failed: {e}")
+            raise SupabaseError(str(e)) from e
+
+    def consume_coach_chat_quota(self, user_id: str, limit: int) -> bool:
+        """Atomically consume one coach chat. False if at/over limit."""
+        try:
+            res = self._client.rpc(
+                "consume_coach_chat_quota",
+                {"p_user_id": user_id, "p_limit": limit},
+            ).execute()
+            return bool(res.data)
+        except Exception as e:
+            logger.error(f"consume_coach_chat_quota failed: {e}")
+            raise SupabaseError(str(e)) from e
+
     def consume_request_atomic(
         self,
         user_id: str,
