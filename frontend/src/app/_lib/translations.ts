@@ -183,10 +183,10 @@ export const t = {
         price: { en: "Free", ru: "Бесплатно" },
         priceSuffix: { en: "", ru: "" },
         features: [
-          { en: "3 resume optimizations / week", ru: "3 оптимизации резюме / нед" },
+          { en: "3 resume optimizations total", ru: "3 оптимизации резюме (навсегда)" },
           { en: "Basic ATS optimization", ru: "Базовая оптимизация под ATS" },
           { en: "Keyword highlights", ru: "Подсветка ключевых слов" },
-          { en: "AI Interview Prep (limited)", ru: "AI-подготовка к интервью (ограниченно)" },
+          { en: "AI Interview Prep — 1 chat, 15 messages", ru: "AI-подготовка к интервью — 1 чат, 15 сообщений" },
           { en: "PDF download", ru: "Скачивание в PDF" },
         ],
         highlighted: false,
@@ -198,7 +198,7 @@ export const t = {
         priceSuffix: { en: "/month", ru: "/мес" },
         features: [
           { en: "Everything in Starter +", ru: "Всё из Starter +" },
-          { en: "Unlimited resume optimizations", ru: "Безлимитные оптимизации" },
+          { en: "20 resume optimizations / month", ru: "20 оптимизаций резюме / мес" },
           { en: "Full ATS score", ru: "Полный ATS-скоринг" },
           { en: "Missing keywords & improvements", ru: "Недостающие слова и улучшения" },
           { en: "Multiple formats (PDF, DOCX)", ru: "Несколько форматов (PDF, DOCX)" },
@@ -213,7 +213,8 @@ export const t = {
         priceSuffix: { en: "/month", ru: "/мес" },
         features: [
           { en: "Everything in Job Hunter +", ru: "Всё из Job Hunter +" },
-          { en: "AI interview prep", ru: "AI-подготовка к интервью" },
+          { en: "40 resume optimizations / month", ru: "40 оптимизаций резюме / мес" },
+          { en: "AI interview prep — 10 chats, 20 messages", ru: "AI-подготовка к интервью — 10 чатов, 20 сообщений" },
           { en: "Answers to common questions", ru: "Ответы на частые вопросы" },
           { en: "STAR-structured responses", ru: "Ответы по методу STAR" },
           { en: "Personalized feedback", ru: "Персональная обратная связь" },
