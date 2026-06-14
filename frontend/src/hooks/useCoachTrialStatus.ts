@@ -3,20 +3,16 @@
 import { useSubscription } from "@/hooks/useSubscription";
 
 /**
- * Coach trial/lock state derived from the subscription.
+ * Coach chat-quota state derived from the subscription.
  *
- * Free coach trials are locked to a single company; `isPositionLocked` reports
- * whether a given position's company differs from the locked one.
+ * Paid tiers get a fixed number of coach chats per period; `atChatCap` reports
+ * whether the user has exhausted them.
  */
-export function useCoachTrialStatus() {
+export function useCoachQuota() {
   const { data: sub } = useSubscription();
-  const isTrialUser = sub?.coach != null && !sub.coach.is_unlimited;
-  const lockedCompany = sub?.coach?.locked_company ?? null;
-
-  const isPositionLocked = (company: string | null | undefined) =>
-    isTrialUser &&
-    !!lockedCompany &&
-    (company ?? "").toLowerCase().trim() !== lockedCompany.toLowerCase().trim();
-
-  return { isTrialUser, lockedCompany, isPositionLocked };
+  const chatsUsed = sub?.coach.chats_used ?? 0;
+  const chatsLimit = sub?.coach.chats_limit ?? 0;
+  const chatsRemaining = Math.max(0, chatsLimit - chatsUsed);
+  const msgsPerChat = sub?.coach.msgs_per_chat ?? 0;
+  return { chatsUsed, chatsLimit, chatsRemaining, msgsPerChat, atChatCap: !!sub && chatsRemaining <= 0 };
 }

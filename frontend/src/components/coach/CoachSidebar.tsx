@@ -5,7 +5,8 @@ import { Plus, ChevronDown, ChevronRight, Lock } from "lucide-react";
 import { ThreadListItem } from "./ThreadListItem";
 import type { CoachSession, OptimizationSummary } from "@/types";
 import { cn } from "@/lib/utils";
-import { useCoachTrialStatus } from "@/hooks/useCoachTrialStatus";
+import { useCoachQuota } from "@/hooks/useCoachTrialStatus";
+import { useSubscription } from "@/hooks/useSubscription";
 import { usePricingModal } from "@/context/PricingModalContext";
 
 interface Props {
@@ -32,7 +33,9 @@ export function CoachSidebar({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const { open: openPricing } = usePricingModal();
-  const { isTrialUser, lockedCompany, isPositionLocked } = useCoachTrialStatus();
+  const { data: sub } = useSubscription();
+  const { chatsRemaining, chatsLimit, atChatCap } = useCoachQuota();
+  const isTopTier = sub?.tier === "offer_mode";
 
   const groups = useMemo(() => {
     const positionsById = new Map(positions.map((p) => [p.id, p]));
@@ -74,23 +77,31 @@ export function CoachSidebar({
         />
         <button
           type="button"
-          onClick={onAddPosition}
+          onClick={() => (atChatCap && !isTopTier ? openPricing({ minTier: "offer_mode" }) : onAddPosition())}
           className="flex w-full items-center gap-2 rounded-md border border-dashed border-border px-2 py-1.5 text-sm hover:bg-muted"
         >
-          <Plus className="h-4 w-4" />
+          {atChatCap && !isTopTier ? <Lock className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           Add position
         </button>
-        {isTrialUser && (
+        {chatsLimit > 0 && (
+          <p className="w-full text-center text-xs text-muted-foreground">
+            {chatsRemaining} of {chatsLimit} chats left
+          </p>
+        )}
+        {atChatCap && (
           <button
             type="button"
-            onClick={() => openPricing({ minTier: "offer_mode" })}
+            onClick={isTopTier ? undefined : () => openPricing({ minTier: "offer_mode" })}
             className="w-full text-xs text-muted-foreground text-center hover:text-foreground transition-colors"
           >
-            {lockedCompany
-              ? `Coach sessions available for ${lockedCompany} only`
-              : "Coach sessions available for 1 company only"}
-            {" — "}
-            <span className="underline text-amber-500">Upgrade</span>
+            {isTopTier ? (
+              "You've used all your coach chats this period."
+            ) : (
+              <>
+                {"Out of coach chats — "}
+                <span className="underline text-amber-500">Upgrade</span>
+              </>
+            )}
           </button>
         )}
       </div>
@@ -105,7 +116,6 @@ export function CoachSidebar({
           const label = g.position
             ? `${g.position.job_company ?? ""} — ${g.position.job_title ?? ""}`.trim()
             : "Unknown position";
-          const isCompanyLocked = isPositionLocked(g.position?.job_company);
           return (
             <div key={runId}>
               <div className="flex items-center justify-between px-1 py-1 text-xs font-semibold text-muted-foreground">
@@ -128,16 +138,20 @@ export function CoachSidebar({
                 </button>
                 <button
                   type="button"
-                  onClick={() => !isCompanyLocked && onCreateThreadInPosition(runId)}
-                  aria-label={isCompanyLocked ? "Different company — upgrade to unlock" : "New thread in position"}
+                  onClick={() =>
+                    atChatCap
+                      ? !isTopTier && openPricing({ minTier: "offer_mode" })
+                      : onCreateThreadInPosition(runId)
+                  }
+                  aria-label={atChatCap ? "Out of coach chats — upgrade to unlock" : "New thread in position"}
                   className={cn(
                     "p-1 rounded",
-                    isCompanyLocked
+                    atChatCap && isTopTier
                       ? "opacity-40 cursor-not-allowed"
                       : "hover:bg-muted",
                   )}
                 >
-                  {isCompanyLocked ? (
+                  {atChatCap ? (
                     <Lock className="h-3 w-3" />
                   ) : (
                     <Plus className="h-3 w-3" />
