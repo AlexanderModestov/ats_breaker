@@ -93,6 +93,9 @@ class TestCheckoutCompleted:
         assert updates["subscription_id"] == "sub_abc"
         assert updates["stripe_customer_id"] == "cus_xyz"
         assert "current_period_end" in updates
+        # Fresh quota on upgrade
+        assert updates["period_request_count"] == 0
+        assert updates["coach_chats_used"] == 0
 
     @pytest.mark.asyncio
     async def test_ignores_non_subscription_mode(self, mock_supabase, mock_stripe, request_with_payload):
@@ -153,7 +156,7 @@ class TestSubscriptionUpdated:
 
 class TestSubscriptionDeleted:
     @pytest.mark.asyncio
-    async def test_resets_to_free_and_clears_window(self, mock_supabase, mock_stripe, request_with_payload):
+    async def test_resets_to_free_without_refunding_quota(self, mock_supabase, mock_stripe, request_with_payload):
         sub = SimpleNamespace(metadata={"user_id": "u"})
         mock_stripe.construct_webhook_event.return_value = _event("customer.subscription.deleted", sub)
 
@@ -166,8 +169,52 @@ class TestSubscriptionDeleted:
         assert updates["subscription_status"] == "none"
         assert updates["subscription_id"] is None
         assert updates["current_period_end"] is None
+        # Downgrade must NOT refund metered quota, and weekly_reset_at is gone
+        assert "period_request_count" not in updates
+        assert "coach_chats_used" not in updates
+        assert "weekly_reset_at" not in updates
+
+
+class TestInvoicePaid:
+    @pytest.mark.asyncio
+    async def test_subscription_cycle_resets_metered_quota(self, mock_supabase, mock_stripe, request_with_payload):
+        invoice = SimpleNamespace(
+            billing_reason="subscription_cycle",
+            subscription="sub_abc",
+        )
+        mock_stripe.construct_webhook_event.return_value = _event("invoice.paid", invoice)
+        mock_stripe.get_subscription.return_value = _retrieved_subscription()
+        # get_subscription returns a dict; webhook reads .metadata on it.
+        mock_stripe.get_subscription.return_value = SimpleNamespace(
+            metadata={"user_id": "user-1"},
+            current_period_end=_future_ts(30),
+        )
+        mock_stripe.get_period_end.side_effect = None
+        mock_stripe.get_period_end.return_value = _future_ts(30)
+
+        result = await handle_stripe_webhook(request_with_payload, "sig")
+
+        assert result == {"status": "ok"}
+        mock_supabase.update_profile.assert_called_once()
+        args, _ = mock_supabase.update_profile.call_args
+        user_id, updates = args
+        assert user_id == "user-1"
         assert updates["period_request_count"] == 0
-        assert "weekly_reset_at" in updates
+        assert updates["coach_chats_used"] == 0
+        assert "current_period_end" in updates
+
+    @pytest.mark.asyncio
+    async def test_subscription_create_does_not_reset(self, mock_supabase, mock_stripe, request_with_payload):
+        invoice = SimpleNamespace(
+            billing_reason="subscription_create",
+            subscription="sub_abc",
+        )
+        mock_stripe.construct_webhook_event.return_value = _event("invoice.paid", invoice)
+
+        result = await handle_stripe_webhook(request_with_payload, "sig")
+
+        assert result == {"status": "ok"}
+        mock_supabase.update_profile.assert_not_called()
 
 
 class TestPaymentFailed:
