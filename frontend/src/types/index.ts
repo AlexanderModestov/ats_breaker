@@ -133,14 +133,9 @@ export type Theme = "minimal" | "professional" | "bold";
 export interface SubscriptionStatus {
   tier: Tier;
   status: "none" | "active" | "cancelled";
-  remaining: number | null;
-  is_unlimited: boolean;
-  weekly_reset_at: string | null;
+  optimizations: { used: number; limit: number; remaining: number; renews_at: string | null };
+  coach: { chats_used: number; chats_limit: number; msgs_per_chat: number };
   current_period_end: string | null;
-  coach: {
-    is_unlimited: boolean;
-    locked_company: string | null;
-  };
 }
 
 export interface CheckoutResponse {
