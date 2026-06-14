@@ -19,6 +19,8 @@ import {
 } from "@/hooks/useCoach";
 import { useQuery } from "@tanstack/react-query";
 import { listOptimizations } from "@/lib/api";
+import { useSubscription } from "@/hooks/useSubscription";
+import { usePricingModal } from "@/context/PricingModalContext";
 import type { OptimizationSummary } from "@/types";
 
 const LAST_THREAD_KEY = "coach.lastThreadId";
@@ -72,10 +74,26 @@ export default function CoachPage() {
     }
   }, [threadId]);
 
+  const { data: sub } = useSubscription();
+  const { open: openPricing } = usePricingModal();
+  const isTopTier = sub?.tier === "offer_mode";
+  const [quotaNotice, setQuotaNotice] = useState<string | null>(null);
+
   const { streamingMessages, isStreaming, sendMessage } = useCoachChat({
     threadId,
     optimizationRunId: activeRunId,
     onThreadCreated: (newId) => setActiveThreadId(newId),
+    onQuotaError: (code) => {
+      if (isTopTier) {
+        setQuotaNotice(
+          code === "coach_turn_limit"
+            ? "You've reached the message limit for this chat. Start a new chat to keep going."
+            : "You've used all your coach chats for this period. Your plan renews soon.",
+        );
+      } else {
+        openPricing({ minTier: "offer_mode" });
+      }
+    },
   });
 
   const messages = streamingMessages ?? history;
@@ -166,6 +184,19 @@ export default function CoachPage() {
             </button>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{headerLabel}</span>
           </div>
+
+          {quotaNotice && (
+            <div className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+              <span className="flex-1">{quotaNotice}</span>
+              <button
+                type="button"
+                onClick={() => setQuotaNotice(null)}
+                className="underline underline-offset-2"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           <div className="flex-1 overflow-hidden">
             {threadId || activeRunId ? (

@@ -325,7 +325,10 @@ export async function streamCoachChat(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || `Chat failed: ${response.status}`);
+    const detail = error?.detail;
+    const message =
+      typeof detail === "string" ? detail : `Chat failed: ${response.status}`;
+    throw new ApiError(message, response.status, detail);
   }
 
   const reader = response.body?.getReader();

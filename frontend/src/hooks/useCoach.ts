@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ApiError,
   createCoachThread,
   deleteCoachThread,
   getCoachMessages,
@@ -71,16 +72,20 @@ export function useDeleteThread() {
   });
 }
 
+type CoachQuotaCode = "coach_chat_limit" | "coach_turn_limit";
+
 interface UseCoachChatArgs {
   threadId: string | null;
   optimizationRunId: string | null;
   onThreadCreated: (newThreadId: string) => void;
+  onQuotaError?: (code: CoachQuotaCode) => void;
 }
 
 export function useCoachChat({
   threadId,
   optimizationRunId,
   onThreadCreated,
+  onQuotaError,
 }: UseCoachChatArgs) {
   const qc = useQueryClient();
   const [streamingMessages, setStreamingMessages] = useState<CoachMessage[] | null>(null);
@@ -145,6 +150,21 @@ export function useCoachChat({
         setIsStreaming(false);
         const currentInFlight = inFlightThreadIdRef.current;
         if (threadId && currentInFlight !== threadId) return;
+
+        if (e instanceof ApiError && e.status === 402) {
+          const code =
+            typeof e.detail === "object" && e.detail !== null
+              ? (e.detail as { code?: string }).code
+              : undefined;
+          // Drop the optimistic user + empty assistant bubbles; surface the quota notice.
+          setStreamingMessages(null);
+          if (!threadId) qc.invalidateQueries({ queryKey: ["subscription"] });
+          if (code === "coach_chat_limit" || code === "coach_turn_limit") {
+            onQuotaError?.(code);
+          }
+          return;
+        }
+
         const msg = e instanceof Error ? e.message : "Unknown error";
         setStreamingMessages((prev) => {
           if (!prev) return prev;
@@ -154,7 +174,7 @@ export function useCoachChat({
         });
       }
     },
-    [isStreaming, threadId, optimizationRunId, onThreadCreated, qc],
+    [isStreaming, threadId, optimizationRunId, onThreadCreated, onQuotaError, qc],
   );
 
   return { streamingMessages, isStreaming, sendMessage };
