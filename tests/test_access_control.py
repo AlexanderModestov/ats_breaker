@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 from hr_breaker.services.access_control import (
-    AccessResult,
     check_feature_access,
     check_optimization_quota,
 )
