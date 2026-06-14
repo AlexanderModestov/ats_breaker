@@ -1,6 +1,6 @@
 """Tests for GET /api/subscription — metered quota shape."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -48,3 +48,25 @@ class TestSubscriptionStatusShape:
         body = client.get("/api/subscription").json()
         assert body["optimizations"] == {"used": 12, "limit": 40, "remaining": 28, "renews_at": end}
         assert body["coach"] == {"chats_used": 3, "chats_limit": 10, "msgs_per_chat": 20}
+
+
+class TestUpgrade:
+    def test_paid_to_paid_upgrade_resets_quota(self, client, fake_supabase):
+        # Job Hunter at the cap upgrading to Offer Mode must get fresh quota.
+        fake_supabase.get_profile.return_value = {
+            "subscription_tier": "job_hunter", "subscription_status": "active",
+            "subscription_id": "sub_abc", "period_request_count": 20, "coach_chats_used": 1,
+        }
+        with patch("hr_breaker.api.routes.subscription.StripeService") as stripe_cls:
+            stripe_cls.return_value.upgrade_subscription.return_value = None
+            resp = client.post("/api/subscription/upgrade", json={"tier": "offer_mode"})
+
+        assert resp.status_code == 200
+        assert resp.json() == {"ok": True}
+        fake_supabase.update_profile.assert_called_once()
+        args, _ = fake_supabase.update_profile.call_args
+        user_id, updates = args
+        assert user_id == USER
+        assert updates["subscription_tier"] == "offer_mode"
+        assert updates["period_request_count"] == 0
+        assert updates["coach_chats_used"] == 0

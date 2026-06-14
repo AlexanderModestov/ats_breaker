@@ -251,6 +251,33 @@ class TestInvoicePaid:
         assert updates["coach_chats_used"] == 0
 
     @pytest.mark.asyncio
+    async def test_subscription_update_resets_metered_quota(self, mock_supabase, mock_stripe, request_with_payload):
+        """Paid->paid upgrades emit a proration invoice with
+        billing_reason == 'subscription_update'; quota must reset to grant fresh quota."""
+        invoice = _FakeInvoice(
+            billing_reason="subscription_update",
+            subscription="sub_abc",
+        )
+        mock_stripe.construct_webhook_event.return_value = _event("invoice.paid", invoice)
+        mock_stripe.get_subscription.return_value = SimpleNamespace(
+            metadata={"user_id": "user-1"},
+            current_period_end=_future_ts(30),
+        )
+        mock_stripe.get_period_end.side_effect = None
+        mock_stripe.get_period_end.return_value = _future_ts(30)
+
+        result = await handle_stripe_webhook(request_with_payload, "sig")
+
+        assert result == {"status": "ok"}
+        mock_supabase.update_profile.assert_called_once()
+        args, _ = mock_supabase.update_profile.call_args
+        user_id, updates = args
+        assert user_id == "user-1"
+        assert updates["period_request_count"] == 0
+        assert updates["coach_chats_used"] == 0
+        assert "current_period_end" in updates
+
+    @pytest.mark.asyncio
     async def test_subscription_create_does_not_reset(self, mock_supabase, mock_stripe, request_with_payload):
         invoice = _FakeInvoice(
             billing_reason="subscription_create",

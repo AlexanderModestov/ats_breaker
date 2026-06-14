@@ -159,7 +159,11 @@ async def upgrade_subscription(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
     try:
-        supabase.update_profile(user_id, {"subscription_tier": body.tier})
+        supabase.update_profile(user_id, {
+            "subscription_tier": body.tier,
+            "period_request_count": 0,
+            "coach_chats_used": 0,
+        })
     except Exception:
         logger.warning(f"Failed to immediately update subscription_tier for {user_id}; webhook will sync")
 
