@@ -15,8 +15,8 @@ from hr_breaker.api.deps import (
     get_run_or_404,
     require_feature,
 )
-from hr_breaker.services.access_control import check_quota, consume_request
-from hr_breaker.services.tiers import Feature
+from hr_breaker.services.access_control import check_optimization_quota, _is_unlimited
+from hr_breaker.services.tiers import Feature, optimization_limit
 from hr_breaker.api.schemas import (
     JobPatchRequest,
     OptimizationListResponse,
@@ -287,7 +287,7 @@ async def start_optimization(
 
     profile = get_profile_or_404(supabase, user_id)
 
-    quota = check_quota(user_email or "", profile)
+    quota = check_optimization_quota(user_email or "", profile)
     if not quota.allowed:
         raise HTTPException(status_code=402, detail=quota.to_dict())
 
@@ -300,17 +300,21 @@ async def start_optimization(
     if not cv_content:
         raise HTTPException(status_code=400, detail="CV has no extracted text content")
 
+    # Atomically consume quota before creating the run (admins bypass).
+    if not _is_unlimited(user_email or ""):
+        ok = supabase.consume_optimization_quota(user_id, optimization_limit(profile))
+        if not ok:
+            raise HTTPException(
+                status_code=402,
+                detail={"allowed": False, "remaining": 0, "reason": "quota_exhausted"},
+            )
+
     # Create optimization run
     run = supabase.create_optimization_run(
         user_id=user_id,
         cv_id=request.cv_id,
         job_input=request.job_input,
     )
-
-    # Consume a Free-tier request (no-op for paid/admin users)
-    consume_updates = consume_request(user_email or "", profile)
-    if consume_updates:
-        supabase.update_profile(user_id, consume_updates)
 
     # Start background task
     background_tasks.add_task(
