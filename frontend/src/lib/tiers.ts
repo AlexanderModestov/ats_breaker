@@ -24,3 +24,9 @@ export const TIER_LABEL: Record<Tier, string> = {
   job_hunter: "Job Hunter",
   offer_mode: "Offer Mode",
 };
+
+export const TIER_LIMITS: Record<Tier, { optimizations: number; coachChats: number; coachMsgs: number }> = {
+  free:       { optimizations: 3,  coachChats: 1,  coachMsgs: 15 },
+  job_hunter: { optimizations: 20, coachChats: 1,  coachMsgs: 15 },
+  offer_mode: { optimizations: 40, coachChats: 10, coachMsgs: 20 },
+};
