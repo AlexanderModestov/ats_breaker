@@ -5,6 +5,7 @@ from pydantic_ai import Agent
 
 from hr_breaker.config import get_model_settings, get_settings
 from hr_breaker.models import FilterResult, OptimizedResume, ResumeSource
+from hr_breaker.utils.retry import with_model_retry
 
 
 class ContentIntegrityResult(BaseModel):
@@ -142,7 +143,7 @@ async def check_content_integrity(
 """
 
     agent = get_content_integrity_agent()
-    result = await agent.run(prompt)
+    result = await with_model_retry(lambda: agent.run(prompt), label="content_integrity")
     r = result.output
 
     # Build hallucination result

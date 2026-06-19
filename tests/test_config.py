@@ -18,3 +18,21 @@ def test_optimizer_version_reads_from_env():
         settings = get_settings()
         assert settings.optimizer_version == "v2"
     get_settings.cache_clear()
+
+
+def test_name_extractor_model_defaults_to_flash_lite():
+    from hr_breaker.config import get_settings
+    get_settings.cache_clear()
+    with patch.dict("os.environ", {"NAME_EXTRACTOR_MODEL": ""}, clear=False):
+        settings = get_settings()
+        assert settings.name_extractor_model == "gemini-2.5-flash-lite"
+    get_settings.cache_clear()
+
+
+def test_name_extractor_model_reads_from_env():
+    from hr_breaker.config import get_settings
+    get_settings.cache_clear()
+    with patch.dict("os.environ", {"NAME_EXTRACTOR_MODEL": "gemini-2.5-flash"}):
+        settings = get_settings()
+        assert settings.name_extractor_model == "gemini-2.5-flash"
+    get_settings.cache_clear()

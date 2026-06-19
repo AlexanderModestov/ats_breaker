@@ -6,6 +6,7 @@ from pydantic_ai import Agent
 
 from hr_breaker.config import get_model_settings, get_settings
 from hr_breaker.models.editor import EditResult
+from hr_breaker.utils.retry import with_model_retry
 
 _SYSTEM_PROMPT = """\
 You are a resume editor. You receive:
@@ -48,5 +49,5 @@ async def edit_resume(html: str, original_resume: str, instruction: str) -> Edit
 ## Instruction
 {instruction}
 """
-    result = await agent.run(prompt)
+    result = await with_model_retry(lambda: agent.run(prompt), label="edit_resume")
     return result.output

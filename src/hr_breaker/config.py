@@ -43,6 +43,7 @@ class Settings(BaseModel):
     gcp_project: str = ""
     gcp_location: str = "us-central1"
     optimization_model: str = "gemini-2.5-flash"
+    name_extractor_model: str = "gemini-2.5-flash-lite"
     coach_model: str = "gemini-2.5-pro"
     gemini_thinking_budget: int | None = None
     cache_dir: Path = Path(".cache/resumes")
@@ -137,6 +138,7 @@ def get_settings() -> Settings:
         gcp_project=os.getenv("GOOGLE_CLOUD_PROJECT", ""),
         gcp_location=os.getenv("GOOGLE_CLOUD_LOCATION") or _field_default("gcp_location"),
         optimization_model=os.getenv("OPTIMIZATION_MODEL") or _field_default("optimization_model"),
+        name_extractor_model=os.getenv("NAME_EXTRACTOR_MODEL") or _field_default("name_extractor_model"),
         coach_model=os.getenv("COACH_MODEL") or _field_default("coach_model"),
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),

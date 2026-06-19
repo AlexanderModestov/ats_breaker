@@ -4,6 +4,7 @@ from hr_breaker.config import get_model_settings, get_settings
 from hr_breaker.models.audit import AuditScore
 from hr_breaker.models.job_posting import JobPosting
 from hr_breaker.utils.html_text import extract_text_from_html
+from hr_breaker.utils.retry import with_model_retry
 from pydantic_ai import Agent
 
 AUDIT_PROMPT = r"""
@@ -86,7 +87,9 @@ Description: {job.description}
 {resume_text}
 
 Rate this finished resume across all 8 dimensions for this job."""
-    result = await get_auditor_agent(model=model).run(prompt)
+    result = await with_model_retry(
+        lambda: get_auditor_agent(model=model).run(prompt), label="audit_resume"
+    )
     return result.output
 
 

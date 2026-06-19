@@ -19,6 +19,7 @@ from hr_breaker.models.audit import AuditScore
 from hr_breaker.services.length_estimator import estimate_content_length
 from hr_breaker.services.renderer import HTMLRenderer, RenderError
 from hr_breaker.utils import extract_text_from_html
+from hr_breaker.utils.retry import with_model_retry
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +292,7 @@ Output ONLY valid JSON.
 """
 
     agent = get_optimizer_v2_agent(job, source)
-    result = await agent.run(prompt)
+    result = await with_model_retry(lambda: agent.run(prompt), label="optimize_resume_v2")
     return OptimizedResume(
         html=result.output.html,
         iteration=context.iteration,
