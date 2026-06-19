@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.utils.retry import with_model_retry
 
 
 class ExtractedName(BaseModel):
@@ -25,12 +26,15 @@ async def extract_name(content: str) -> tuple[str | None, str | None]:
     """Extract first and last name from resume content using LLM."""
     settings = get_settings()
     agent = Agent(
-        f"google-vertex:{settings.optimization_model}",
+        f"google-vertex:{settings.name_extractor_model}",
         output_type=ExtractedName,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),
     )
     # Only send first N chars - name should be at the top
     snippet = content[:settings.agent_name_extractor_chars]
-    result = await agent.run(f"Extract the name from this resume:\n\n{snippet}")
+    result = await with_model_retry(
+        lambda: agent.run(f"Extract the name from this resume:\n\n{snippet}"),
+        label="extract_name",
+    )
     return result.output.first_name, result.output.last_name

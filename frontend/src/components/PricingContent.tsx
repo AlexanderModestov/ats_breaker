@@ -47,9 +47,9 @@ const PLANS: Plan[] = [
     tagline: "Try it out",
     features: [
       "3 resume optimizations total",
-      "Coach: 1 chat, 15 messages",
       "Basic ATS optimization",
       "Keyword highlights",
+      "AI Interview Prep — 1 chat, 15 messages",
       "PDF download",
     ],
   },
@@ -59,8 +59,7 @@ const PLANS: Plan[] = [
     tagline: "Get more interviews",
     features: [
       "Everything in Starter +",
-      "20 optimizations / month",
-      "Coach: 1 chat, 15 messages",
+      "20 resume optimizations / month",
       "Full ATS score",
       "Missing keywords & improvements",
       "Multiple formats (PDF, DOCX)",
@@ -74,8 +73,8 @@ const PLANS: Plan[] = [
     tagline: "Get the offer",
     features: [
       "Everything in Job Hunter +",
-      "40 optimizations / month",
-      "Coach: 10 chats, 20 messages each",
+      "40 resume optimizations / month",
+      "AI interview prep — 10 chats, 20 messages",
       "Answers to common questions",
       "STAR-structured responses",
       "Personalized feedback",

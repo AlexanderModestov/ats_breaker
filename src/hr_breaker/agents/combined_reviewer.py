@@ -8,6 +8,7 @@ from pydantic_ai import Agent, BinaryContent
 from hr_breaker.config import get_model_settings, get_settings
 from hr_breaker.models import JobPosting, OptimizedResume
 from hr_breaker.services.renderer import get_renderer, RenderError
+from hr_breaker.utils.retry import with_model_retry
 
 
 class CombinedReviewResult(BaseModel):
@@ -253,11 +254,14 @@ Perform BOTH visual quality check AND ATS screening. Return all fields.
 """
 
     agent = get_combined_reviewer_agent()
-    result = await agent.run(
-        [
-            prompt,
-            BinaryContent(data=image_bytes, media_type="image/png"),
-        ]
+    result = await with_model_retry(
+        lambda: agent.run(
+            [
+                prompt,
+                BinaryContent(data=image_bytes, media_type="image/png"),
+            ]
+        ),
+        label="combined_review",
     )
 
     return result.output, pdf_bytes, page_count, render_warnings

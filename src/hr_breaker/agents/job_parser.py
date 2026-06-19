@@ -7,6 +7,7 @@ from pydantic_ai import Agent
 from hr_breaker.agents.url_company_extractor import extract_company_from_url
 from hr_breaker.config import get_model_settings, get_settings, logger
 from hr_breaker.models import JobPosting, JobHints
+from hr_breaker.utils.retry import with_model_retry
 
 COMPANY_NOT_SPECIFIED = "Not Specified"
 
@@ -129,7 +130,9 @@ async def parse_job_posting(
     Returns the JobPosting plus field names recommended for manual review.
     """
     agent = get_job_parser_agent()
-    result = await agent.run(f"Parse this job posting:\n\n{text}")
+    result = await with_model_retry(
+        lambda: agent.run(f"Parse this job posting:\n\n{text}"), label="parse_job_posting"
+    )
     job = result.output
 
     hints = hints or JobHints()

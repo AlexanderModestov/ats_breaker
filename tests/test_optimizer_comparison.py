@@ -50,11 +50,10 @@ pytestmark = pytest.mark.benchmark
 RESUME_PATH = Path("output/Alexander Modestov.pdf")
 POSITIONS_PATH = Path("positions.txt")
 OUTPUT_DIR = Path("output/comparison")
-VERSIONS = ("v1", "v2", "v2-flash")
+VERSIONS = ("v1", "v2")
 VERSION_CONFIG: dict[str, dict[str, str]] = {
-    "v1":       {"OPTIMIZER_VERSION": "v1"},
-    "v2":       {"OPTIMIZER_VERSION": "v2"},
-    "v2-flash": {"OPTIMIZER_VERSION": "v2", "OPTIMIZATION_MODEL": "gemini-2.5-flash"},
+    "v1": {"OPTIMIZER_VERSION": "v1", "OPTIMIZATION_MODEL": "gemini-2.5-flash"},
+    "v2": {"OPTIMIZER_VERSION": "v2", "OPTIMIZATION_MODEL": "gemini-2.5-flash"},
 }
 _ORIGINAL_OPTIMIZATION_MODEL = os.getenv("OPTIMIZATION_MODEL", "gemini-2.5-flash")
 
