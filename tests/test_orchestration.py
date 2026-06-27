@@ -8,8 +8,29 @@ from hr_breaker.models import (
     JobPosting,
     OptimizedResume,
     ResumeSource,
+    ValidationResult,
 )
-from hr_breaker.orchestration import run_filters
+from hr_breaker.models.audit import AuditScore
+from hr_breaker.orchestration import optimize_for_job, run_filters
+
+
+def _audit(**overrides):
+    base = dict(
+        ats_compatibility="ATS-Ready", recruiter_scan="Strong",
+        bullet_quality="Strong", seniority_calibration="Aligned",
+        keyword_coverage="Strong", structure="Strong",
+        concern_management="Strong", consistency="Strong",
+        overall="Strong", top_fixes=[],
+    )
+    base.update(overrides)
+    return AuditScore(**base)
+
+
+def _validation(passed: bool):
+    return ValidationResult(results=[
+        FilterResult(filter_name="F", passed=passed, score=1.0 if passed else 0.0,
+                     threshold=0.7)
+    ])
 
 
 @pytest.fixture
@@ -152,3 +173,58 @@ async def test_optimize_for_job_uses_v2_when_flag_set(source_resume, job_posting
             mock_v1.assert_not_called()
             assert result_optimized.audit is not None
     get_settings.cache_clear()
+
+
+class TestConvergence:
+    @pytest.mark.asyncio
+    async def test_stops_on_success_target(self, source_resume, job_posting):
+        """Filters pass AND no dim below Moderate -> stop after iteration 1."""
+        optimized = OptimizedResume(html="<div/>", source_checksum=source_resume.checksum,
+                                    pdf_text="text")
+        optimize_mock = AsyncMock(return_value=optimized)
+        with patch("hr_breaker.orchestration.optimize_resume", new=optimize_mock), \
+             patch("hr_breaker.orchestration.optimize_resume_v2", new=optimize_mock), \
+             patch("hr_breaker.orchestration._render_and_extract", side_effect=lambda o, r: o), \
+             patch("hr_breaker.orchestration.run_filters", new=AsyncMock(return_value=_validation(True))), \
+             patch("hr_breaker.orchestration.audit_resume", new=AsyncMock(return_value=_audit())) as m_audit:
+            await optimize_for_job(source_resume, job=job_posting, max_iterations=3)
+        # baseline audit (1) + exactly one in-loop audit
+        assert m_audit.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_stops_on_plateau_patience_1(self, source_resume, job_posting):
+        """Filters never pass; audit plateaus -> stop via patience. optimize
+        runs exactly 3 times (iter0 sets best, iter1 flat=no_improve 1,
+        iter2 flat=no_improve 2 > patience 1 -> break), not the full 5."""
+        optimized = OptimizedResume(html="<div/>", source_checksum=source_resume.checksum,
+                                    pdf_text="text")
+        flat_audit = _audit(bullet_quality="Weak")  # Weak => success target never met
+        optimize_mock = AsyncMock(return_value=optimized)
+        with patch("hr_breaker.orchestration.optimize_resume", new=optimize_mock), \
+             patch("hr_breaker.orchestration.optimize_resume_v2", new=optimize_mock), \
+             patch("hr_breaker.orchestration._render_and_extract", side_effect=lambda o, r: o), \
+             patch("hr_breaker.orchestration.run_filters", new=AsyncMock(return_value=_validation(False))), \
+             patch("hr_breaker.orchestration.audit_resume", new=AsyncMock(return_value=flat_audit)):
+            await optimize_for_job(source_resume, job=job_posting, max_iterations=5)
+        assert optimize_mock.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_returns_best_not_last(self, source_resume, job_posting):
+        """If a later iteration regresses, the earlier better one is returned."""
+        good = OptimizedResume(html="<good/>", source_checksum=source_resume.checksum,
+                               pdf_text="good")
+        bad = OptimizedResume(html="<bad/>", source_checksum=source_resume.checksum,
+                              pdf_text="bad")
+        optimize_mock = AsyncMock(side_effect=[good, bad, bad])
+        audit_mock = AsyncMock(side_effect=[
+            _audit(bullet_quality="Weak"),                                   # iter0: high sum, Weak blocks success
+            _audit(bullet_quality="Weak", structure="Weak", recruiter_scan="Weak"),  # iter1: worse
+            _audit(bullet_quality="Weak", structure="Weak", recruiter_scan="Weak"),
+        ])
+        with patch("hr_breaker.orchestration.optimize_resume", new=optimize_mock), \
+             patch("hr_breaker.orchestration.optimize_resume_v2", new=optimize_mock), \
+             patch("hr_breaker.orchestration._render_and_extract", side_effect=lambda o, r: o), \
+             patch("hr_breaker.orchestration.run_filters", new=AsyncMock(return_value=_validation(False))), \
+             patch("hr_breaker.orchestration.audit_resume", new=audit_mock):
+            result, _, _ = await optimize_for_job(source_resume, job=job_posting, max_iterations=3)
+        assert result.html == "<good/>"

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from hr_breaker.agents import optimize_resume, optimize_resume_v2, parse_job_posting
 from hr_breaker.agents.auditor import audit_resume, audit_to_guidance
+from hr_breaker.models.audit import ordinal_sum, no_dim_below_moderate
 from hr_breaker.config import get_settings, logger
 from hr_breaker.filters import (
     LLMChecker,
@@ -31,6 +32,8 @@ from hr_breaker.services.renderer import RenderError, HTMLRenderer
 
 # Ensure filters are registered
 _ = DataValidator, LLMChecker, KeywordMatcher, VectorSimilarityMatcher, ContentIntegrityChecker
+
+PATIENCE = 1  # non-improving iterations tolerated before stopping
 
 
 @contextmanager
@@ -155,7 +158,8 @@ async def optimize_for_job(
     last_attempt: str | None = None
     best_optimized = None
     best_validation = None
-    best_score = -1.0
+    best_q = -1          # best audit ordinal-sum seen so far
+    no_improve = 0
 
     for i in range(max_iterations):
         iter_start = time.perf_counter()
@@ -210,19 +214,45 @@ async def optimize_for_job(
         if on_iteration:
             on_iteration(i, optimized, validation)
 
-        # Track the best-scoring iteration to guard against regressions.
-        iter_score = sum(r.score for r in validation.results)
-        if iter_score > best_score:
-            best_score = iter_score
-            best_optimized = optimized
-            best_validation = validation
+        # Independent quality audit of THIS iteration's output (trustworthy
+        # convergence signal — not the optimizer's self-grade).
+        audit = None
+        q = None
+        if optimized.pdf_text is not None:
+            try:
+                audit = await audit_resume(optimized.pdf_text, job)
+                q = ordinal_sum(audit)
+                print(f"  🎯 Audit: {audit.overall} (q={q}/16)")
+            except Exception as e:
+                logger.warning("Iteration audit failed: %s", e)
 
-        if validation.passed:
-            print(f"  ✅ All filters passed!")
+        # Success target: filters pass AND no dimension below Moderate.
+        if validation.passed and audit is not None and no_dim_below_moderate(audit):
+            best_optimized, best_validation, best_q = optimized, validation, q
+            print(f"  ✅ Success target met (filters pass, q={q})")
             break
 
+        # Track best by audit ordinal-sum; guard convergence with patience.
+        improved = q is not None and q > best_q
+        if improved or best_optimized is None:
+            best_q = q if q is not None else best_q
+            best_optimized = optimized
+            best_validation = validation
+            no_improve = 0
+        else:
+            no_improve += 1
+            print(f"  ⏸️  No improvement ({no_improve}/{PATIENCE} tolerated)")
+            if no_improve > PATIENCE:
+                print(f"  🛑 Converged — stopping at iteration {i + 1}")
+                break
+
+        # Refresh guidance from THIS iteration's audit so the next round is told
+        # what this attempt got wrong (was previously frozen at baseline).
+        if audit is not None:
+            audit_guidance = audit_to_guidance(audit)
+
     if best_optimized is not optimized:
-        print(f"  ↩️  Returning best iteration (score {best_score:.2f}) — last was worse")
+        print(f"  ↩️  Returning best iteration (q={best_q}) — last was worse")
 
     return best_optimized, best_validation, job
 
