@@ -12,6 +12,7 @@ from hr_breaker.api.deps import (
 )
 from hr_breaker.api.main import app
 from hr_breaker.api.routes.optimize import _run_optimization
+from hr_breaker.api.schemas import OptimizeRequest
 from hr_breaker.models.audit import AuditScore
 from hr_breaker.models.resume import OptimizedResume
 from hr_breaker.services import ScrapedJob
@@ -232,3 +233,8 @@ async def test_run_optimization_persists_audit():
     )
     payload = complete_call[0][1]
     assert payload["audit"] == _AUDIT.model_dump()
+
+
+def test_optimize_request_default_max_iterations_is_3():
+    req = OptimizeRequest(cv_id="x", job_input="some job")
+    assert req.max_iterations == 3

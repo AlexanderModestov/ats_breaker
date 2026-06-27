@@ -70,7 +70,7 @@ class OptimizeRequest(BaseModel):
 
     cv_id: str
     job_input: str = Field(..., description="Job posting URL or text")
-    max_iterations: int = Field(default=5, ge=1, le=10)
+    max_iterations: int = Field(default=3, ge=1, le=10)
     parallel: bool = Field(default=True, description="Run filters in parallel")
 
 
