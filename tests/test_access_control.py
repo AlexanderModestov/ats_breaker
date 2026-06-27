@@ -1,17 +1,12 @@
 """Tests for tier-aware access control."""
 
-from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 
-import pytest
-
 from hr_breaker.services.access_control import (
-    AccessResult,
     check_feature_access,
-    check_quota,
-    consume_request,
+    check_optimization_quota,
 )
-from hr_breaker.services.tiers import Feature, FREE_WEEKLY_LIMIT
+from hr_breaker.services.tiers import Feature
 
 
 def _profile(**overrides) -> dict:
@@ -20,7 +15,6 @@ def _profile(**overrides) -> dict:
         "subscription_status": "none",
         "current_period_end": None,
         "period_request_count": 0,
-        "weekly_reset_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
     }
     base.update(overrides)
     return base
@@ -31,13 +25,7 @@ class TestUnlimitedAdmin:
         with patch("hr_breaker.services.access_control.get_settings") as mock:
             mock.return_value.unlimited_users = ["admin@test.com"]
             r = check_feature_access(Feature.COACH, "admin@test.com", _profile())
-        assert r.allowed and r.unlimited
-
-    def test_admin_bypasses_quota(self):
-        with patch("hr_breaker.services.access_control.get_settings") as mock:
-            mock.return_value.unlimited_users = ["admin@test.com"]
-            r = check_quota("admin@test.com", _profile(period_request_count=999))
-        assert r.allowed and r.unlimited
+        assert r.allowed
 
 
 class TestFeatureAccess:
@@ -62,77 +50,37 @@ class TestFeatureAccess:
         assert r.allowed is True
 
 
-class TestQuota:
-    def _no_unlimited(self):
-        m = patch("hr_breaker.services.access_control.get_settings")
-        mock = m.start()
-        mock.return_value.unlimited_users = []
-        return m
-
-    def test_free_with_remaining(self):
-        m = self._no_unlimited()
-        p = _profile(period_request_count=1)
-        r = check_quota("u@test.com", p)
-        m.stop()
-        assert r.allowed is True
-        assert r.remaining == FREE_WEEKLY_LIMIT - 1
-
-    def test_free_quota_exhausted(self):
-        m = self._no_unlimited()
-        p = _profile(period_request_count=FREE_WEEKLY_LIMIT)
-        r = check_quota("u@test.com", p)
-        m.stop()
-        assert r.allowed is False
-        assert r.reason == "quota_exhausted"
-        assert r.renewal_date is not None
-
-    def test_paid_user_unlimited(self):
-        m = self._no_unlimited()
-        p = _profile(subscription_tier="job_hunter", subscription_status="active",
-                     period_request_count=999)
-        r = check_quota("u@test.com", p)
-        m.stop()
-        assert r.allowed is True and r.unlimited
-
-    def test_lazy_reset_when_window_expired(self):
-        m = self._no_unlimited()
-        past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-        p = _profile(period_request_count=FREE_WEEKLY_LIMIT, weekly_reset_at=past)
-        r = check_quota("u@test.com", p)
-        m.stop()
-        assert r.allowed is True
-        assert r.remaining == FREE_WEEKLY_LIMIT  # full quota after reset
+def _p(tier="free", status="none", used=0, period_end=None):
+    return {
+        "subscription_tier": tier, "subscription_status": status,
+        "current_period_end": period_end, "period_request_count": used,
+    }
 
 
-class TestConsumeRequest:
-    def test_free_user_increments_period_counter(self):
-        with patch("hr_breaker.services.access_control.get_settings") as mock:
-            mock.return_value.unlimited_users = []
-            updates = consume_request("u@test.com", _profile(period_request_count=0))
-        assert updates["period_request_count"] == 1
+class TestOptimizationQuota:
+    def test_free_under_limit(self):
+        r = check_optimization_quota("u@x.com", _p(used=1))
+        assert r.allowed and r.remaining == 2
 
-    def test_paid_user_no_increment(self):
-        with patch("hr_breaker.services.access_control.get_settings") as mock:
-            mock.return_value.unlimited_users = []
-            p = _profile(subscription_tier="offer_mode", subscription_status="active")
-            updates = consume_request("u@test.com", p)
-        assert updates == {}
+    def test_free_at_limit_blocked(self):
+        r = check_optimization_quota("u@x.com", _p(used=3))
+        assert not r.allowed and r.remaining == 0 and r.reason == "quota_exhausted"
 
-    def test_admin_no_increment(self):
-        with patch("hr_breaker.services.access_control.get_settings") as mock:
-            mock.return_value.unlimited_users = ["a@test.com"]
-            updates = consume_request("a@test.com", _profile())
-        assert updates == {}
+    def test_free_renewal_date_is_none(self):
+        r = check_optimization_quota("u@x.com", _p(used=3))
+        assert r.renewal_date is None  # Free never resets
 
-    def test_free_user_with_expired_window_persists_reset(self):
-        """Regression: without persisting the reset, the user gets unlimited
-        free use after the first window expires."""
-        with patch("hr_breaker.services.access_control.get_settings") as mock:
-            mock.return_value.unlimited_users = []
-            past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-            p = _profile(period_request_count=FREE_WEEKLY_LIMIT, weekly_reset_at=past)
-            updates = consume_request("u@test.com", p)
-        assert updates["period_request_count"] == 1  # counted from fresh window, not 4
-        assert "weekly_reset_at" in updates  # new window persisted
-        new_reset = datetime.fromisoformat(updates["weekly_reset_at"])
-        assert new_reset > datetime.now(timezone.utc) + timedelta(days=6)
+    def test_job_hunter_metered(self):
+        r = check_optimization_quota("u@x.com", _p(tier="job_hunter", status="active", used=19))
+        assert r.allowed and r.remaining == 1
+
+    def test_job_hunter_at_limit_blocked_with_renewal(self):
+        end = "2099-01-01T00:00:00+00:00"
+        r = check_optimization_quota("u@x.com", _p(tier="job_hunter", status="active", used=20, period_end=end))
+        assert not r.allowed and r.renewal_date is not None
+
+    def test_admin_allowlist_bypasses(self, monkeypatch):
+        from hr_breaker.services import access_control
+        monkeypatch.setattr(access_control, "_is_unlimited", lambda e: True)
+        r = check_optimization_quota("admin@x.com", _p(used=999))
+        assert r.allowed

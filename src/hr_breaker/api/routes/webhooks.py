@@ -1,6 +1,6 @@
 """Webhook handlers for external services."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request, Header
 
@@ -61,6 +61,8 @@ async def handle_stripe_webhook(
                 "subscription_id": session.subscription,
                 "stripe_customer_id": session.customer,
                 "current_period_end": period_end.isoformat(),
+                "period_request_count": 0,
+                "coach_chats_used": 0,
             })
             logger.info(f"Activated {tier} subscription for user {user_id}")
 
@@ -109,12 +111,29 @@ async def handle_stripe_webhook(
                 "subscription_status": "none",
                 "subscription_id": None,
                 "current_period_end": None,
-                "period_request_count": 0,
-                "weekly_reset_at": (
-                    datetime.now(timezone.utc) + timedelta(days=7)
-                ).isoformat(),
             })
             logger.info(f"Subscription ended for user {user_id}; reverted to free")
+
+        elif event.type == "invoice.paid":
+            invoice = event.data.object
+            if getattr(invoice, "billing_reason", None) not in ("subscription_cycle", "subscription_update"):
+                return {"status": "ok"}
+            sub_id = stripe_service.get_invoice_subscription_id(invoice)
+            if not sub_id:
+                return {"status": "ok"}
+            subscription = stripe_service.get_subscription(sub_id)
+            user_id = subscription.metadata.get("user_id") if subscription.metadata else None
+            if not user_id:
+                return {"status": "ok"}
+            period_end = datetime.fromtimestamp(
+                stripe_service.get_period_end(subscription), tz=timezone.utc
+            )
+            supabase.update_profile(user_id, {
+                "period_request_count": 0,
+                "coach_chats_used": 0,
+                "current_period_end": period_end.isoformat(),
+            })
+            logger.info(f"Reset metered quota for user {user_id} on new billing cycle")
 
         elif event.type == "invoice.payment_failed":
             logger.warning(f"Stripe invoice payment failed (event {event.id}); awaiting retry")

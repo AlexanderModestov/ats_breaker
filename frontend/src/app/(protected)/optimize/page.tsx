@@ -112,9 +112,7 @@ function OptimizeContent() {
   }, [selectedCV, jobInput, startOptimization, router, track, queryClient, open]);
 
   const quotaExhausted =
-    subscription?.tier === "free" &&
-    !subscription.is_unlimited &&
-    (subscription.remaining ?? 0) <= 0;
+    !!subscription && subscription.optimizations.remaining <= 0;
 
   const canOptimize =
     selectedCV && jobInput.trim().length > 0 && !quotaExhausted;

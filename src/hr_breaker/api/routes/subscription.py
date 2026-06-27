@@ -11,12 +11,8 @@ from hr_breaker.api.deps import (
     get_profile_or_404,
 )
 from hr_breaker.config import logger
-from hr_breaker.services.access_control import check_quota
 from hr_breaker.services.stripe_service import StripeService, StripeError
-from hr_breaker.services.tiers import (
-    coach_is_unlimited,
-    effective_tier,
-)
+from hr_breaker.services.tiers import effective_tier, limits_for
 
 router = APIRouter()
 
@@ -44,19 +40,25 @@ class UpgradePreviewResponse(BaseModel):
     currency: str
 
 
-class CoachAccessBlock(BaseModel):
-    is_unlimited: bool
-    locked_company: str | None
+class OptimizationsBlock(BaseModel):
+    used: int
+    limit: int
+    remaining: int
+    renews_at: str | None
+
+
+class CoachBlock(BaseModel):
+    chats_used: int
+    chats_limit: int
+    msgs_per_chat: int
 
 
 class SubscriptionStatusResponse(BaseModel):
-    tier: str  # "free" | "job_hunter" | "offer_mode"
-    status: str  # "none" | "active" | "cancelled"
-    remaining: int | None  # None for paid/unlimited
-    is_unlimited: bool
-    weekly_reset_at: str | None
+    tier: str
+    status: str
+    optimizations: OptimizationsBlock
+    coach: CoachBlock
     current_period_end: str | None
-    coach: CoachAccessBlock
 
 
 @router.get("", response_model=SubscriptionStatusResponse)
@@ -64,26 +66,26 @@ async def get_subscription_status(
     user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
 ) -> SubscriptionStatusResponse:
-    """Return the current user's tier, status, and quota."""
-    user_id, user_email = user
-
+    """Return the current user's tier, status, and metered quota."""
+    user_id, _ = user
     profile = get_profile_or_404(supabase, user_id)
-
-    quota = check_quota(user_email or "", profile)
-    unlimited = coach_is_unlimited(profile)
-    raw_lock = None if unlimited else supabase.get_coach_locked_company(user_id)
-    locked_company = raw_lock or None  # convert "" (unknown slot) to None for the API
+    limits = limits_for(profile)
+    tier = effective_tier(profile)
+    opt_used = profile.get("period_request_count", 0)
+    chats_used = profile.get("coach_chats_used", 0)
+    renews_at = None if tier == "free" else profile.get("current_period_end")
     return SubscriptionStatusResponse(
-        tier=effective_tier(profile),
+        tier=tier,
         status=profile.get("subscription_status", "none"),
-        remaining=None if quota.unlimited else quota.remaining,
-        is_unlimited=quota.unlimited,
-        weekly_reset_at=profile.get("weekly_reset_at"),
-        current_period_end=profile.get("current_period_end"),
-        coach=CoachAccessBlock(
-            is_unlimited=unlimited,
-            locked_company=locked_company,
+        optimizations=OptimizationsBlock(
+            used=opt_used, limit=limits["optimizations"],
+            remaining=max(0, limits["optimizations"] - opt_used), renews_at=renews_at,
         ),
+        coach=CoachBlock(
+            chats_used=chats_used, chats_limit=limits["coach_chats"],
+            msgs_per_chat=limits["coach_msgs"],
+        ),
+        current_period_end=profile.get("current_period_end"),
     )
 
 
@@ -157,7 +159,11 @@ async def upgrade_subscription(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
     try:
-        supabase.update_profile(user_id, {"subscription_tier": body.tier})
+        supabase.update_profile(user_id, {
+            "subscription_tier": body.tier,
+            "period_request_count": 0,
+            "coach_chats_used": 0,
+        })
     except Exception:
         logger.warning(f"Failed to immediately update subscription_tier for {user_id}; webhook will sync")
 

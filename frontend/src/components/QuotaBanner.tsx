@@ -14,35 +14,46 @@ export function QuotaBanner() {
   const { data: sub } = useSubscription();
   const { open } = usePricingModal();
 
-  // Don't render for paid/unlimited users or while loading
-  if (!sub || sub.tier !== "free" || sub.is_unlimited) return null;
+  if (!sub) return null;
 
-  const remaining = sub.remaining ?? 0;
+  const { remaining, renews_at } = sub.optimizations;
   if (remaining > 1) return null;
 
-  const days = daysUntil(sub.weekly_reset_at);
+  const isOfferMode = sub.tier === "offer_mode";
+  const days = daysUntil(renews_at);
+  const resetLabel =
+    days === null
+      ? null
+      : sub.status === "cancelled"
+        ? `Access ends in ${days} day${days === 1 ? "" : "s"}.`
+        : `Renews in ${days} day${days === 1 ? "" : "s"}.`;
 
   if (remaining === 1) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-        <span>Last optimization this week.</span>
-        <button onClick={() => open()} className="ml-auto underline underline-offset-4">
-          Upgrade for unlimited →
-        </button>
+        <span>Last optimization remaining.</span>
+        {!isOfferMode && (
+          <button onClick={() => open()} className="ml-auto underline underline-offset-4">
+            Upgrade →
+          </button>
+        )}
       </div>
     );
   }
 
+  // remaining === 0
   return (
     <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-900 dark:text-red-200">
       <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
       <span>
-        Used 3/3 this week. Resets in {days ?? "?"} day{days === 1 ? "" : "s"}.
+        Limit reached.{sub.tier !== "free" && resetLabel ? ` ${resetLabel}` : ""}
       </span>
-      <button onClick={() => open()} className="ml-auto underline underline-offset-4">
-        Upgrade →
-      </button>
+      {!isOfferMode && (
+        <button onClick={() => open()} className="ml-auto underline underline-offset-4">
+          Upgrade →
+        </button>
+      )}
     </div>
   );
 }

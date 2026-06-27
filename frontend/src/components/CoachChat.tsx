@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useCoachQuota } from "@/hooks/useCoachTrialStatus";
 import type { CoachMessage } from "@/types";
 
 const MARKDOWN_COMPONENTS = {
@@ -107,6 +108,9 @@ function MessageBubble({ message }: { message: CoachMessage }) {
 
 export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
   const [input, setInput] = useState("");
+  const { msgsPerChat } = useCoachQuota();
+  const userTurns = messages.filter((m) => m.role === "user").length;
+  const atTurnCap = msgsPerChat > 0 && userTurns >= msgsPerChat;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollToBottom = useCallback(() => {
@@ -126,13 +130,13 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+    if (!trimmed || isStreaming || atTurnCap) return;
     onSend(trimmed);
     setInput("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [input, isStreaming, onSend]);
+  }, [input, isStreaming, atTurnCap, onSend]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -193,21 +197,32 @@ export function CoachChat({ messages, isStreaming, onSend }: CoachChatProps) {
 
       {/* Input area */}
       <div className="border-t border-border p-4">
+        {atTurnCap ? (
+          <p className="mb-2 text-center text-xs text-muted-foreground">
+            You&apos;ve reached the {msgsPerChat}-message limit for this chat.
+          </p>
+        ) : (
+          msgsPerChat > 0 && (
+            <p className="mb-2 text-right text-xs text-muted-foreground">
+              {msgsPerChat - userTurns} of {msgsPerChat} messages left
+            </p>
+          )
+        )}
         <div className="flex items-end gap-2">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleResize}
             onKeyDown={handleKeyDown}
-            disabled={isStreaming}
-            placeholder="Type a message..."
+            disabled={isStreaming || atTurnCap}
+            placeholder={atTurnCap ? "Message limit reached for this chat" : "Type a message..."}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           />
           <Button
             size="icon"
             onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
+            disabled={!input.trim() || isStreaming || atTurnCap}
           >
             {isStreaming ? (
               <Loader2 className="h-4 w-4 animate-spin" />

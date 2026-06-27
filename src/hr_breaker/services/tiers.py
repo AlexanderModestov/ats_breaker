@@ -1,6 +1,6 @@
 """Tier definitions, feature matrix, and effective-tier logic."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -20,7 +20,11 @@ FEATURE_MIN_TIER: dict[Feature, str] = {
     Feature.GAP_ANALYSIS: "offer_mode",
 }
 
-FREE_WEEKLY_LIMIT = 3
+TIER_LIMITS: dict[str, dict[str, int]] = {
+    "free":       {"optimizations": 3,  "coach_chats": 1,  "coach_msgs": 15},
+    "job_hunter": {"optimizations": 20, "coach_chats": 1,  "coach_msgs": 15},
+    "offer_mode": {"optimizations": 40, "coach_chats": 10, "coach_msgs": 20},
+}
 
 
 def _parse_ts(value):
@@ -45,25 +49,24 @@ def effective_tier(profile: dict) -> str:
     return "free"
 
 
-def coach_is_unlimited(profile: dict) -> bool:
-    """True when the user has unlimited Coach access (Offer Mode, including cancellation grace)."""
-    return effective_tier(profile) == "offer_mode"
+def limits_for(profile: dict) -> dict[str, int]:
+    """Limits for the tier the user can currently use (honours cancellation grace)."""
+    return TIER_LIMITS[effective_tier(profile)]
+
+
+def optimization_limit(profile: dict) -> int:
+    return limits_for(profile)["optimizations"]
+
+
+def coach_chat_limit(profile: dict) -> int:
+    return limits_for(profile)["coach_chats"]
+
+
+def coach_msg_limit(profile: dict) -> int:
+    return limits_for(profile)["coach_msgs"]
 
 
 def has_feature_access(feature: Feature, profile: dict) -> bool:
     user_rank = TIER_RANK[effective_tier(profile)]
     needed_rank = TIER_RANK[FEATURE_MIN_TIER[feature]]
     return user_rank >= needed_rank
-
-
-def maybe_reset_weekly_window(profile: dict) -> dict:
-    """Return profile with weekly counter reset if window expired. Pure function."""
-    reset_at = _parse_ts(profile.get("weekly_reset_at"))
-    now = datetime.now(timezone.utc)
-    if reset_at is not None and now < reset_at:
-        return profile
-    return {
-        **profile,
-        "period_request_count": 0,
-        "weekly_reset_at": (now + timedelta(days=7)).isoformat(),
-    }

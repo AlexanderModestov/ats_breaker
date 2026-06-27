@@ -209,7 +209,6 @@ async def test_run_optimization_persists_audit():
             new=AsyncMock(return_value=(optimized, mock_validation, None)),
         ),
         patch("hr_breaker.api.routes.optimize.capture"),
-        patch("hr_breaker.api.routes.optimize.consume_request", return_value=None),
         patch(
             "hr_breaker.api.routes.optimize.scrape_job_posting",
             return_value=ScrapedJob(text="job text", hints=None),
@@ -238,3 +237,52 @@ async def test_run_optimization_persists_audit():
 def test_optimize_request_default_max_iterations_is_3():
     req = OptimizeRequest(cv_id="x", job_input="some job")
     assert req.max_iterations == 3
+
+
+# ---------------------------------------------------------------------------
+# POST /api/optimize: metered quota consume
+# ---------------------------------------------------------------------------
+
+
+class TestOptimizeQuota:
+    @pytest.fixture(autouse=True)
+    def _no_admins(self):
+        with patch("hr_breaker.services.access_control.get_settings") as s:
+            s.return_value.unlimited_users = []
+            yield
+
+    def test_free_at_limit_returns_402(self, client, fake_supabase):
+        fake_supabase.get_profile.return_value = {
+            "id": USER, "subscription_tier": "free", "subscription_status": "none",
+            "current_period_end": None, "period_request_count": 3,
+        }
+        r = client.post("/api/optimize", json={"cv_id": "c1", "job_input": "..."})
+        assert r.status_code == 402
+        assert r.json()["detail"]["reason"] == "quota_exhausted"
+        fake_supabase.consume_optimization_quota.assert_not_called()
+
+    def test_consume_called_then_run_starts(self, client, fake_supabase):
+        fake_supabase.get_profile.return_value = {
+            "id": USER, "subscription_tier": "job_hunter",
+            "subscription_status": "active",
+            "current_period_end": "2099-01-01T00:00:00+00:00",
+            "period_request_count": 5,
+        }
+        fake_supabase.consume_optimization_quota.return_value = True
+        fake_supabase.get_cv.return_value = {"id": "c1", "content_text": "cv"}
+        fake_supabase.create_optimization_run.return_value = {"id": "r1"}
+        r = client.post("/api/optimize", json={"cv_id": "c1", "job_input": "..."})
+        assert r.status_code == 200
+        fake_supabase.consume_optimization_quota.assert_called_once_with(USER, 20)
+        fake_supabase.create_optimization_run.assert_called_once()
+
+    def test_lost_race_returns_402(self, client, fake_supabase):
+        fake_supabase.get_profile.return_value = {
+            "id": USER, "subscription_tier": "free", "subscription_status": "none",
+            "current_period_end": None, "period_request_count": 2,
+        }
+        fake_supabase.consume_optimization_quota.return_value = False  # raced to limit
+        fake_supabase.get_cv.return_value = {"id": "c1", "content_text": "cv"}
+        r = client.post("/api/optimize", json={"cv_id": "c1", "job_input": "..."})
+        assert r.status_code == 402
+        fake_supabase.create_optimization_run.assert_not_called()

@@ -1,5 +1,5 @@
 -- ============================================================
--- HR-Breaker: Full schema (migrations 001–017)
+-- HR-Breaker: Full schema (migrations 001–018)
 -- Run this in the Supabase SQL Editor on a fresh instance.
 -- ============================================================
 
@@ -371,8 +371,7 @@ ALTER TABLE optimization_runs
 
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'free'
-    CHECK (subscription_tier IN ('free', 'job_hunter', 'offer_mode')),
-  ADD COLUMN IF NOT EXISTS weekly_reset_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days');
+    CHECK (subscription_tier IN ('free', 'job_hunter', 'offer_mode'));
 
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_subscription_status_check;
 
@@ -452,16 +451,44 @@ CREATE POLICY "feedback_insert_own"
 -- ============================================================
 
 ALTER TABLE profiles
-  ADD COLUMN IF NOT EXISTS coach_threads_created_total INT NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS coach_chats_used INT NOT NULL DEFAULT 0;
 
-CREATE OR REPLACE FUNCTION increment_coach_threads_created_total(p_user_id UUID)
-RETURNS VOID
-LANGUAGE SQL
+
+-- ============================================================
+-- 018: Metered tiers
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION consume_optimization_quota(p_user_id UUID, p_limit INT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-  UPDATE profiles
-     SET coach_threads_created_total = coach_threads_created_total + 1
-   WHERE id = p_user_id;
+DECLARE rows_affected INT;
+BEGIN
+    UPDATE profiles
+       SET period_request_count = period_request_count + 1
+     WHERE id = p_user_id
+       AND period_request_count < p_limit;
+    GET DIAGNOSTICS rows_affected = ROW_COUNT;
+    RETURN rows_affected > 0;
+END;
 $$;
 
-GRANT EXECUTE ON FUNCTION increment_coach_threads_created_total(UUID) TO service_role;
+CREATE OR REPLACE FUNCTION consume_coach_chat_quota(p_user_id UUID, p_limit INT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE rows_affected INT;
+BEGIN
+    UPDATE profiles
+       SET coach_chats_used = coach_chats_used + 1
+     WHERE id = p_user_id
+       AND coach_chats_used < p_limit;
+    GET DIAGNOSTICS rows_affected = ROW_COUNT;
+    RETURN rows_affected > 0;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION consume_optimization_quota(UUID, INT) TO service_role;
+GRANT EXECUTE ON FUNCTION consume_coach_chat_quota(UUID, INT) TO service_role;

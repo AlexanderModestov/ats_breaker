@@ -11,7 +11,12 @@ from pydantic_ai import ModelMessagesTypeAdapter
 from pydantic_core import to_jsonable_python
 
 from hr_breaker.agents.coach import CoachDeps, create_coach_agent
-from hr_breaker.api.deps import CurrentUser, SupabaseServiceDep, get_run_or_404
+from hr_breaker.api.deps import (
+    CurrentUser,
+    CurrentUserWithEmail,
+    SupabaseServiceDep,
+    get_run_or_404,
+)
 from hr_breaker.api.schemas import (
     CoachChatRequest,
     CoachMessageResponse,
@@ -19,7 +24,8 @@ from hr_breaker.api.schemas import (
     CoachThreadCreateRequest,
     CoachThreadUpdateRequest,
 )
-from hr_breaker.services.tiers import coach_is_unlimited
+from hr_breaker.services.access_control import _is_unlimited
+from hr_breaker.services.tiers import coach_chat_limit, coach_msg_limit
 
 logger = logging.getLogger(__name__)
 
@@ -80,47 +86,42 @@ async def get_session_messages(
     return _extract_display_messages(raw)
 
 
-_COMPANY_CAP_ERROR = {
-    "code": "coach_company_limit",
-    "message": "Free plan is limited to one company. Upgrade to Offer Mode to practice with multiple companies.",
-}
+_CHAT_LIMIT_ERROR = {"code": "coach_chat_limit", "message": "You've used all your coach chats for this period."}
+_TURN_LIMIT_ERROR = {"code": "coach_turn_limit", "message": "This chat has reached its message limit. Start a new chat."}
 
 
-def _check_company_cap(profile: dict, run: dict, supabase, user_id: str) -> None:
-    """Raise 403 if a trial user tries to create a session for a different company identity."""
-    if coach_is_unlimited(profile):
+def _consume_chat_or_402(profile, supabase, user_id, email):
+    if _is_unlimited(email):
         return
-    locked_company, locked_run_id = supabase.get_coach_lock(user_id)
-    if locked_company is None and locked_run_id is None:
-        return  # No sessions yet — allow anything.
-    new_company = ((run.get("job_parsed") or {}).get("company") or "").strip()
-    new_company_known = bool(new_company) and new_company.lower() != "unknown"
-    if locked_company is not None:
-        # Locked to a known company — new session must have the same company.
-        if not new_company_known or new_company.lower() != locked_company.lower():
-            raise HTTPException(
-                status_code=403,
-                detail={**_COMPANY_CAP_ERROR, "locked_company": locked_company},
-            )
-    else:
-        # Locked to a specific run (unknown company) — new session must be for that same run.
-        if run.get("id") != locked_run_id:
-            raise HTTPException(
-                status_code=403,
-                detail={**_COMPANY_CAP_ERROR, "locked_company": None},
-            )
+    if not supabase.consume_coach_chat_quota(user_id, coach_chat_limit(profile)):
+        raise HTTPException(status_code=402, detail=_CHAT_LIMIT_ERROR)
+
+
+def _check_turn_cap(profile, raw_history, email) -> None:
+    if _is_unlimited(email):
+        return
+    user_turns = sum(
+        1
+        for msg in (raw_history or [])
+        if msg.get("kind") == "request"
+        for part in msg.get("parts", [])
+        if part.get("part_kind") == "user-prompt"
+    )
+    if user_turns >= coach_msg_limit(profile):
+        raise HTTPException(status_code=402, detail=_TURN_LIMIT_ERROR)
 
 
 @router.post("/sessions", response_model=CoachSessionResponse, status_code=201)
 async def create_thread(
     body: CoachThreadCreateRequest,
-    user_id: CurrentUser,
+    user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
 ):
     """Create an empty coach thread for a position."""
+    user_id, user_email = user
     profile = supabase.get_profile(user_id) or {}
-    run = get_run_or_404(supabase, body.optimization_run_id, user_id)
-    _check_company_cap(profile, run, supabase, user_id)
+    get_run_or_404(supabase, body.optimization_run_id, user_id)
+    _consume_chat_or_402(profile, supabase, user_id, user_email or "")
     session = supabase.create_coach_session(user_id, body.optimization_run_id)
     return {**session, "preview": None, "message_count": 0}
 
@@ -155,7 +156,7 @@ async def delete_thread(
 @router.post("/chat")
 async def chat(
     body: CoachChatRequest,
-    user_id: CurrentUser,
+    user: CurrentUserWithEmail,
     supabase: SupabaseServiceDep,
 ):
     """Stream a coach response via SSE.
@@ -163,6 +164,9 @@ async def chat(
     Accepts either body.thread_id (existing thread) or body.optimization_run_id
     (lazy-create new thread). Schema validator enforces exactly-one-of.
     """
+    user_id, user_email = user
+    profile = supabase.get_profile(user_id) or {}
+
     # Resolve thread.
     if body.thread_id:
         session = supabase.get_coach_session(body.thread_id, user_id)
@@ -170,10 +174,9 @@ async def chat(
             raise HTTPException(status_code=404, detail="Thread not found")
         optimization_run_id = session["optimization_run_id"]
     else:
-        # Lazy create: enforce company cap, then ensure run is owned by the user.
-        profile = supabase.get_profile(user_id) or {}
-        check_run = get_run_or_404(supabase, body.optimization_run_id, user_id)
-        _check_company_cap(profile, check_run, supabase, user_id)
+        # Lazy create: verify run is owned by the user, then consume a chat slot.
+        get_run_or_404(supabase, body.optimization_run_id, user_id)
+        _consume_chat_or_402(profile, supabase, user_id, user_email or "")
         session = supabase.create_coach_session(user_id, body.optimization_run_id)
         optimization_run_id = body.optimization_run_id
 
@@ -193,6 +196,7 @@ async def chat(
 
     # Load message history
     raw_history = supabase.get_coach_messages(session_id)
+    _check_turn_cap(profile, raw_history, user_email or "")
     if raw_history:
         message_history = ModelMessagesTypeAdapter.validate_python(raw_history)
     else:
