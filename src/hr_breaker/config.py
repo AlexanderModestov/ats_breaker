@@ -143,6 +143,7 @@ def get_settings() -> Settings:
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
         optimizer_version=os.getenv("OPTIMIZER_VERSION") or "v2",
+        max_iterations=int(os.getenv("MAX_ITERATIONS") or _field_default("max_iterations")),
         # Scraper settings
         scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT") or _field_default("scraper_httpx_timeout")),
         scraper_wayback_timeout=float(os.getenv("SCRAPER_WAYBACK_TIMEOUT") or _field_default("scraper_wayback_timeout")),

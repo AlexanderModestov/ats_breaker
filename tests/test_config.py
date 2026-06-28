@@ -20,6 +20,24 @@ def test_optimizer_version_reads_from_env():
     get_settings.cache_clear()
 
 
+def test_max_iterations_defaults_to_3():
+    from hr_breaker.config import get_settings
+    get_settings.cache_clear()
+    with patch.dict("os.environ", {"MAX_ITERATIONS": ""}, clear=False):
+        settings = get_settings()
+        assert settings.max_iterations == 3
+    get_settings.cache_clear()
+
+
+def test_max_iterations_reads_from_env():
+    from hr_breaker.config import get_settings
+    get_settings.cache_clear()
+    with patch.dict("os.environ", {"MAX_ITERATIONS": "5"}):
+        settings = get_settings()
+        assert settings.max_iterations == 5
+    get_settings.cache_clear()
+
+
 def test_name_extractor_model_defaults_to_flash_lite():
     from hr_breaker.config import get_settings
     get_settings.cache_clear()
