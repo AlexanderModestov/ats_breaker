@@ -228,3 +228,39 @@ class TestConvergence:
              patch("hr_breaker.orchestration.audit_resume", new=audit_mock):
             result, _, _ = await optimize_for_job(source_resume, job=job_posting, max_iterations=3)
         assert result.html == "<good/>"
+
+    @pytest.mark.asyncio
+    async def test_uses_fewer_iterations_than_cap(self, source_resume, job_posting):
+        """Speed guarantee: when audit quality improves then plateaus, the loop
+        stops well before the iteration cap instead of grinding through it.
+
+        structure stays Weak throughout so the success target never fires and
+        filters never pass — the only thing that can stop the loop early is
+        convergence. The baseline audit (before the loop) consumes the first
+        side_effect entry; the in-loop ordinal-sum then climbs 10 -> 12 -> 14
+        and flattens:
+          iter0 q=10 (best), iter1 q=12 (best), iter2 q=14 (best),
+          iter3 q=14 (no_improve=1), iter4 q=14 (no_improve=2 > patience) -> break.
+        So 5 iterations run against a cap of 8. If convergence regressed and the
+        loop ran to the cap, await_count would be 8 and this test would fail.
+        """
+        optimized = OptimizedResume(html="<div/>", source_checksum=source_resume.checksum,
+                                    pdf_text="text")
+        improving_then_flat = [
+            _audit(structure="Weak"),  # baseline audit (guidance only, not counted)
+            _audit(structure="Weak", recruiter_scan="Weak", keyword_coverage="Weak"),      # iter0 q=10
+            _audit(structure="Weak", recruiter_scan="Moderate", keyword_coverage="Moderate"),  # iter1 q=12
+            _audit(structure="Weak"),  # iter2 q=14
+            _audit(structure="Weak"),  # iter3 q=14 (plateau)
+            _audit(structure="Weak"),  # iter4 q=14 (plateau -> break)
+        ]
+        optimize_mock = AsyncMock(return_value=optimized)
+        cap = 8
+        with patch("hr_breaker.orchestration.optimize_resume", new=optimize_mock), \
+             patch("hr_breaker.orchestration.optimize_resume_v2", new=optimize_mock), \
+             patch("hr_breaker.orchestration._render_and_extract", side_effect=lambda o, r: o), \
+             patch("hr_breaker.orchestration.run_filters", new=AsyncMock(return_value=_validation(False))), \
+             patch("hr_breaker.orchestration.audit_resume", new=AsyncMock(side_effect=improving_then_flat)):
+            await optimize_for_job(source_resume, job=job_posting, max_iterations=cap)
+        assert optimize_mock.await_count == 5
+        assert optimize_mock.await_count < cap
