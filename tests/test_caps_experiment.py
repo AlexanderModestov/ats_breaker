@@ -1,6 +1,6 @@
 """Unit tests for the pure caps-experiment derivation logic (no LLM)."""
 
-from tests.caps_experiment import IterPoint, RunTrajectory, CapOutcome, cap_result
+from tests.caps_experiment import IterPoint, RunTrajectory, cap_result
 
 
 def _traj(best_qualities, stop=None):
