@@ -109,17 +109,21 @@ def stop_distribution(trajs: list) -> dict:
 
 def dimension_deltas(trajs: list) -> dict:
     """Mean ordinal (0..2) at iteration 0 vs final iteration, per dimension.
-    Skips trajectories whose endpoints lack an audit. NA dimensions contribute 0."""
-    def lvl(audit, dim):
-        return _LEVEL.get(getattr(audit, dim), 0)
+    Skips trajectories whose endpoints lack an audit. A dimension whose value is
+    "NA" at either endpoint is skipped for that trajectory, mirroring the
+    NA-exclusion in models/audit.py (ordinal_sum / no_dim_below_moderate)."""
     out = {}
     for dim in _DIMENSIONS:
         firsts, lasts = [], []
         for t in trajs:
             if not t.points or t.points[0].audit is None or t.points[-1].audit is None:
                 continue
-            firsts.append(lvl(t.points[0].audit, dim))
-            lasts.append(lvl(t.points[-1].audit, dim))
+            first_val = getattr(t.points[0].audit, dim)
+            last_val = getattr(t.points[-1].audit, dim)
+            if first_val == "NA" or last_val == "NA":
+                continue
+            firsts.append(_LEVEL[first_val])
+            lasts.append(_LEVEL[last_val])
         if firsts:
             out[dim] = (mean(firsts), mean(lasts))
     return out

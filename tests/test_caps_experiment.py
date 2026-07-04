@@ -95,6 +95,25 @@ def test_dimension_deltas_first_vs_last():
     assert deltas["structure"] == (2.0, 2.0)        # unchanged
 
 
+def test_dimension_deltas_skips_na_dimension():
+    from hr_breaker.models.audit import AuditScore
+
+    def mk(recruiter, concern):
+        return AuditScore(
+            ats_compatibility="ATS-Ready", recruiter_scan=recruiter,
+            bullet_quality="Strong", seniority_calibration="Aligned",
+            keyword_coverage="Strong", structure="Strong",
+            concern_management=concern, consistency="Strong",
+            overall="Strong", top_fixes=[],
+        )
+    p0 = IterPoint(0, 50.0, 50.0, 0, 1, 1.0, audit=mk("Weak", "NA"))
+    p1 = IterPoint(1, 60.0, 60.0, 0, 1, 2.0, audit=mk("Strong", "NA"))
+    trajs = [RunTrajectory("j", 0, [p0, p1])]
+    deltas = dimension_deltas(trajs)
+    assert "concern_management" not in deltas   # NA excluded, not treated as 0
+    assert deltas["recruiter_scan"] == (0.0, 2.0)
+
+
 def test_render_caps_report_contains_blocks():
     trajs = [_traj([50.0, 70.0]), _traj([82.0])]
     text = render_caps_report(trajs, caps=(2, 3, 4, 5))
