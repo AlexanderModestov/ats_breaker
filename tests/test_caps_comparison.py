@@ -3,7 +3,9 @@
 Runs ONE cap=MAX_CAP optimization K times per job, capturing the per-iteration
 trajectory via a synchronous on_iteration collector, then re-audits each
 iteration's HTML to fill quality. The 2/3/4/5 cap outcomes are DERIVED from each
-trajectory (exact, because the cap only truncates the loop). See
+trajectory: the iteration count and which iteration is returned are exact
+(the cap only truncates the loop), while the quality numbers are an independent
+re-audit on one ruler (averaged %), not the loop's internal ordinal-sum. See
 docs/plans/2026-07-04-caps-comparison-experiment-design.md.
 
 Inputs (local, gitignored): output/Alexander Modestov.pdf, positions.txt.
@@ -95,11 +97,15 @@ async def _run_trajectory(source, job, job_slug, rep, monkeypatch) -> RunTraject
             cum_seconds=r["cum_seconds"], audit=audit,
         ))
 
-    # Override the final point's best_quality with the loop's actual return.
+    # Override the final point to represent the loop's ACTUAL returned resume
+    # (best_quality AND audit): on the success-break path the loop returns the
+    # current iteration, and on the patience path it returns an earlier best, so
+    # the returned object — not the last iteration run — is the true endpoint.
     if points:
         with contextlib.redirect_stdout(io.StringIO()):
-            ret_q, _ = await audit_resume_avg(optimized.html, job)
+            ret_q, ret_audit = await audit_resume_avg(optimized.html, job)
         points[-1].best_quality = ret_q
+        points[-1].audit = ret_audit
 
     return RunTrajectory(job_slug=job_slug, rep=rep, points=points)
 

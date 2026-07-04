@@ -46,7 +46,9 @@ def cap_result(traj: RunTrajectory, n: int) -> CapOutcome:
     """Derive the cap=n outcome from a (>= n)-length trajectory.
 
     The loop returns the best-so-far iteration, so a truncation at k iterations
-    returns points[k-1].best_quality. Exact because the cap only truncates.
+    returns points[k-1].best_quality. The iteration count is exact (the cap only
+    truncates); quality reflects the trajectory's re-audited best_quality, which
+    is an independent measurement, not the loop's internal selection metric.
     """
     if not traj.points:
         raise ValueError("cannot derive cap result from an empty trajectory")
