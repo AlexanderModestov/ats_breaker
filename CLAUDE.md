@@ -60,6 +60,11 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## English Corrections
+At the end of every response, if I wrote in English, correct any grammar or 
+phrasing mistakes in my message in a short section called "✏️ English tip".
+Only mention mistakes that exist — skip this section if my English was fine.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
