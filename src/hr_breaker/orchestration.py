@@ -226,12 +226,6 @@ async def optimize_for_job(
             except Exception as e:
                 logger.warning("Iteration audit failed: %s", e)
 
-        # Success target: filters pass AND no dimension below Moderate.
-        if validation.passed and audit is not None and no_dim_below_moderate(audit):
-            best_optimized, best_validation, best_q = optimized, validation, q
-            print(f"  ✅ Success target met (filters pass, q={q})")
-            break
-
         # Track best by audit ordinal-sum; guard convergence with patience.
         improved = q is not None and q > best_q
         if improved or best_optimized is None:
@@ -239,7 +233,13 @@ async def optimize_for_job(
             best_optimized = optimized
             best_validation = validation
             no_improve = 0
-        else:
+
+        # Success target: filters pass AND no dimension below Moderate.
+        if validation.passed and audit is not None and no_dim_below_moderate(audit):
+            print(f"  ✅ Success target met (filters pass, q={q})")
+            break
+
+        if not improved and best_optimized is not None:
             no_improve += 1
             print(f"  ⏸️  No improvement ({no_improve}/{PATIENCE} tolerated)")
             if no_improve > PATIENCE:
