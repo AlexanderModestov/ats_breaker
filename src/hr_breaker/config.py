@@ -107,6 +107,10 @@ class Settings(BaseModel):
     # Model settings
     sentence_transformer_model: str = "all-MiniLM-L6-v2"
 
+    # LLM call guards: per-attempt timeout and process-wide concurrency cap
+    model_call_timeout: float = 300.0
+    model_max_concurrency: int = 8
+
     # Agent limits
     agent_name_extractor_chars: int = 2000
 
@@ -167,6 +171,9 @@ def get_settings() -> Settings:
         keyword_max_missing_display=int(os.getenv("KEYWORD_MAX_MISSING_DISPLAY") or _field_default("keyword_max_missing_display")),
         # Model settings
         sentence_transformer_model=os.getenv("SENTENCE_TRANSFORMER_MODEL") or _field_default("sentence_transformer_model"),
+        # LLM call guards
+        model_call_timeout=float(os.getenv("MODEL_CALL_TIMEOUT") or _field_default("model_call_timeout")),
+        model_max_concurrency=int(os.getenv("MODEL_MAX_CONCURRENCY") or _field_default("model_max_concurrency")),
         # Agent limits
         agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS") or _field_default("agent_name_extractor_chars")),
         # Supabase settings
