@@ -16,7 +16,7 @@ class VectorSimilarityMatcher(BaseFilter):
     """Vector similarity filter using sentence-transformers."""
 
     name = "VectorSimilarityMatcher"
-    priority = 6
+    priority = 3
     _model = None
     _model_name = None
 

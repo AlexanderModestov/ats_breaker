@@ -10,7 +10,7 @@ class ContentIntegrityChecker(BaseFilter):
     """Combined hallucination + AI detection in single LLM call."""
 
     name = "ContentIntegrityChecker"
-    priority = 3
+    priority = 4
 
     @property
     def threshold(self) -> float:

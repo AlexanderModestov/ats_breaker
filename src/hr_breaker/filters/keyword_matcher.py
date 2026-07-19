@@ -98,7 +98,7 @@ class KeywordMatcher(BaseFilter):
     """Keyword matching filter using TF-IDF weighted scoring."""
 
     name = "KeywordMatcher"
-    priority = 4
+    priority = 2
 
     @property
     def threshold(self) -> float:
