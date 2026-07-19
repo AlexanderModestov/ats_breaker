@@ -60,7 +60,7 @@ async def test_keyword_matcher_partial_match(source_resume, job_posting):
 
 @pytest.mark.asyncio
 async def test_keyword_matcher_no_pdf_text(source_resume, job_posting):
-    """Test that filter fails gracefully when pdf_text is None."""
+    """Test that filter falls back to HTML text (not a hard-fail) when pdf_text is None."""
     optimized = OptimizedResume(
         html="<div>Test</div>",
         source_checksum=source_resume.checksum,
@@ -71,7 +71,33 @@ async def test_keyword_matcher_no_pdf_text(source_resume, job_posting):
     result = await matcher.evaluate(optimized, job_posting, source_resume)
 
     assert not result.passed
-    assert "No PDF text available" in result.issues[0]
+    assert "No PDF text available" not in result.issues
+
+
+@pytest.mark.asyncio
+async def test_keyword_matcher_html_only_no_pdf_text(source_resume, job_posting):
+    # Editor /validate path: html set, pdf_text is None. Should still score, not hard-fail.
+    optimized = OptimizedResume(
+        html="<div>Backend Engineer with Python Django PostgreSQL REST API experience</div>",
+        source_checksum=source_resume.checksum,
+        pdf_text=None,
+    )
+
+    matcher = KeywordMatcher()
+    result = await matcher.evaluate(optimized, job_posting, source_resume)
+
+    assert result.passed
+    assert result.score >= matcher.threshold
+    assert "No PDF text available" not in result.issues
+
+
+@pytest.mark.asyncio
+async def test_keyword_matcher_no_content_at_all(source_resume, job_posting):
+    optimized = OptimizedResume(
+        html=None, source_checksum=source_resume.checksum, pdf_text=None
+    )
+    result = await KeywordMatcher().evaluate(optimized, job_posting, source_resume)
+    assert not result.passed
 
 
 def test_filter_registry():
