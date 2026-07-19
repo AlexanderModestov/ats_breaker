@@ -22,4 +22,6 @@ def test_ai_gate_uses_config_threshold(monkeypatch):
     # ai_probability below threshold passes.
     assert _ai_passed(0.3) is True
     assert _ai_passed(0.5) is False
+    # 0.45 passes the old hardcoded 0.5 gate but must FAIL the config 0.4 gate.
+    assert _ai_passed(0.45) is False
     get_settings.cache_clear()

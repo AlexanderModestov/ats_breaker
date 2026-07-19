@@ -122,6 +122,15 @@ class TestIsGrounded:
     def test_is_grounded_accepts_real_token(self):
         assert _is_grounded("Acme Corp", "Join Acme Corp today") is True
 
+    def test_is_grounded_rejects_cyrillic_substring(self):
+        # "ада" is a genuine substring of "Рамада" (Ramada); with an ASCII-only
+        # word boundary this degrades to substring matching and wrongly grounds
+        # "Ада" against the unrelated word "Рамада".
+        assert _is_grounded("Ада", "Работа в отеле Рамада") is False
+
+    def test_is_grounded_accepts_cyrillic_whole_word(self):
+        assert _is_grounded("Яндекс", "Вакансия в Яндекс сегодня") is True
+
 
 def _mock_agent_returning(job: JobPosting):
     """Build a mock pydantic-ai Agent whose .run() returns the given JobPosting."""

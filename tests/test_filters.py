@@ -129,6 +129,20 @@ async def test_keyword_matcher_alnum_still_whole_word():
     assert "java" in result.missing_keywords
 
 
+@pytest.mark.asyncio
+async def test_keyword_matcher_cyrillic_whole_word():
+    from hr_breaker.filters.keyword_matcher import check_keywords
+
+    # requirements includes a Latin token so the TF-IDF vectorizer doesn't raise
+    # on an all-Cyrillic job_text (empty vocabulary) before keywords are added.
+    job = JobPosting(
+        title="Разработчик", company="Acme", requirements=["Python"], keywords=["питон"]
+    )
+    # "питоны" (plural) must NOT satisfy the "питон" keyword; bare "питон" must.
+    assert "питон" in check_keywords("Знаю питоны и джаву", job).missing_keywords
+    assert "питон" not in check_keywords("Знаю питон и джаву", job).missing_keywords
+
+
 def test_filter_registry():
     """Test that filters are registered."""
     names = FilterRegistry.names()

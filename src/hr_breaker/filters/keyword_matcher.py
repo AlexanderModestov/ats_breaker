@@ -69,8 +69,10 @@ def check_keywords(
     for keyword in significant_keywords:
         esc = re.escape(keyword)
         # Use lookarounds instead of \b so symbol-bounded keywords (c++, c#, .net)
-        # match. A keyword is a hit when not flanked by an alphanumeric character.
-        pattern = rf"(?<![a-z0-9]){esc}(?![a-z0-9])"
+        # match. A keyword is a hit when not flanked by a word character. \w is
+        # Unicode-aware for str patterns, so this also respects Cyrillic word
+        # boundaries while still matching symbol-bounded keywords.
+        pattern = rf"(?<!\w){esc}(?!\w)"
         if re.search(pattern, resume_lower):
             matched.append(keyword)
         else:

@@ -76,9 +76,11 @@ def _strip_corp_suffix(s: str) -> str:
 
 
 def _word_in(needle: str, haystack: str) -> bool:
-    """True if `needle` appears in `haystack` bounded by non-alphanumeric chars.
-    Both are already normalized+lowercased before this is called."""
-    return re.search(rf"(?<![a-z0-9]){re.escape(needle)}(?![a-z0-9])", haystack) is not None
+    """True if `needle` appears in `haystack` bounded by non-word chars.
+    Both are already normalized+lowercased before this is called. Relies on
+    Python re's Unicode-aware `\\w` so Cyrillic (and other non-ASCII) word
+    boundaries are respected, not just ASCII alphanumerics."""
+    return re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", haystack) is not None
 
 
 def _is_grounded(value: str, text: str, *, is_company: bool = False) -> bool:
