@@ -85,3 +85,8 @@ def test_looks_like_html_distinguishes_generics_from_markup():
     assert _looks_like_html("<p>Experience</p>") is True
     assert _looks_like_html("Implemented Cache<T> generics in C++") is False
     assert _looks_like_html("Skills: math < stats") is False
+    # Uppercase / mixed-case real HTML must still be detected (reachable via .html CV uploads).
+    assert _looks_like_html("<DIV>Header</DIV>") is True
+    assert _looks_like_html("<P>Experience</P>") is True
+    # Single-letter generics must NOT be treated as HTML regardless of case.
+    assert _looks_like_html("Map<K, V> and Cache<T>") is False

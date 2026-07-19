@@ -49,7 +49,12 @@ overall: Strong / Needs Work / Weak — holistic fit of this resume for this job
 top_fixes: the 3 highest-impact remaining improvements, priority-ordered.
 """
 
-_HTML_TAG_RE = re.compile(r"</?[a-z][a-zA-Z0-9]*(\s[^<>]*)?>")
+_HTML_TAG_RE = re.compile(
+    r"</?(?:html|head|body|div|span|p|br|hr|h[1-6]|ul|ol|li|table|thead|tbody|tr|td|th|"
+    r"a|b|i|u|em|strong|section|article|header|footer|nav|main|figure|img|style|script|"
+    r"blockquote|pre|code|small|sup|sub|label)(?:\s[^<>]*)?/?>",
+    re.IGNORECASE,
+)
 
 
 def _looks_like_html(text: str) -> bool:
