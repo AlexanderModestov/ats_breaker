@@ -74,8 +74,9 @@ class VectorSimilarityMatcher(BaseFilter):
             )
         )
 
-        # Normalize to 0-1 (cosine similarity is -1 to 1)
-        score = (similarity + 1) / 2
+        # Cosine similarity of MiniLM embeddings of resume vs job text.
+        # Non-negative in practice; compare directly against the threshold.
+        score = max(0.0, similarity)
 
         issues = []
         suggestions = []

@@ -141,6 +141,30 @@ def test_filter_threshold_property():
     assert matcher.threshold == 0.25
 
 
+@pytest.mark.asyncio
+async def test_vector_matcher_score_is_raw_cosine(monkeypatch):
+    import numpy as np
+    from hr_breaker.filters import vector_similarity_matcher as vsm
+
+    class FakeModel:
+        def encode(self, texts):
+            # Nearly-orthogonal vectors -> cosine ~0.0, must be BELOW 0.4 threshold.
+            return np.array([[1.0, 0.0], [0.0, 1.0]])
+
+    monkeypatch.setattr(
+        vsm.VectorSimilarityMatcher, "_get_model", lambda self: FakeModel()
+    )
+
+    job = JobPosting(title="Chef", company="Acme", description="Cook food", requirements=[])
+    optimized = OptimizedResume(
+        html="<div>x</div>", source_checksum="c", pdf_text="Quantum physics research"
+    )
+    result = await vsm.VectorSimilarityMatcher().evaluate(optimized, job, ResumeSource(content="x"))
+
+    assert result.score < 0.05          # raw cosine, not (sim+1)/2 == 0.5
+    assert not result.passed            # 0.0 < 0.4 threshold
+
+
 def test_filter_priorities_unique():
     """All filter priorities should be unique for deterministic execution order."""
     filters = FilterRegistry.all()
