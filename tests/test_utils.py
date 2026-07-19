@@ -1,16 +1,11 @@
-import os
-
 import pytest
 
 
-# Name extraction tests require LLM API and use async
-requires_api = pytest.mark.skipif(
-    not os.getenv("GOOGLE_API_KEY"),
-    reason="GOOGLE_API_KEY not set"
-)
+# Name extraction tests hit the live LLM; gated like the other benchmark tests
+# (skipped unless run with `-m benchmark`, see conftest.py).
+pytestmark = pytest.mark.benchmark
 
 
-@requires_api
 async def test_extract_name_with_name_command():
     from hr_breaker.agents import extract_name
 
@@ -20,7 +15,6 @@ async def test_extract_name_with_name_command():
     assert last == "Doe"
 
 
-@requires_api
 async def test_extract_name_with_huge():
     from hr_breaker.agents import extract_name
 
@@ -30,7 +24,6 @@ async def test_extract_name_with_huge():
     assert last == "Doe"
 
 
-@requires_api
 async def test_extract_name_fallback():
     from hr_breaker.agents import extract_name
 
@@ -45,7 +38,6 @@ John Smith
     assert last == "Smith"
 
 
-@requires_api
 async def test_extract_name_nested_formatting():
     """Test that nested LaTeX formatting is handled correctly."""
     from hr_breaker.agents import extract_name
@@ -56,7 +48,6 @@ async def test_extract_name_nested_formatting():
     assert last == "Tseitlin"
 
 
-@requires_api
 async def test_extract_name_not_found():
     from hr_breaker.agents import extract_name
 
