@@ -16,11 +16,10 @@ def check_page2_overflow(pdf_bytes: bytes) -> str | None:
     Returns error message if overflow detected, None otherwise.
     """
     settings = get_settings()
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    if len(doc) < 2:
-        return None
-
-    page2_text = doc[1].get_text().strip()
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        if len(doc) < 2:
+            return None
+        page2_text = doc[1].get_text().strip()
     if len(page2_text) > 0 and len(page2_text) < settings.resume_page2_overflow_chars:
         logger.debug(
             f"check_page2_overflow: page 2 len {len(page2_text)} - overflow from page 1"
