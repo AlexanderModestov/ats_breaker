@@ -208,6 +208,32 @@ async def test_vector_matcher_no_literal_none(monkeypatch):
     assert "None" not in captured["job_text"]
 
 
+@pytest.mark.asyncio
+async def test_content_length_reuses_existing_pdf_bytes(monkeypatch, job_posting):
+    from hr_breaker.filters import content_length as content_length_mod
+    from hr_breaker.filters.content_length import ContentLengthChecker
+
+    def boom():
+        raise AssertionError("renderer must not be constructed when pdf_bytes exists")
+
+    # Patch the name as bound in content_length.py (it's `from ... import get_renderer`,
+    # so patching hr_breaker.services.renderer.get_renderer wouldn't touch this reference).
+    monkeypatch.setattr(content_length_mod, "get_renderer", boom)
+
+    # Minimal 1-page PDF produced once via a real render in a fixture would be ideal;
+    # here we render a tiny doc directly to get valid bytes.
+    from hr_breaker.services.renderer import HTMLRenderer
+    pdf = HTMLRenderer().render("<h1>Test</h1><p>Short resume.</p>").pdf_bytes
+
+    optimized = OptimizedResume(
+        html="<h1>Test</h1><p>Short resume.</p>",
+        source_checksum="c",
+        pdf_bytes=pdf,
+    )
+    result = await ContentLengthChecker().evaluate(optimized, job_posting, ResumeSource(content="x"))
+    assert result.passed
+
+
 def test_filter_priorities_unique():
     """All filter priorities should be unique for deterministic execution order."""
     filters = FilterRegistry.all()

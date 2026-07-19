@@ -53,20 +53,22 @@ class ContentLengthChecker(BaseFilter):
                 suggestions=[],
             )
 
-        try:
-            renderer = get_renderer()
-            render_result = renderer.render(optimized.html)
-            page_count = render_result.page_count
-            pdf_bytes = render_result.pdf_bytes
-        except RenderError as e:
-            return FilterResult(
-                filter_name=self.name,
-                passed=False,
-                score=0.0,
-                threshold=self.threshold,
-                issues=[f"Rendering failed: {str(e)}"],
-                suggestions=["Fix HTML content to allow rendering"],
-            )
+        pdf_bytes = optimized.pdf_bytes
+        if pdf_bytes is None:
+            try:
+                pdf_bytes = get_renderer().render(optimized.html).pdf_bytes
+            except RenderError as e:
+                return FilterResult(
+                    filter_name=self.name,
+                    passed=False,
+                    score=0.0,
+                    threshold=self.threshold,
+                    issues=[f"Rendering failed: {str(e)}"],
+                    suggestions=["Fix HTML content to allow rendering"],
+                )
+
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            page_count = len(doc)
 
         if page_count > 2:
             return FilterResult(
