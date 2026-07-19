@@ -1,0 +1,27 @@
+{"label": "Head of Customer Success @ Квантастика", "cap": 2, "quality": null, "iters": null, "seconds": 631.2365554999997, "tail": "ERR ReadError: "}
+{"label": "Head of Customer Success @ Квантастика", "cap": 3, "quality": null, "iters": null, "seconds": 45.1704480000044, "tail": "ERR ReadError: "}
+{"label": "Head of Customer Success @ Квантастика", "cap": 2, "quality": null, "iters": null, "seconds": 95.5247276250011, "tail": "ERR ReadError: "}
+{"label": "Head of Customer Success @ Квантастика", "cap": 2, "quality": 96.42857142857143, "iters": 1, "seconds": 146.25397150000208, "tail": "pos1_head_of_customer_success_cap2.pdf"}
+{"label": "Head of Customer Success @ Квантастика", "cap": 3, "quality": 96.42857142857143, "iters": 1, "seconds": 175.88726129100542, "tail": "pos1_head_of_customer_success_cap3.pdf"}
+{"label": "Head of Customer Success @ Квантастика", "cap": 4, "quality": 75.0, "iters": 3, "seconds": 424.8651657500013, "tail": "pos1_head_of_customer_success_cap4.pdf"}
+{"label": "Head of Customer Success @ Квантастика", "cap": 5, "quality": 86.60714285714286, "iters": 3, "seconds": 1007.9086880839895, "tail": "pos1_head_of_customer_success_cap5.pdf"}
+{"label": "Операционный директор (образовательные технологии) в образовательный интегратор Просвещение @ Просвещение", "cap": 2, "quality": 71.875, "iters": 1, "seconds": 277.9990744579991, "tail": "pos2_job_cap2.pdf"}
+{"label": "Операционный директор (образовательные технологии) в образовательный интегратор Просвещение @ Просвещение", "cap": 3, "quality": 84.375, "iters": 1, "seconds": 325.8357328749844, "tail": "pos2_job_cap3.pdf"}
+{"label": "Операционный директор (образовательные технологии) в образовательный интегратор Просвещение @ Просвещение", "cap": 4, "quality": 96.875, "iters": 2, "seconds": 259.4139445000037, "tail": "pos2_job_cap4.pdf"}
+{"label": "Операционный директор (образовательные технологии) в образовательный интегратор Просвещение @ Просвещение", "cap": 5, "quality": 87.5, "iters": 4, "seconds": 791.3292680830054, "tail": "pos2_job_cap5.pdf"}
+{"label": "Head of Product Growth/Head of Growth @ Фоксфорд", "cap": 2, "quality": 78.125, "iters": 2, "seconds": 147.20238770800643, "tail": "pos3_head_of_product_growth_head_of_growth_cap2.pdf"}
+{"label": "Head of Product Growth/Head of Growth @ Фоксфорд", "cap": 3, "quality": 81.25, "iters": 1, "seconds": 264.85210379201453, "tail": "pos3_head_of_product_growth_head_of_growth_cap3.pdf"}
+{"label": "Head of Product Growth/Head of Growth @ Фоксфорд", "cap": 4, "quality": 68.75, "iters": 1, "seconds": 200.8162425000046, "tail": "pos3_head_of_product_growth_head_of_growth_cap4.pdf"}
+{"label": "Head of Product Growth/Head of Growth @ Фоксфорд", "cap": 5, "quality": 62.5, "iters": 2, "seconds": 412.0138363750011, "tail": "pos3_head_of_product_growth_head_of_growth_cap5.pdf"}
+{"label": "Senior Product Manager @ Not Specified", "cap": 2, "quality": 77.67857142857143, "iters": 1, "seconds": 100.4012996670208, "tail": "pos4_senior_product_manager_not_specified_cap2.pdf"}
+{"label": "Senior Product Manager @ Not Specified", "cap": 3, "quality": 92.85714285714286, "iters": 2, "seconds": 482.1621335420059, "tail": "pos4_senior_product_manager_not_specified_cap3.pdf"}
+{"label": "Senior Product Manager @ Not Specified", "cap": 4, "quality": 81.25, "iters": 1, "seconds": 323.2512000830029, "tail": "pos4_senior_product_manager_not_specified_cap4.pdf"}
+{"label": "Senior Product Manager @ Not Specified", "cap": 5, "quality": 90.625, "iters": 3, "seconds": 701.0836784999992, "tail": "pos4_senior_product_manager_not_specified_cap5.pdf"}
+{"label": "Продюсер IT-профессии @ Нетология", "cap": 2, "quality": null, "iters": null, "seconds": 694.5349949170195, "tail": "ERR ReadTimeout: "}
+{"label": "Продюсер IT-профессии @ Нетология", "cap": 3, "quality": 78.125, "iters": 1, "seconds": 308.50071433300036, "tail": "pos5_it_cap3.pdf"}
+{"label": "Продюсер IT-профессии @ Нетология", "cap": 4, "quality": 96.42857142857143, "iters": 2, "seconds": 389.74691325001186, "tail": "pos5_it_cap4.pdf"}
+{"label": "Продюсер IT-профессии @ Нетология", "cap": 5, "quality": 81.25, "iters": 3, "seconds": 1402.7903472920007, "tail": "pos5_it_cap5.pdf"}
+{"label": "Операционный директор (франшиза) в школу программирования и математики Алгоритмика @ Алгоритмика", "cap": 2, "quality": 93.75, "iters": 2, "seconds": 175.1218750840053, "tail": "pos6_job_cap2.pdf"}
+{"label": "Операционный директор (франшиза) в школу программирования и математики Алгоритмика @ Алгоритмика", "cap": 3, "quality": 84.375, "iters": 2, "seconds": 209.02481383402483, "tail": "pos6_job_cap3.pdf"}
+{"label": "Операционный директор (франшиза) в школу программирования и математики Алгоритмика @ Алгоритмика", "cap": 4, "quality": 96.875, "iters": 3, "seconds": 368.99682933298755, "tail": "pos6_job_cap4.pdf"}
+{"label": "Операционный директор (франшиза) в школу программирования и математики Алгоритмика @ Алгоритмика", "cap": 5, "quality": 90.625, "iters": 3, "seconds": 944.3041410000005, "tail": "pos6_job_cap5.pdf"}
