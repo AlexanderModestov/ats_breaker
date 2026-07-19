@@ -62,7 +62,7 @@ class VectorSimilarityMatcher(BaseFilter):
 
         model = self._get_model()
         resume_text = optimized.pdf_text
-        job_text = f"{job.title} {job.description} {' '.join(job.requirements)}"
+        job_text = f"{job.title} {job.description or ''} {' '.join(job.requirements)}"
 
         embeddings = model.encode([resume_text, job_text])
         similarity = float(

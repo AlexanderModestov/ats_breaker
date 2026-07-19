@@ -165,6 +165,35 @@ async def test_vector_matcher_score_is_raw_cosine(monkeypatch):
     assert not result.passed            # 0.0 < 0.4 threshold
 
 
+@pytest.mark.asyncio
+async def test_vector_matcher_no_literal_none(monkeypatch):
+    import numpy as np
+    from hr_breaker.filters import vector_similarity_matcher as vsm
+
+    captured = {}
+
+    class FakeModel:
+        def encode(self, texts):
+            captured["job_text"] = texts[1]
+            return np.array([[1.0, 0.0], [1.0, 0.0]])
+
+    monkeypatch.setattr(
+        vsm.VectorSimilarityMatcher, "_get_model", lambda self: FakeModel()
+    )
+
+    # JobPosting.description is a non-Optional `str` field, so normal validated
+    # construction rejects `description=None` outright (ValidationError) before
+    # the matcher ever runs. model_construct bypasses validation to reproduce
+    # the None value the guard is meant to handle.
+    job = JobPosting.model_construct(
+        title="Chef", company="Acme", description=None, requirements=[]
+    )
+    optimized = OptimizedResume(html="<div>x</div>", source_checksum="c", pdf_text="Cook")
+    await vsm.VectorSimilarityMatcher().evaluate(optimized, job, ResumeSource(content="x"))
+
+    assert "None" not in captured["job_text"]
+
+
 def test_filter_priorities_unique():
     """All filter priorities should be unique for deterministic execution order."""
     filters = FilterRegistry.all()
