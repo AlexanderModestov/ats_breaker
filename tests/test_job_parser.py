@@ -115,6 +115,13 @@ class TestIsGrounded:
             is_company=True,
         ) is True
 
+    def test_is_grounded_rejects_substring_hallucination(self):
+        # "Ada" must NOT be grounded by "Canada".
+        assert _is_grounded("Ada", "We are hiring in Canada") is False
+
+    def test_is_grounded_accepts_real_token(self):
+        assert _is_grounded("Acme Corp", "Join Acme Corp today") is True
+
 
 def _mock_agent_returning(job: JobPosting):
     """Build a mock pydantic-ai Agent whose .run() returns the given JobPosting."""

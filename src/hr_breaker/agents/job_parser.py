@@ -75,6 +75,12 @@ def _strip_corp_suffix(s: str) -> str:
     return s
 
 
+def _word_in(needle: str, haystack: str) -> bool:
+    """True if `needle` appears in `haystack` bounded by non-alphanumeric chars.
+    Both are already normalized+lowercased before this is called."""
+    return re.search(rf"(?<![a-z0-9]){re.escape(needle)}(?![a-z0-9])", haystack) is not None
+
+
 def _is_grounded(value: str, text: str, *, is_company: bool = False) -> bool:
     """Check if extracted value actually appears in the source text.
 
@@ -94,9 +100,9 @@ def _is_grounded(value: str, text: str, *, is_company: bool = False) -> bool:
 
     if not norm_value:
         return True
-    if norm_value in norm_text:
+    if _word_in(norm_value, norm_text):
         return True
-    return all(w in norm_text for w in norm_value.split())
+    return all(_word_in(w, norm_text) for w in norm_value.split())
 
 
 def _company_matches(llm_value: str, url_value: str) -> bool:
