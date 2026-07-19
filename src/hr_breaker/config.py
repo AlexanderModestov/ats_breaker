@@ -51,7 +51,7 @@ class Settings(BaseModel):
     max_iterations: int = 3
     pass_threshold: float = 0.7
     fast_mode: bool = True
-    optimizer_version: str = "v1"
+    optimizer_version: str = "v2"
 
     # Supabase settings
     supabase_url: str = ""
@@ -146,7 +146,7 @@ def get_settings() -> Settings:
         coach_model=os.getenv("COACH_MODEL") or _field_default("coach_model"),
         gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
-        optimizer_version=os.getenv("OPTIMIZER_VERSION") or "v2",
+        optimizer_version=os.getenv("OPTIMIZER_VERSION") or _field_default("optimizer_version"),
         max_iterations=int(os.getenv("MAX_ITERATIONS") or _field_default("max_iterations")),
         # Scraper settings
         scraper_httpx_timeout=float(os.getenv("SCRAPER_HTTPX_TIMEOUT") or _field_default("scraper_httpx_timeout")),
