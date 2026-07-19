@@ -1,6 +1,7 @@
 """Independent resume quality auditor — 8-dimension scoring and optimizer guidance."""
 
 import re
+from functools import lru_cache
 
 from hr_breaker.config import get_model_settings, get_settings
 from hr_breaker.models.audit import AuditScore
@@ -75,6 +76,7 @@ _DIM_LABELS = {
 }
 
 
+@lru_cache
 def get_auditor_agent(model: str | None = None) -> Agent:
     settings = get_settings()
     return Agent(

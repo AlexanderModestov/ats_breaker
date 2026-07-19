@@ -1,4 +1,5 @@
 from datetime import date
+from functools import lru_cache
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
@@ -94,6 +95,7 @@ Return all four fields: no_hallucination_score, hallucination_concerns, ai_proba
 """
 
 
+@lru_cache
 def get_content_integrity_agent() -> Agent:
     settings = get_settings()
     agent = Agent(
