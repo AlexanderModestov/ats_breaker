@@ -77,3 +77,11 @@ def test_no_dim_below_moderate_false_on_mismatched_seniority():
 
 def test_no_dim_below_moderate_ignores_na():
     assert no_dim_below_moderate(_audit(concern_management="NA")) is True
+
+
+def test_looks_like_html_distinguishes_generics_from_markup():
+    from hr_breaker.agents.auditor import _looks_like_html
+    assert _looks_like_html("<div>Resume</div>") is True
+    assert _looks_like_html("<p>Experience</p>") is True
+    assert _looks_like_html("Implemented Cache<T> generics in C++") is False
+    assert _looks_like_html("Skills: math < stats") is False

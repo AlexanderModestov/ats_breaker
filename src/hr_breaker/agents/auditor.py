@@ -1,5 +1,7 @@
 """Independent resume quality auditor — 8-dimension scoring and optimizer guidance."""
 
+import re
+
 from hr_breaker.config import get_model_settings, get_settings
 from hr_breaker.models.audit import AuditScore
 from hr_breaker.models.job_posting import JobPosting
@@ -47,6 +49,13 @@ overall: Strong / Needs Work / Weak — holistic fit of this resume for this job
 top_fixes: the 3 highest-impact remaining improvements, priority-ordered.
 """
 
+_HTML_TAG_RE = re.compile(r"</?[a-z][a-zA-Z0-9]*(\s[^<>]*)?>")
+
+
+def _looks_like_html(text: str) -> bool:
+    return bool(_HTML_TAG_RE.search(text))
+
+
 _STRONG_VALUES = {"ATS-Ready", "Aligned", "Strong"}
 
 _DIM_LABELS = {
@@ -75,7 +84,11 @@ async def audit_resume(
     text_or_html: str, job: JobPosting, model: str | None = None
 ) -> AuditScore:
     """Score a resume against a job posting on the 8-dimension rubric."""
-    resume_text = extract_text_from_html(text_or_html) if "<" in text_or_html else text_or_html
+    resume_text = (
+        extract_text_from_html(text_or_html)
+        if _looks_like_html(text_or_html)
+        else text_or_html
+    )
     prompt = f"""## Job Posting
 Title: {job.title}
 Company: {job.company}
