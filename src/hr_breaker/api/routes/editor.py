@@ -136,9 +136,9 @@ async def download_edited_pdf(
     """Render edited resume HTML to PDF and return it."""
     _get_completed_run(run_id, user_id, supabase)
 
-    from hr_breaker.services.renderer import HTMLRenderer
+    from hr_breaker.services.renderer import get_renderer
 
-    renderer = HTMLRenderer()
+    renderer = get_renderer()
     result = renderer.render(req.html)
     return Response(
         content=result.pdf_bytes,

@@ -28,7 +28,7 @@ from hr_breaker.models import (
     ValidationResult,
 )
 from hr_breaker.services.pdf_parser import extract_text_from_pdf
-from hr_breaker.services.renderer import RenderError, HTMLRenderer
+from hr_breaker.services.renderer import RenderError, get_renderer
 
 # Ensure filters are registered
 _ = DataValidator, LLMChecker, KeywordMatcher, VectorSimilarityMatcher, ContentIntegrityChecker
@@ -134,7 +134,7 @@ async def optimize_for_job(
     if max_iterations is None:
         max_iterations = settings.max_iterations
 
-    renderer = HTMLRenderer()
+    renderer = get_renderer()
 
     if job is None:
         if job_text is None:

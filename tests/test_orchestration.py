@@ -119,7 +119,7 @@ async def test_optimize_for_job_uses_v1_by_default(source_resume, job_posting):
 
     with patch.dict("os.environ", {"OPTIMIZER_VERSION": "v1"}):
         get_settings.cache_clear()
-        with patch("hr_breaker.orchestration.HTMLRenderer"), \
+        with patch("hr_breaker.orchestration.get_renderer"), \
              patch("hr_breaker.orchestration.optimize_resume", new_callable=AsyncMock, return_value=mock_optimized) as mock_v1, \
              patch("hr_breaker.orchestration.optimize_resume_v2", new_callable=AsyncMock) as mock_v2, \
              patch("hr_breaker.orchestration._render_and_extract", return_value=mock_optimized), \
@@ -161,7 +161,7 @@ async def test_optimize_for_job_uses_v2_when_flag_set(source_resume, job_posting
 
     with patch.dict("os.environ", {"OPTIMIZER_VERSION": "v2"}):
         get_settings.cache_clear()
-        with patch("hr_breaker.orchestration.HTMLRenderer"), \
+        with patch("hr_breaker.orchestration.get_renderer"), \
              patch("hr_breaker.orchestration.optimize_resume", new_callable=AsyncMock) as mock_v1, \
              patch("hr_breaker.orchestration.optimize_resume_v2", new_callable=AsyncMock, return_value=mock_optimized) as mock_v2, \
              patch("hr_breaker.orchestration._render_and_extract", return_value=mock_optimized), \

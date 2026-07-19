@@ -16,7 +16,7 @@ from hr_breaker.models import (
     ResumeSource,
 )
 from hr_breaker.services.length_estimator import estimate_content_length
-from hr_breaker.services.renderer import HTMLRenderer, RenderError
+from hr_breaker.services.renderer import get_renderer, RenderError
 from hr_breaker.utils import extract_text_from_html
 from hr_breaker.utils.retry import with_model_retry
 
@@ -152,7 +152,7 @@ def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
 
         # Actually render PDF to check real page count
         try:
-            renderer = HTMLRenderer()
+            renderer = get_renderer()
             render_result = renderer.render(html)
             page_count = render_result.page_count
             fits_one_page = page_count == 1
@@ -197,7 +197,7 @@ def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
     def preview_resume(html: str) -> BinaryContent:
         """Render HTML to PDF and return preview image. Use to visually check layout."""
         logger.debug("preview_resume called")
-        renderer = HTMLRenderer()
+        renderer = get_renderer()
         result = renderer.render(html)
         image_bytes, _ = pdf_to_image(result.pdf_bytes)
         return BinaryContent(data=image_bytes, media_type="image/png")
