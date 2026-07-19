@@ -252,3 +252,25 @@ class TestRendererIntegration:
         html_renderer = HTMLRenderer()
         html_result = html_renderer.render_data(minimal_resume_data)
         assert len(html_result.pdf_bytes) > 0
+
+    def test_concurrent_renders_are_safe(self):
+        """Smoke test guarding the renderer lock: pydantic-ai tool functions run
+        in worker threads and share the process-wide get_renderer() instance,
+        so concurrent render() calls must not corrupt WeasyPrint's shared
+        FontConfiguration / C font state."""
+        import concurrent.futures
+
+        renderer = get_renderer()
+        html = "<h1>Concurrency Test</h1>" + "<p>Line of resume content.</p>" * 5
+
+        def do_render(i):
+            result = renderer.render(html + f"<p>{i}</p>")
+            return result.pdf_bytes
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+            results = list(ex.map(do_render, range(24)))
+
+        assert len(results) == 24
+        for pdf in results:
+            assert pdf.startswith(b"%PDF")
+            assert len(pdf) > 500

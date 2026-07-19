@@ -2,6 +2,7 @@
 
 import os
 import sys
+import threading
 from abc import ABC, abstractmethod
 from functools import lru_cache
 from pathlib import Path
@@ -12,6 +13,12 @@ from hr_breaker.models.resume_data import ResumeData, RenderResult
 
 # Template directory
 TEMPLATE_DIR = Path(__file__).parent.parent.parent.parent / "templates"
+
+# WeasyPrint's FontConfiguration and underlying C font libraries are not
+# documented thread-safe. HTMLRenderer is a shared singleton (see
+# get_renderer()) accessed concurrently from pydantic-ai tool-call worker
+# threads, so all WeasyPrint rendering work must be serialized.
+_render_lock = threading.Lock()
 
 
 def _setup_macos_library_path():
@@ -125,16 +132,17 @@ class HTMLRenderer(BaseRenderer):
         html_content = self._wrapper_html.replace("{{BODY}}", html_body)
 
         # Render with WeasyPrint
-        html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
-        try:
-            doc = html.render(font_config=self.font_config)
-            pdf_bytes = doc.write_pdf()
-        except MemoryError:
-            raise RenderError(
-                "MemoryError during PDF rendering — likely caused by a problematic font. "
-                "Inline font-family styles have been stripped; this may indicate a system font issue."
-            )
-        page_count = len(doc.pages)
+        with _render_lock:
+            html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
+            try:
+                doc = html.render(font_config=self.font_config)
+                pdf_bytes = doc.write_pdf()
+            except MemoryError:
+                raise RenderError(
+                    "MemoryError during PDF rendering — likely caused by a problematic font. "
+                    "Inline font-family styles have been stripped; this may indicate a system font issue."
+                )
+            page_count = len(doc.pages)
 
         warnings = []
         if page_count > 1:
@@ -153,15 +161,16 @@ class HTMLRenderer(BaseRenderer):
         template = self.env.get_template("resume.html")
         html_content = template.render(resume=data)
 
-        html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
-        css_path = TEMPLATE_DIR / "resume.css"
-        stylesheets = []
-        if css_path.exists():
-            stylesheets.append(CSS(filename=str(css_path), font_config=self.font_config))
+        with _render_lock:
+            html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
+            css_path = TEMPLATE_DIR / "resume.css"
+            stylesheets = []
+            if css_path.exists():
+                stylesheets.append(CSS(filename=str(css_path), font_config=self.font_config))
 
-        doc = html.render(stylesheets=stylesheets, font_config=self.font_config)
-        pdf_bytes = doc.write_pdf()
-        page_count = len(doc.pages)
+            doc = html.render(stylesheets=stylesheets, font_config=self.font_config)
+            pdf_bytes = doc.write_pdf()
+            page_count = len(doc.pages)
 
         warnings = []
         if page_count > 1:
