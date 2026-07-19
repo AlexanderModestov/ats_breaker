@@ -274,6 +274,10 @@ def test_optimize_request_default_max_iterations_is_3():
     assert req.max_iterations == 3
 
 
+def test_supabase_service_is_singleton():
+    assert get_supabase_service() is get_supabase_service()
+
+
 # ---------------------------------------------------------------------------
 # POST /api/optimize: metered quota consume
 # ---------------------------------------------------------------------------

@@ -80,7 +80,7 @@ async def _run_optimization(
 
     try:
         # Step 1: Parse job posting
-        supabase.update_optimization_run(run_id, {
+        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
             "status": "parse_job",
             "current_step": "Fetching and parsing job posting...",
         })
@@ -98,14 +98,14 @@ async def _run_optimization(
                 timing["scrape_job"] = time.perf_counter() - scrape_start
                 print(f"⏱️  Scrape job: {timing['scrape_job']:.2f}s")
             except CloudflareBlockedError:
-                supabase.update_optimization_run(run_id, {
+                await asyncio.to_thread(supabase.update_optimization_run, run_id, {
                     "status": "failed",
                     "current_step": None,
                     "error": "Failed to fetch job posting: protected by Cloudflare. Please paste the job text instead.",
                 })
                 return
             except Exception as e:
-                supabase.update_optimization_run(run_id, {
+                await asyncio.to_thread(supabase.update_optimization_run, run_id, {
                     "status": "failed",
                     "current_step": None,
                     "error": f"Failed to fetch job posting: {e}",
@@ -129,7 +129,7 @@ async def _run_optimization(
             "needs_review": needs_review,
         }
 
-        supabase.update_optimization_run(run_id, {
+        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
             "status": "generate",
             "current_step": f"Optimizing resume for {job.title} at {job.company}...",
             "job_parsed": job_parsed,
@@ -146,7 +146,7 @@ async def _run_optimization(
             first_name=first_name,
             last_name=last_name,
         )
-        supabase.update_optimization_run(run_id, {
+        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
             "first_name": first_name,
             "last_name": last_name,
         })
@@ -223,12 +223,14 @@ async def _run_optimization(
 
         if optimized and optimized.pdf_bytes:
             try:
-                result_pdf_path = supabase.upload_result_pdf(run_id, user_id, optimized.pdf_bytes)
+                result_pdf_path = await asyncio.to_thread(
+                    supabase.upload_result_pdf, run_id, user_id, optimized.pdf_bytes
+                )
             except SupabaseError as e:
                 logger.error(f"Failed to upload result PDF: {e}")
 
         logger.info(f"[{run_id}] Saving results to database...")
-        supabase.update_optimization_run(run_id, {
+        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
             "status": "complete",
             "current_step": None,
             "result_html": result_html,
@@ -241,7 +243,7 @@ async def _run_optimization(
 
     except Exception as e:
         logger.exception(f"Optimization failed: {e}")
-        supabase.update_optimization_run(run_id, {
+        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
             "status": "failed",
             "current_step": None,
             "error": str(e),
@@ -254,7 +256,7 @@ async def list_optimization_runs(
     supabase: SupabaseServiceDep,
 ) -> OptimizationListResponse:
     """List all optimization runs for the current user."""
-    runs = supabase.list_optimization_runs(user_id)
+    runs = await asyncio.to_thread(supabase.list_optimization_runs, user_id)
 
     summaries = []
     for run in runs:
@@ -285,14 +287,14 @@ async def start_optimization(
     """Start a new optimization run."""
     user_id, user_email = user
 
-    profile = get_profile_or_404(supabase, user_id)
+    profile = await asyncio.to_thread(get_profile_or_404, supabase, user_id)
 
     quota = check_optimization_quota(user_email or "", profile)
     if not quota.allowed:
         raise HTTPException(status_code=402, detail=quota.to_dict())
 
     # Verify CV exists and belongs to user
-    cv = supabase.get_cv(request.cv_id, user_id)
+    cv = await asyncio.to_thread(supabase.get_cv, request.cv_id, user_id)
     if not cv:
         raise HTTPException(status_code=404, detail="CV not found")
 
@@ -302,7 +304,9 @@ async def start_optimization(
 
     # Atomically consume quota before creating the run (admins bypass).
     if not _is_unlimited(user_email or ""):
-        ok = supabase.consume_optimization_quota(user_id, optimization_limit(profile))
+        ok = await asyncio.to_thread(
+            supabase.consume_optimization_quota, user_id, optimization_limit(profile)
+        )
         if not ok:
             raise HTTPException(
                 status_code=402,
@@ -310,10 +314,12 @@ async def start_optimization(
             )
 
     # Create optimization run
-    run = supabase.create_optimization_run(
-        user_id=user_id,
-        cv_id=request.cv_id,
-        job_input=request.job_input,
+    run = await asyncio.to_thread(
+        lambda: supabase.create_optimization_run(
+            user_id=user_id,
+            cv_id=request.cv_id,
+            job_input=request.job_input,
+        )
     )
 
     # Start background task
@@ -338,7 +344,7 @@ async def get_optimization_status(
     supabase: SupabaseServiceDep,
 ) -> OptimizationStatus:
     """Get the status of an optimization run."""
-    run = get_run_or_404(supabase, run_id, user_id)
+    run = await asyncio.to_thread(get_run_or_404, supabase, run_id, user_id)
     return _run_to_status(run, run.get("job_parsed"))
 
 
@@ -349,7 +355,7 @@ async def get_optimization_pdf(
     supabase: SupabaseServiceDep,
 ) -> Response:
     """Download the result PDF for an optimization run."""
-    run = get_run_or_404(supabase, run_id, user_id)
+    run = await asyncio.to_thread(get_run_or_404, supabase, run_id, user_id)
 
     if run["status"] != "complete":
         raise HTTPException(status_code=400, detail="Optimization not complete")
@@ -358,7 +364,7 @@ async def get_optimization_pdf(
     if not pdf_path:
         raise HTTPException(status_code=404, detail="No PDF available")
 
-    pdf_bytes = supabase.download_result_pdf(pdf_path)
+    pdf_bytes = await asyncio.to_thread(supabase.download_result_pdf, pdf_path)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -375,18 +381,18 @@ async def delete_optimization(
     supabase: SupabaseServiceDep,
 ) -> dict[str, bool]:
     """Delete an optimization run."""
-    run = get_run_or_404(supabase, run_id, user_id)
+    run = await asyncio.to_thread(get_run_or_404, supabase, run_id, user_id)
 
     # Delete the PDF from storage if it exists
     pdf_path = run.get("result_pdf_path")
     if pdf_path:
         try:
-            supabase.delete_result_pdf(pdf_path)
+            await asyncio.to_thread(supabase.delete_result_pdf, pdf_path)
         except SupabaseError:
             pass  # Ignore storage deletion errors
 
     # Delete the optimization run record
-    supabase.delete_optimization_run(run_id)
+    await asyncio.to_thread(supabase.delete_optimization_run, run_id)
     return {"success": True}
 
 
@@ -401,7 +407,7 @@ async def update_optimization_job(
 
     Updates only labels in `job_parsed` — does not re-run optimization.
     """
-    run = get_run_or_404(supabase, run_id, user_id)
+    run = await asyncio.to_thread(get_run_or_404, supabase, run_id, user_id)
 
     if run["status"] in ("pending", "parse_job"):
         raise HTTPException(
@@ -421,6 +427,6 @@ async def update_optimization_job(
             needs_review.remove("company")
 
     job_parsed["needs_review"] = needs_review
-    supabase.update_optimization_run(run_id, {"job_parsed": job_parsed})
+    await asyncio.to_thread(supabase.update_optimization_run, run_id, {"job_parsed": job_parsed})
 
     return _run_to_status(run, job_parsed)

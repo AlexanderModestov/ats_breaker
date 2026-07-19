@@ -1,5 +1,6 @@
 """Dependency injection for FastAPI routes."""
 
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException
@@ -11,8 +12,9 @@ from hr_breaker.services.supabase import SupabaseService
 from hr_breaker.services.tiers import Feature
 
 
+@lru_cache(maxsize=1)
 def get_supabase_service() -> SupabaseService:
-    """Get Supabase service instance."""
+    """Process-wide Supabase service (one client, reused connections)."""
     return SupabaseService()
 
 
