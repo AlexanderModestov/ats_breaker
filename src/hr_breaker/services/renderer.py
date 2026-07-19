@@ -3,6 +3,7 @@
 import os
 import sys
 from abc import ABC, abstractmethod
+from functools import lru_cache
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -173,6 +174,7 @@ class HTMLRenderer(BaseRenderer):
         )
 
 
+@lru_cache(maxsize=1)
 def get_renderer() -> HTMLRenderer:
-    """Get the HTML renderer."""
+    """Return the process-wide HTML renderer (built once)."""
     return HTMLRenderer()

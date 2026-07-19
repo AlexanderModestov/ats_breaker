@@ -148,6 +148,9 @@ class TestGetRenderer:
         renderer = get_renderer()
         assert isinstance(renderer, HTMLRenderer)
 
+    def test_get_renderer_is_cached(self):
+        assert get_renderer() is get_renderer()
+
 
 # --- HTMLRenderer Tests ---
 
