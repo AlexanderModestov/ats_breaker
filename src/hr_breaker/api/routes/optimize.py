@@ -92,7 +92,7 @@ async def _run_optimization(
         if job_url:
             try:
                 scrape_start = time.perf_counter()
-                scraped = scrape_job_posting(job_url)
+                scraped = await asyncio.to_thread(scrape_job_posting, job_url)
                 job_text = scraped.text
                 job_hints = scraped.hints
                 timing["scrape_job"] = time.perf_counter() - scrape_start

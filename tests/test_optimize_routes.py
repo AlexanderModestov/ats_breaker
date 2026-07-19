@@ -234,6 +234,41 @@ async def test_run_optimization_persists_audit():
     assert payload["audit"] == _AUDIT.model_dump()
 
 
+@pytest.mark.asyncio
+async def test_scrape_job_posting_runs_off_main_thread():
+    """scrape_job_posting is synchronous and can block for minutes (Cloudflare,
+    Playwright, retry backoffs). _run_optimization must run it via
+    asyncio.to_thread so it doesn't freeze the event loop."""
+    import threading
+
+    main_thread = threading.main_thread()
+    seen: dict[str, threading.Thread] = {}
+
+    def fake_scrape(url: str) -> ScrapedJob:
+        seen["thread"] = threading.current_thread()
+        return ScrapedJob(text="Some job description text", hints=None)
+
+    with (
+        patch("hr_breaker.api.routes.optimize.scrape_job_posting", new=fake_scrape),
+        patch(
+            "hr_breaker.api.routes.optimize.parse_job_posting",
+            new=AsyncMock(side_effect=RuntimeError("stop after scrape")),
+        ),
+    ):
+        await _run_optimization(
+            run_id=RUN_ID,
+            user_id=USER,
+            cv_content="cv",
+            job_input="https://example.com/job",
+            max_iterations=1,
+            parallel=False,
+            supabase=MagicMock(),
+        )
+
+    assert "thread" in seen, "scrape_job_posting was never called"
+    assert seen["thread"] is not main_thread
+
+
 def test_optimize_request_default_max_iterations_is_3():
     req = OptimizeRequest(cv_id="x", job_input="some job")
     assert req.max_iterations == 3
