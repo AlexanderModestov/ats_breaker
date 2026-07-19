@@ -110,6 +110,14 @@ def get_content_integrity_agent() -> Agent:
     return agent
 
 
+def _hallucination_passed(score: float) -> bool:
+    return score >= get_settings().filter_hallucination_threshold
+
+
+def _ai_passed(ai_probability: float) -> bool:
+    return ai_probability < get_settings().filter_ai_generated_threshold
+
+
 async def check_content_integrity(
     optimized: OptimizedResume,
     source: ResumeSource,
@@ -147,20 +155,21 @@ async def check_content_integrity(
     r = result.output
 
     # Build hallucination result
+    hall_threshold = get_settings().filter_hallucination_threshold
     hall_issues = []
     hall_suggestions = []
     if r.hallucination_concerns:
         hall_issues.append(f"Concerns: {', '.join(r.hallucination_concerns)}")
-    if r.no_hallucination_score < 0.9:
+    if r.no_hallucination_score < hall_threshold:
         hall_suggestions.append(
-            f"Score {r.no_hallucination_score:.2f} below 0.9 threshold"
+            f"Score {r.no_hallucination_score:.2f} below {hall_threshold} threshold"
         )
 
     hallucination_result = FilterResult(
         filter_name="HallucinationChecker",
-        passed=r.no_hallucination_score >= 0.9,
+        passed=_hallucination_passed(r.no_hallucination_score),
         score=r.no_hallucination_score,
-        threshold=0.9,
+        threshold=hall_threshold,
         issues=hall_issues,
         suggestions=hall_suggestions,
     )
@@ -177,9 +186,9 @@ async def check_content_integrity(
 
     ai_result = FilterResult(
         filter_name="AIGeneratedChecker",
-        passed=r.ai_probability < 0.5,
+        passed=_ai_passed(r.ai_probability),
         score=1.0 - r.ai_probability,
-        threshold=0.5,
+        threshold=get_settings().filter_ai_generated_threshold,
         issues=ai_issues,
         suggestions=ai_suggestions,
     )
