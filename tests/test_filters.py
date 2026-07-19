@@ -100,6 +100,35 @@ async def test_keyword_matcher_no_content_at_all(source_resume, job_posting):
     assert not result.passed
 
 
+@pytest.mark.asyncio
+async def test_keyword_matcher_symbol_keywords_match():
+    from hr_breaker.filters.keyword_matcher import check_keywords
+
+    job = JobPosting(
+        title="Systems Engineer",
+        company="Acme",
+        requirements=["C++", "C#", ".NET"],
+        keywords=["c++", "c#", ".net"],
+    )
+    resume_text = "Built low-latency services in C++ and C#, plus tooling on .NET."
+
+    result = check_keywords(resume_text, job)
+
+    assert "c++" not in result.missing_keywords
+    assert "c#" not in result.missing_keywords
+    assert ".net" not in result.missing_keywords
+
+
+@pytest.mark.asyncio
+async def test_keyword_matcher_alnum_still_whole_word():
+    from hr_breaker.filters.keyword_matcher import check_keywords
+
+    job = JobPosting(title="Dev", company="Acme", requirements=[], keywords=["java"])
+    # "javascript" must NOT satisfy the "java" keyword.
+    result = check_keywords("Expert in JavaScript frameworks.", job)
+    assert "java" in result.missing_keywords
+
+
 def test_filter_registry():
     """Test that filters are registered."""
     names = FilterRegistry.names()
