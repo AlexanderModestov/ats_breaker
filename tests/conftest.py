@@ -1,10 +1,17 @@
 """Pytest configuration."""
 
+import os
+from pathlib import Path
+
 import pytest
 from dotenv import load_dotenv
 
 # Load .env before running tests
 load_dotenv()
+
+# Inputs for the caps benchmarks (local, gitignored), env-overridable.
+RESUME_PATH = Path(os.getenv("CAPS_RESUME", "output/Alexander Modestov.pdf"))
+POSITIONS_PATH = Path(os.getenv("CAPS_POSITIONS", "positions.txt"))
 
 
 def pytest_collection_modifyitems(config, items):

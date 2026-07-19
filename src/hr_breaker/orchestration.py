@@ -229,7 +229,8 @@ async def optimize_for_job(
         # Track best by audit ordinal-sum; guard convergence with patience.
         improved = q is not None and q > best_q
         if improved or best_optimized is None:
-            best_q = q if q is not None else best_q
+            if q is not None:
+                best_q = q
             best_optimized = optimized
             best_validation = validation
             no_improve = 0
@@ -239,7 +240,7 @@ async def optimize_for_job(
             print(f"  ✅ Success target met (filters pass, q={q})")
             break
 
-        if not improved and best_optimized is not None:
+        if not improved:
             no_improve += 1
             print(f"  ⏸️  No improvement ({no_improve}/{PATIENCE} tolerated)")
             if no_improve > PATIENCE:

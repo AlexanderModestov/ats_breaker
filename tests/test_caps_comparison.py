@@ -29,9 +29,8 @@ from hr_breaker.orchestration import optimize_for_job
 from hr_breaker.services.pdf_parser import extract_text_from_pdf
 
 from tests.caps_experiment import IterPoint, RunTrajectory, render_caps_report
+from tests.conftest import POSITIONS_PATH, RESUME_PATH
 from tests.test_optimizer_comparison import (
-    POSITIONS_PATH,
-    RESUME_PATH,
     _bootstrap_vertex,
     _ingest_job,
     _slug,

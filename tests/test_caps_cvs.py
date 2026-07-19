@@ -33,6 +33,7 @@ from hr_breaker.orchestration import optimize_for_job
 from hr_breaker.services.pdf_parser import extract_text_from_pdf
 from hr_breaker.services.renderer import HTMLRenderer
 
+from tests.conftest import POSITIONS_PATH, RESUME_PATH
 from tests.test_optimizer_comparison import (
     OUTPUT_DIR,
     _bootstrap_vertex,
@@ -44,9 +45,6 @@ from tests.test_optimizer_comparison import (
 )
 
 pytestmark = pytest.mark.benchmark
-
-RESUME_PATH = Path(os.getenv("CAPS_RESUME", "output/Alexander Modestov.pdf"))
-POSITIONS_PATH = Path(os.getenv("CAPS_POSITIONS", "positions.txt"))
 CAPS = tuple(int(c) for c in os.getenv("CAPS_LIST", "2,3,4,5").split(","))
 # Optional: run only one job (1-based index into the positions file) so a long
 # campaign can be chunked across invocations — each stays short. Rows accumulate
