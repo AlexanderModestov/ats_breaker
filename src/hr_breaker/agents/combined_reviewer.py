@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date
 from functools import lru_cache
 
@@ -187,9 +188,9 @@ async def combined_review(
     content = optimized.html if optimized.html is not None else optimized.data
     try:
         if isinstance(content, str):
-            render_result = renderer.render(content)
+            render_result = await asyncio.to_thread(renderer.render, content)
         else:
-            render_result = renderer.render_data(content)
+            render_result = await asyncio.to_thread(renderer.render_data, content)
         pdf_bytes = render_result.pdf_bytes
         render_warnings = render_result.warnings
         page_count = render_result.page_count
@@ -208,7 +209,7 @@ async def combined_review(
 
     # Convert to image
     try:
-        image_bytes, page_count = pdf_to_image(pdf_bytes)
+        image_bytes, page_count = await asyncio.to_thread(pdf_to_image, pdf_bytes)
     except Exception as e:
         return CombinedReviewResult(
             looks_professional=False,

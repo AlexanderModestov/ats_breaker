@@ -1,5 +1,7 @@
 """Resume editor API routes."""
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -139,7 +141,7 @@ async def download_edited_pdf(
     from hr_breaker.services.renderer import get_renderer
 
     renderer = get_renderer()
-    result = renderer.render(req.html)
+    result = await asyncio.to_thread(renderer.render, req.html)
     return Response(
         content=result.pdf_bytes,
         media_type="application/pdf",

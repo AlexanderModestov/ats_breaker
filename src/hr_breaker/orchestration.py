@@ -1,6 +1,7 @@
 """Core optimization loop."""
 
 import asyncio
+import inspect
 import tempfile
 import time
 from collections.abc import Callable
@@ -185,8 +186,10 @@ async def optimize_for_job(
             optimized.data.model_dump_json() if optimized.data else None
         )
 
-        # Render PDF and extract text for filters (like real ATS)
-        optimized = _render_and_extract(optimized, renderer)
+        # Render PDF and extract text for filters (like real ATS). Runs in a
+        # worker thread: WeasyPrint plus text extraction would otherwise block
+        # the event loop shared by every concurrent optimization.
+        optimized = await asyncio.to_thread(_render_and_extract, optimized, renderer)
 
         if optimized.pdf_text is None:
             # PDF rendering failed - treat as validation failure
@@ -212,7 +215,10 @@ async def optimize_for_job(
         print(f"  ⏱️  Iteration {i + 1} total: {iter_elapsed:.2f}s")
 
         if on_iteration:
-            on_iteration(i, optimized, validation)
+            # Callback may be async (the API one writes progress to Supabase).
+            result = on_iteration(i, optimized, validation)
+            if inspect.isawaitable(result):
+                await result
 
         # Independent quality audit of THIS iteration's output (trustworthy
         # convergence signal — not the optimizer's self-grade).

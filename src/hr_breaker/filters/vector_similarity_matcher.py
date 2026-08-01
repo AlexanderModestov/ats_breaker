@@ -1,3 +1,6 @@
+import asyncio
+import threading
+
 from hr_breaker.config import get_settings
 from hr_breaker.filters.base import BaseFilter
 from hr_breaker.filters.registry import FilterRegistry
@@ -19,6 +22,9 @@ class VectorSimilarityMatcher(BaseFilter):
     priority = 3
     _model = None
     _model_name = None
+    # _get_model now runs in worker threads (see evaluate), so guard the lazy
+    # build so concurrent runs don't each load their own copy of the model.
+    _model_lock = threading.Lock()
 
     @property
     def threshold(self) -> float:
@@ -28,11 +34,12 @@ class VectorSimilarityMatcher(BaseFilter):
     def _get_model(cls):
         settings = get_settings()
         model_name = settings.sentence_transformer_model
-        if cls._model is None or cls._model_name != model_name:
-            if _HAS_SENTENCE_TRANSFORMERS:
-                cls._model = SentenceTransformer(model_name)
-                cls._model_name = model_name
-        return cls._model
+        with cls._model_lock:
+            if cls._model is None or cls._model_name != model_name:
+                if _HAS_SENTENCE_TRANSFORMERS:
+                    cls._model = SentenceTransformer(model_name)
+                    cls._model_name = model_name
+            return cls._model
 
     async def evaluate(
         self,
@@ -60,11 +67,13 @@ class VectorSimilarityMatcher(BaseFilter):
                 suggestions=["Ensure PDF compilation succeeds"],
             )
 
-        model = self._get_model()
+        # The cold model load (~3s) and encode (~0.2s) are both CPU-bound; keep
+        # them off the shared event loop.
+        model = await asyncio.to_thread(self._get_model)
         resume_text = optimized.pdf_text
         job_text = f"{job.title} {job.description or ''} {' '.join(job.requirements)}"
 
-        embeddings = model.encode([resume_text, job_text])
+        embeddings = await asyncio.to_thread(model.encode, [resume_text, job_text])
         similarity = float(
             embeddings[0]
             @ embeddings[1]

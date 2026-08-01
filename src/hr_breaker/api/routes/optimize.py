@@ -162,7 +162,7 @@ async def _run_optimization(
         # Track feedback from each iteration
         all_feedback: list[dict[str, Any]] = []
 
-        def on_iteration(iteration: int, optimized: Any, validation: Any) -> None:
+        async def on_iteration(iteration: int, optimized: Any, validation: Any) -> None:
             """Callback for each optimization iteration."""
             iteration_feedback = {
                 "iteration": iteration + 1,
@@ -182,7 +182,7 @@ async def _run_optimization(
             all_feedback.append(iteration_feedback)
 
             status = "validate" if iteration == 0 else "refine"
-            supabase.update_optimization_run(run_id, {
+            await asyncio.to_thread(supabase.update_optimization_run, run_id, {
                 "status": status,
                 "current_step": f"Iteration {iteration + 1}: {'Passed' if validation.passed else 'Refining'}...",
                 "iterations": iteration + 1,

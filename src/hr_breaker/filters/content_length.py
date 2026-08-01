@@ -1,5 +1,7 @@
 """Content length checker - runs first to fail fast on oversized content."""
 
+import asyncio
+
 import fitz
 
 from hr_breaker.config import get_settings, logger
@@ -55,7 +57,8 @@ class ContentLengthChecker(BaseFilter):
         pdf_bytes = optimized.pdf_bytes
         if pdf_bytes is None:
             try:
-                pdf_bytes = get_renderer().render(optimized.html).pdf_bytes
+                render = await asyncio.to_thread(get_renderer().render, optimized.html)
+                pdf_bytes = render.pdf_bytes
             except RenderError as e:
                 return FilterResult(
                     filter_name=self.name,
