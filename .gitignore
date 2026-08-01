@@ -25,6 +25,9 @@ hr-breaker-498422-5d0e79841364.json
 # Output PDFs
 output/
 
+# Resumes / CVs - never commit personal documents to this public repo
+*.pdf
+
 # Local optimizer-comparison job postings
 positions.txt
 
