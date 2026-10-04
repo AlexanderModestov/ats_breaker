@@ -131,9 +131,11 @@ class HTMLRenderer(BaseRenderer):
         # Wrap LLM's body content with our template
         html_content = self._wrapper_html.replace("{{BODY}}", html_body)
 
-        # Render with WeasyPrint
+        # Parsing needs no font state, so keep it out of the critical section.
+        html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
+
+        # Only the font_config-consuming steps must be serialized.
         with _render_lock:
-            html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
             try:
                 doc = html.render(font_config=self.font_config)
                 pdf_bytes = doc.write_pdf()
@@ -142,7 +144,8 @@ class HTMLRenderer(BaseRenderer):
                     "MemoryError during PDF rendering — likely caused by a problematic font. "
                     "Inline font-family styles have been stripped; this may indicate a system font issue."
                 )
-            page_count = len(doc.pages)
+
+        page_count = len(doc.pages)
 
         warnings = []
         if page_count > 1:
@@ -161,16 +164,18 @@ class HTMLRenderer(BaseRenderer):
         template = self.env.get_template("resume.html")
         html_content = template.render(resume=data)
 
+        html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
+        css_path = TEMPLATE_DIR / "resume.css"
+
         with _render_lock:
-            html = HTML(string=html_content, base_url=str(TEMPLATE_DIR))
-            css_path = TEMPLATE_DIR / "resume.css"
             stylesheets = []
             if css_path.exists():
                 stylesheets.append(CSS(filename=str(css_path), font_config=self.font_config))
 
             doc = html.render(stylesheets=stylesheets, font_config=self.font_config)
             pdf_bytes = doc.write_pdf()
-            page_count = len(doc.pages)
+
+        page_count = len(doc.pages)
 
         warnings = []
         if page_count > 1:

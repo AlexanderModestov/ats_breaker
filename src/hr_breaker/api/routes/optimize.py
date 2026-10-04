@@ -61,6 +61,11 @@ def _run_to_status(run: dict, job_parsed: dict | None) -> OptimizationStatus:
     )
 
 
+async def _update_run(supabase: SupabaseService, run_id: str, **fields: Any) -> None:
+    """Persist a partial run update on a worker thread (the Supabase client is sync)."""
+    await asyncio.to_thread(supabase.update_optimization_run, run_id, fields)
+
+
 async def _run_optimization(
     run_id: str,
     user_id: str,
@@ -80,10 +85,11 @@ async def _run_optimization(
 
     try:
         # Step 1: Parse job posting
-        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-            "status": "parse_job",
-            "current_step": "Fetching and parsing job posting...",
-        })
+        await _update_run(
+            supabase, run_id,
+            status="parse_job",
+            current_step="Fetching and parsing job posting...",
+        )
 
         # Check if job_input is a URL or text
         job_url = _extract_job_url(job_input)
@@ -98,18 +104,20 @@ async def _run_optimization(
                 timing["scrape_job"] = time.perf_counter() - scrape_start
                 print(f"⏱️  Scrape job: {timing['scrape_job']:.2f}s")
             except CloudflareBlockedError:
-                await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-                    "status": "failed",
-                    "current_step": None,
-                    "error": "Failed to fetch job posting: protected by Cloudflare. Please paste the job text instead.",
-                })
+                await _update_run(
+                    supabase, run_id,
+                    status="failed",
+                    current_step=None,
+                    error="Failed to fetch job posting: protected by Cloudflare. Please paste the job text instead.",
+                )
                 return
             except Exception as e:
-                await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-                    "status": "failed",
-                    "current_step": None,
-                    "error": f"Failed to fetch job posting: {e}",
-                })
+                await _update_run(
+                    supabase, run_id,
+                    status="failed",
+                    current_step=None,
+                    error=f"Failed to fetch job posting: {e}",
+                )
                 return
 
         # Parse job posting
@@ -129,11 +137,12 @@ async def _run_optimization(
             "needs_review": needs_review,
         }
 
-        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-            "status": "generate",
-            "current_step": f"Optimizing resume for {job.title} at {job.company}...",
-            "job_parsed": job_parsed,
-        })
+        await _update_run(
+            supabase, run_id,
+            status="generate",
+            current_step=f"Optimizing resume for {job.title} at {job.company}...",
+            job_parsed=job_parsed,
+        )
 
         # Step 2: Extract name from CV and create ResumeSource
         name_start = time.perf_counter()
@@ -146,10 +155,7 @@ async def _run_optimization(
             first_name=first_name,
             last_name=last_name,
         )
-        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-            "first_name": first_name,
-            "last_name": last_name,
-        })
+        await _update_run(supabase, run_id, first_name=first_name, last_name=last_name)
 
         capture(user_id, "optimization_started", {
             "job_title": job.title,
@@ -181,13 +187,13 @@ async def _run_optimization(
             }
             all_feedback.append(iteration_feedback)
 
-            status = "validate" if iteration == 0 else "refine"
-            await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-                "status": status,
-                "current_step": f"Iteration {iteration + 1}: {'Passed' if validation.passed else 'Refining'}...",
-                "iterations": iteration + 1,
-                "feedback": all_feedback,
-            })
+            await _update_run(
+                supabase, run_id,
+                status="validate" if iteration == 0 else "refine",
+                current_step=f"Iteration {iteration + 1}: {'Passed' if validation.passed else 'Refining'}...",
+                iterations=iteration + 1,
+                feedback=all_feedback,
+            )
 
         # Step 3-5: Run optimization loop
         loop_start = time.perf_counter()
@@ -230,24 +236,26 @@ async def _run_optimization(
                 logger.error(f"Failed to upload result PDF: {e}")
 
         logger.info(f"[{run_id}] Saving results to database...")
-        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-            "status": "complete",
-            "current_step": None,
-            "result_html": result_html,
-            "result_pdf_path": result_pdf_path,
-            "feedback": all_feedback,
-            "timing": timing,
-            "audit": optimized.audit.model_dump() if optimized and optimized.audit else None,
-        })
+        await _update_run(
+            supabase, run_id,
+            status="complete",
+            current_step=None,
+            result_html=result_html,
+            result_pdf_path=result_pdf_path,
+            feedback=all_feedback,
+            timing=timing,
+            audit=optimized.audit.model_dump() if optimized and optimized.audit else None,
+        )
         logger.info(f"[{run_id}] Optimization complete! Timing: {timing}")
 
     except Exception as e:
         logger.exception(f"Optimization failed: {e}")
-        await asyncio.to_thread(supabase.update_optimization_run, run_id, {
-            "status": "failed",
-            "current_step": None,
-            "error": str(e),
-        })
+        await _update_run(
+            supabase, run_id,
+            status="failed",
+            current_step=None,
+            error=str(e),
+        )
 
 
 @router.get("", response_model=OptimizationListResponse)
@@ -315,11 +323,10 @@ async def start_optimization(
 
     # Create optimization run
     run = await asyncio.to_thread(
-        lambda: supabase.create_optimization_run(
-            user_id=user_id,
-            cv_id=request.cv_id,
-            job_input=request.job_input,
-        )
+        supabase.create_optimization_run,
+        user_id=user_id,
+        cv_id=request.cv_id,
+        job_input=request.job_input,
     )
 
     # Start background task
@@ -427,6 +434,6 @@ async def update_optimization_job(
             needs_review.remove("company")
 
     job_parsed["needs_review"] = needs_review
-    await asyncio.to_thread(supabase.update_optimization_run, run_id, {"job_parsed": job_parsed})
+    await _update_run(supabase, run_id, job_parsed=job_parsed)
 
     return _run_to_status(run, job_parsed)

@@ -251,14 +251,12 @@ def test_filter_priorities_unique():
 
 
 def test_filter_priority_order_local_before_llm():
-    from hr_breaker.filters import FilterRegistry
+    """Cheap local filters must run before expensive LLM ones so a failure
+    short-circuits before we pay for a model call. Uniqueness of priorities is
+    covered by test_filter_priorities_unique above."""
     prio = {f.name: f.priority for f in FilterRegistry.all()}
     LOCAL = ["ContentLengthChecker", "DataValidator", "KeywordMatcher", "VectorSimilarityMatcher"]
     LLM = ["ContentIntegrityChecker", "LLMChecker"]
-    # Every local filter must run strictly before every LLM filter.
     for loc in LOCAL:
         for llm in LLM:
             assert prio[loc] < prio[llm], f"{loc}({prio[loc]}) must run before {llm}({prio[llm]})"
-    # All priorities distinct (no collision → deterministic order).
-    vals = [prio[n] for n in LOCAL + LLM]
-    assert len(vals) == len(set(vals)), f"priority collision: {vals}"
