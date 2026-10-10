@@ -24,7 +24,7 @@ def _audit(**overrides):
 def test_auditor_agent_is_cached():
     from hr_breaker.agents.auditor import get_auditor_agent
     assert get_auditor_agent() is get_auditor_agent()
-    assert get_auditor_agent(model="gemini-2.5-pro") is get_auditor_agent(model="gemini-2.5-pro")
+    assert get_auditor_agent(model="google-gla:gemini-2.5-pro") is get_auditor_agent(model="google-gla:gemini-2.5-pro")
 
 
 def test_ordinal_sum_all_top_is_16():

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 
 from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.llm import build_model
 from hr_breaker.models import FilterResult, OptimizedResume, ResumeSource
 from hr_breaker.utils.retry import with_model_retry
 
@@ -99,7 +100,7 @@ Return all four fields: no_hallucination_score, hallucination_concerns, ai_proba
 def get_content_integrity_agent() -> Agent:
     settings = get_settings()
     agent = Agent(
-        f"google-vertex:{settings.optimization_model}",
+        build_model(settings.optimization_model, env_var="OPTIMIZATION_MODEL"),
         output_type=ContentIntegrityResult,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),

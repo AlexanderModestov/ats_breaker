@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 
 from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.llm import build_model
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def create_coach_agent() -> Agent:
     settings = get_settings()
 
     agent = Agent(
-        f"google-vertex:{settings.coach_model}",
+        build_model(settings.coach_model, env_var="COACH_MODEL"),
         system_prompt=_load_system_prompt(),
         model_settings=get_model_settings(),
         deps_type=CoachDeps,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic_ai import Agent
 
 from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.llm import build_model
 from hr_breaker.models.editor import EditResult
 from hr_breaker.utils.retry import with_model_retry
 
@@ -31,7 +32,7 @@ async def edit_resume(html: str, original_resume: str, instruction: str) -> Edit
     """Edit resume HTML based on instruction, returning patches."""
     settings = get_settings()
     agent = Agent(
-        f"google-vertex:{settings.optimization_model}",
+        build_model(settings.optimization_model, env_var="OPTIMIZATION_MODEL"),
         system_prompt=_SYSTEM_PROMPT,
         output_type=EditResult,
         model_settings=get_model_settings(),

@@ -106,3 +106,13 @@ def test_validate_llm_config_checks_all_three_roles(monkeypatch):
             validate_llm_config()
     finally:
         get_settings.cache_clear()
+
+
+def test_agents_use_build_model_not_vertex_strings():
+    from pathlib import Path
+    agents_dir = Path(__file__).parent.parent / "src" / "hr_breaker" / "agents"
+    for path in agents_dir.glob("*.py"):
+        text = path.read_text()
+        assert "google-vertex" not in text, path.name
+        if "Agent(" in text and path.name != "__init__.py":
+            assert "build_model(" in text, f"{path.name} builds an Agent without build_model"

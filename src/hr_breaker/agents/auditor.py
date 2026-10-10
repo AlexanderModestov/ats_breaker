@@ -4,6 +4,7 @@ import re
 from functools import lru_cache
 
 from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.llm import build_model
 from hr_breaker.models.audit import AuditScore
 from hr_breaker.models.job_posting import JobPosting
 from hr_breaker.utils.html_text import extract_text_from_html
@@ -80,7 +81,7 @@ _DIM_LABELS = {
 def get_auditor_agent(model: str | None = None) -> Agent:
     settings = get_settings()
     return Agent(
-        f"google-vertex:{model or settings.optimization_model}",
+        build_model(model or settings.optimization_model, env_var="OPTIMIZATION_MODEL"),
         output_type=AuditScore,
         system_prompt=AUDIT_PROMPT,
         model_settings=get_model_settings(),

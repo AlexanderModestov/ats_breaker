@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.llm import build_model
 from hr_breaker.utils.retry import with_model_retry
 
 
@@ -26,7 +27,7 @@ async def extract_name(content: str) -> tuple[str | None, str | None]:
     """Extract first and last name from resume content using LLM."""
     settings = get_settings()
     agent = Agent(
-        f"google-vertex:{settings.name_extractor_model}",
+        build_model(settings.name_extractor_model, env_var="NAME_EXTRACTOR_MODEL"),
         output_type=ExtractedName,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),

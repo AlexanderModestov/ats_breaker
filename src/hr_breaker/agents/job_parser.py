@@ -6,6 +6,7 @@ from pydantic_ai import Agent
 
 from hr_breaker.agents.url_company_extractor import extract_company_from_url
 from hr_breaker.config import get_model_settings, get_settings, logger
+from hr_breaker.llm import build_model
 from hr_breaker.models import JobPosting, JobHints
 from hr_breaker.utils.retry import with_model_retry
 
@@ -33,7 +34,7 @@ Rules:
 def get_job_parser_agent() -> Agent:
     settings = get_settings()
     return Agent(
-        f"google-vertex:{settings.optimization_model}",
+        build_model(settings.optimization_model, env_var="OPTIMIZATION_MODEL"),
         output_type=JobPosting,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),

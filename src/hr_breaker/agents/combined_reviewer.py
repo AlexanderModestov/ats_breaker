@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent, BinaryContent
 
 from hr_breaker.config import get_model_settings, get_settings
+from hr_breaker.llm import build_model
 from hr_breaker.models import JobPosting, OptimizedResume
 from hr_breaker.services.renderer import get_renderer, RenderError
 from hr_breaker.utils.retry import with_model_retry
@@ -141,7 +142,7 @@ Return ALL fields:
 def get_combined_reviewer_agent() -> Agent:
     settings = get_settings()
     agent = Agent(
-        f"google-vertex:{settings.optimization_model}",
+        build_model(settings.optimization_model, env_var="OPTIMIZATION_MODEL"),
         output_type=CombinedReviewResult,
         system_prompt=SYSTEM_PROMPT,
         model_settings=get_model_settings(),
