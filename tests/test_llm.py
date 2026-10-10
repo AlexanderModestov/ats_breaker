@@ -147,3 +147,18 @@ def test_cli_optimize_reports_bad_llm_config(monkeypatch, tmp_path):
         get_settings.cache_clear()
     assert result.exit_code != 0
     assert "unsupported provider" in result.output
+
+
+def test_no_vertex_or_gcp_references_in_source():
+    from pathlib import Path
+    root = Path(__file__).parent.parent
+    banned = ("vertexai", "google-vertex", "GOOGLE_CLOUD_PROJECT",
+              "GOOGLE_CLOUD_LOCATION", "GOOGLE_APPLICATION_CREDENTIALS")
+    for path in (root / "src").rglob("*.py"):
+        text = path.read_text()
+        for word in banned:
+            assert word not in text, f"{word} in {path}"
+    for name in ("pyproject.toml", ".env.example"):
+        text = (root / name).read_text()
+        for word in banned + ("google-cloud-aiplatform",):
+            assert word not in text, f"{word} in {name}"

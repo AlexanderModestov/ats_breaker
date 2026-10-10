@@ -16,8 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.0",
-    "pydantic-ai",
-    "google-cloud-aiplatform",
+    "pydantic-ai-slim[anthropic,openai,google]",
     "httpx",
     "beautifulsoup4",
     "sentence-transformers",

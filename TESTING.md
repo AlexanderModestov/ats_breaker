@@ -5,11 +5,7 @@
 ## Требования
 
 - **uv** — менеджер окружения (`uv run ...` сам поднимет `.venv` и зависимости).
-- Для **бенчмарков** (реальные вызовы LLM) — настроенный доступ к Vertex AI:
-  - либо переменные `GOOGLE_CLOUD_PROJECT` + `GOOGLE_APPLICATION_CREDENTIALS`,
-  - либо service-account JSON в корне репозитория (`hr-breaker-*.json`) — подхватывается автоматически,
-  - либо `GOOGLE_APPLICATION_CREDENTIALS_JSON` с содержимым ключа.
-  - Опционально: `GOOGLE_CLOUD_LOCATION` (по умолчанию `global`).
+- Для **бенчмарков** (реальные вызовы LLM) — API-ключ(и) провайдера(ов) из `OPTIMIZATION_MODEL` (по умолчанию `GEMINI_API_KEY`).
 
 ---
 
@@ -35,7 +31,7 @@ uv run pytest tests/test_audit_scoring.py::test_name -q
 Помечены `@pytest.mark.benchmark`. Запускаются только с флагом `-m benchmark`.
 `-s` показывает живой прогресс (без него вывод буферизуется).
 
-Пропускаются, если: нет флага `-m benchmark`, не найдены входные файлы или не настроен Vertex.
+Пропускаются, если: нет флага `-m benchmark`, не найдены входные файлы или не заданы API-ключи провайдера.
 
 Общий вид:
 

@@ -1,3 +1,5 @@
+> **Superseded (2026-10-10):** Vertex AI is no longer used. LLM providers are called directly with API keys; see `docs/superpowers/specs/2026-10-10-llm-layer-design.md`.
+
 # Vertex AI (Agent Platform) Setup Plan
 
 **Goal:** Provision a GCP project with Vertex AI enabled so HR-Breaker can call Gemini models via the `google-vertex:` pydantic-ai provider.
