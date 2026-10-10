@@ -42,7 +42,7 @@ from tests.test_optimizer_comparison import (
     OUTPUT_DIR,
     POSITIONS_PATH,
     RESUME_PATH,
-    _bootstrap_vertex,
+    _bootstrap_llm,
     _ingest_job,
     _slug,
     _split_positions,
@@ -75,7 +75,7 @@ class JobTrajectory:
 async def _run_trajectory(source: ResumeSource, job, label: str, monkeypatch) -> JobTrajectory:
     """One optimize trajectory, forced to PASSES iterations, auditing each snapshot."""
     monkeypatch.setenv("OPTIMIZER_VERSION", "v2")
-    monkeypatch.setenv("OPTIMIZATION_MODEL", "gemini-2.5-flash")
+    monkeypatch.setenv("OPTIMIZATION_MODEL", "google-gla:gemini-2.5-flash")
     get_settings.cache_clear()
 
     traj = JobTrajectory(label=label)
@@ -172,10 +172,10 @@ async def test_origin_vs_iterations_trajectory(capsys, monkeypatch):
         pytest.skip(f"resume not found: {RESUME_PATH}")
     if not POSITIONS_PATH.exists():
         pytest.skip(f"positions file not found: {POSITIONS_PATH}")
-    project = _bootstrap_vertex()
-    if not project:
-        pytest.skip("Vertex not configured")
-    print(f"Vertex project: {project} ({get_settings().gcp_location})  PASSES={PASSES}", flush=True)
+    llm = _bootstrap_llm()
+    if not llm:
+        pytest.skip("LLM not configured: set the API key(s) for OPTIMIZATION_MODEL (e.g. GEMINI_API_KEY)")
+    print(f"LLM chain: {llm}  PASSES={PASSES}", flush=True)
 
     resume_text = extract_text_from_pdf(RESUME_PATH)
     source = ResumeSource(content=resume_text)

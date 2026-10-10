@@ -30,7 +30,7 @@ from hr_breaker.services.pdf_parser import extract_text_from_pdf
 from tests.test_optimizer_comparison import (
     POSITIONS_PATH,
     RESUME_PATH,
-    _bootstrap_vertex,
+    _bootstrap_llm,
     _ingest_job,
     _split_positions,
     _with_retry,
@@ -46,7 +46,7 @@ REPEATS = 3
 async def _one_run(steps: int, source: ResumeSource, job, monkeypatch):
     """One optimize loop at `max_iterations=steps`, audited once. -> (time, quality|None, err|None)."""
     monkeypatch.setenv("OPTIMIZER_VERSION", "v2")
-    monkeypatch.setenv("OPTIMIZATION_MODEL", "gemini-2.5-flash")
+    monkeypatch.setenv("OPTIMIZATION_MODEL", "google-gla:gemini-2.5-flash")
     get_settings.cache_clear()
 
     t = time.perf_counter()
@@ -136,10 +136,10 @@ async def test_steps_2_vs_3_confirm(capsys, monkeypatch):
         pytest.skip(f"resume not found: {RESUME_PATH}")
     if not POSITIONS_PATH.exists():
         pytest.skip(f"positions file not found: {POSITIONS_PATH}")
-    project = _bootstrap_vertex()
-    if not project:
-        pytest.skip("Vertex not configured")
-    print(f"Vertex project: {project} ({get_settings().gcp_location})  REPEATS={REPEATS}", flush=True)
+    llm = _bootstrap_llm()
+    if not llm:
+        pytest.skip("LLM not configured: set the API key(s) for OPTIMIZATION_MODEL (e.g. GEMINI_API_KEY)")
+    print(f"LLM chain: {llm}  REPEATS={REPEATS}", flush=True)
 
     resume_text = extract_text_from_pdf(RESUME_PATH)
     source = ResumeSource(content=resume_text)

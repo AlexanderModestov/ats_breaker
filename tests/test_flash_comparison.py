@@ -16,7 +16,7 @@ from tests.test_optimizer_comparison import (
     POSITIONS_PATH,
     RESUME_PATH,
     JobResult,
-    _bootstrap_vertex,
+    _bootstrap_llm,
     _ingest_job,
     _print_report,
     _run_version,
@@ -24,13 +24,12 @@ from tests.test_optimizer_comparison import (
     audit_resume_avg,
     quality_score,
 )
-from hr_breaker.config import get_settings
 from hr_breaker.models import ResumeSource
 from hr_breaker.services.pdf_parser import extract_text_from_pdf
 
 pytestmark = pytest.mark.benchmark
 
-FLASH_MODEL = "gemini-2.5-flash"
+FLASH_MODEL = "google-gla:gemini-2.5-flash"
 VERSIONS = ("v1", "v2")
 VERSION_CONFIG = {
     "v1": {"OPTIMIZER_VERSION": "v1", "OPTIMIZATION_MODEL": FLASH_MODEL},
@@ -43,13 +42,10 @@ async def test_flash_v1_v2_vs_baseline(capsys, monkeypatch):
         pytest.skip(f"resume not found: {RESUME_PATH}")
     if not POSITIONS_PATH.exists():
         pytest.skip(f"positions file not found: {POSITIONS_PATH}")
-    project = _bootstrap_vertex()
-    if not project:
-        pytest.skip(
-            "Vertex not configured: set GOOGLE_CLOUD_PROJECT / "
-            "GOOGLE_APPLICATION_CREDENTIALS, or place the service-account JSON in repo root"
-        )
-    print(f"Vertex project: {project} ({get_settings().gcp_location})", flush=True)
+    llm = _bootstrap_llm()
+    if not llm:
+        pytest.skip("LLM not configured: set the API key(s) for OPTIMIZATION_MODEL (e.g. GEMINI_API_KEY)")
+    print(f"LLM chain: {llm}", flush=True)
 
     resume_text = extract_text_from_pdf(RESUME_PATH)
     source = ResumeSource(content=resume_text)

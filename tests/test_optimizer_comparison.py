@@ -16,19 +16,15 @@ Outputs:
 Run:
     uv run pytest tests/test_optimizer_comparison.py -s -m benchmark
 
-Skipped unless `-m benchmark` AND the resume PDF + positions.txt exist AND Vertex
-credentials (GOOGLE_CLOUD_PROJECT) are configured.
+Skipped unless `-m benchmark` AND the resume PDF + positions.txt exist AND the provider API key(s) for OPTIMIZATION_MODEL are set.
 """
 
 import asyncio
 import contextlib
-import glob
 import io
-import json
 import os
 import re
 import statistics
-import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,55 +48,22 @@ POSITIONS_PATH = Path("positions.txt")
 OUTPUT_DIR = Path("output/comparison")
 VERSIONS = ("v1", "v2")
 VERSION_CONFIG: dict[str, dict[str, str]] = {
-    "v1": {"OPTIMIZER_VERSION": "v1", "OPTIMIZATION_MODEL": "gemini-2.5-flash"},
-    "v2": {"OPTIMIZER_VERSION": "v2", "OPTIMIZATION_MODEL": "gemini-2.5-flash"},
+    "v1": {"OPTIMIZER_VERSION": "v1", "OPTIMIZATION_MODEL": "google-gla:gemini-2.5-flash"},
+    "v2": {"OPTIMIZER_VERSION": "v2", "OPTIMIZATION_MODEL": "google-gla:gemini-2.5-flash"},
 }
-_ORIGINAL_OPTIMIZATION_MODEL = os.getenv("OPTIMIZATION_MODEL", "gemini-2.5-flash")
+_ORIGINAL_OPTIMIZATION_MODEL = os.getenv("OPTIMIZATION_MODEL", "google-gla:gemini-2.5-flash")
 
 
-def _bootstrap_vertex() -> str | None:
-    """Configure Vertex creds + project and init the SDK, like api/main.py.
+def _bootstrap_llm() -> str | None:
+    """Return the configured optimization chain if its provider keys are set, else None."""
+    from hr_breaker.llm import parse_chain, validate_chain
 
-    Resolves credentials from (in order) an existing GOOGLE_APPLICATION_CREDENTIALS,
-    GOOGLE_APPLICATION_CREDENTIALS_JSON, or a repo-root service-account JSON. Derives
-    the project from GOOGLE_CLOUD_PROJECT, settings, or the creds file's project_id.
-    Returns the project id, or None if it can't be resolved.
-    """
-    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-        if creds_json:
-            f = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-            json.dump(json.loads(creds_json), f)
-            f.flush()
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
-        else:
-            sa = next(iter(glob.glob("hr-breaker-*.json")), None)
-            if sa:
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(Path(sa).resolve())
-
-    project = os.getenv("GOOGLE_CLOUD_PROJECT") or get_settings().gcp_project
-    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    if not project and creds_path and Path(creds_path).exists():
-        with contextlib.suppress(Exception):
-            project = json.loads(Path(creds_path).read_text()).get("project_id")
-    if not project:
+    chain = os.getenv("OPTIMIZATION_MODEL") or get_settings().optimization_model
+    try:
+        validate_chain(parse_chain(chain, env_var="OPTIMIZATION_MODEL"), env_var="OPTIMIZATION_MODEL")
+    except ValueError:
         return None
-
-    # Make the project visible to the google-genai client (Vertex backend reads env)
-    # and force Vertex/OAuth auth: a leftover GOOGLE_API_KEY would otherwise put the
-    # client in Gemini-API key mode, which Vertex rejects (401 CREDENTIALS_MISSING).
-    os.environ["GOOGLE_CLOUD_PROJECT"] = project
-    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
-    os.environ.pop("GOOGLE_API_KEY", None)
-    os.environ.pop("GEMINI_API_KEY", None)
-    # gemini-3-*-preview models are served from the "global" endpoint, not the
-    # us-central1 default. Honor an explicit GOOGLE_CLOUD_LOCATION, else use global.
-    location = os.getenv("GOOGLE_CLOUD_LOCATION") or "global"
-    os.environ["GOOGLE_CLOUD_LOCATION"] = location
-    import vertexai
-
-    vertexai.init(project=project, location=location)
-    return project
+    return chain
 
 
 async def audit_resume_avg(
@@ -415,13 +378,10 @@ async def test_optimizer_v1_v2_comparison(capsys, monkeypatch):
         pytest.skip(f"resume not found: {RESUME_PATH}")
     if not POSITIONS_PATH.exists():
         pytest.skip(f"positions file not found: {POSITIONS_PATH}")
-    project = _bootstrap_vertex()
-    if not project:
-        pytest.skip(
-            "Vertex not configured: set GOOGLE_CLOUD_PROJECT / "
-            "GOOGLE_APPLICATION_CREDENTIALS, or place the service-account JSON in repo root"
-        )
-    print(f"Vertex project: {project} ({get_settings().gcp_location})", flush=True)
+    llm = _bootstrap_llm()
+    if not llm:
+        pytest.skip("LLM not configured: set the API key(s) for OPTIMIZATION_MODEL (e.g. GEMINI_API_KEY)")
+    print(f"LLM chain: {llm}", flush=True)
 
     resume_text = extract_text_from_pdf(RESUME_PATH)
     source = ResumeSource(content=resume_text)

@@ -18,8 +18,8 @@ Outputs: `output/comparison/<job-slug>_s2.pdf`, `_s3.pdf`, `_s4.pdf`.
 Run:
     uv run pytest tests/test_steps_comparison.py -s -m benchmark
 
-Skipped unless `-m benchmark` AND the resume PDF + positions.txt exist AND Vertex
-credentials are configured.
+Skipped unless `-m benchmark` AND the resume PDF + positions.txt exist AND the provider API key(s)
+are set.
 """
 
 import contextlib
@@ -40,7 +40,7 @@ from tests.test_optimizer_comparison import (
     RESUME_PATH,
     JobResult,
     VersionResult,
-    _bootstrap_vertex,
+    _bootstrap_llm,
     _ingest_job,
     _print_report,
     _slug,
@@ -61,7 +61,7 @@ async def _run_steps(
 ) -> VersionResult:
     """Run the full optimize loop with `max_iterations=steps`, save PDF, audit it."""
     monkeypatch.setenv("OPTIMIZER_VERSION", "v2")
-    monkeypatch.setenv("OPTIMIZATION_MODEL", "gemini-2.5-flash")
+    monkeypatch.setenv("OPTIMIZATION_MODEL", "google-gla:gemini-2.5-flash")
     get_settings.cache_clear()
     label_v = STEP_LABELS[steps]
 
@@ -111,13 +111,10 @@ async def test_steps_3_vs_4_comparison(capsys, monkeypatch):
         pytest.skip(f"resume not found: {RESUME_PATH}")
     if not POSITIONS_PATH.exists():
         pytest.skip(f"positions file not found: {POSITIONS_PATH}")
-    project = _bootstrap_vertex()
-    if not project:
-        pytest.skip(
-            "Vertex not configured: set GOOGLE_CLOUD_PROJECT / "
-            "GOOGLE_APPLICATION_CREDENTIALS, or place the service-account JSON in repo root"
-        )
-    print(f"Vertex project: {project} ({get_settings().gcp_location})", flush=True)
+    llm = _bootstrap_llm()
+    if not llm:
+        pytest.skip("LLM not configured: set the API key(s) for OPTIMIZATION_MODEL (e.g. GEMINI_API_KEY)")
+    print(f"LLM chain: {llm}", flush=True)
 
     resume_text = extract_text_from_pdf(RESUME_PATH)
     source = ResumeSource(content=resume_text)
