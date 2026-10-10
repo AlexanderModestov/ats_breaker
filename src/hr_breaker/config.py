@@ -40,12 +40,9 @@ logger = setup_logging()
 class Settings(BaseModel):
     """Application settings."""
 
-    gcp_project: str = ""
-    gcp_location: str = "us-central1"
-    optimization_model: str = "gemini-2.5-flash"
-    name_extractor_model: str = "gemini-2.5-flash-lite"
-    coach_model: str = "gemini-2.5-pro"
-    gemini_thinking_budget: int | None = None
+    optimization_model: str = "google-gla:gemini-2.5-flash"
+    name_extractor_model: str = "google-gla:gemini-2.5-flash-lite"
+    coach_model: str = "google-gla:gemini-2.5-pro"
     cache_dir: Path = Path(".cache/resumes")
     output_dir: Path = Path("output")
     max_iterations: int = 3
@@ -108,7 +105,8 @@ class Settings(BaseModel):
     sentence_transformer_model: str = "all-MiniLM-L6-v2"
 
     # LLM call guards: per-attempt timeout and process-wide concurrency cap
-    model_call_timeout: float = 300.0
+    model_call_timeout: float = 300.0  # outer cap around a whole call (all fallbacks)
+    model_provider_timeout: float = 120.0  # per-provider request; lets a hung primary fall through
     model_max_concurrency: int = 8
 
     # Agent limits
@@ -136,15 +134,10 @@ def _parse_unlimited_users(value: str) -> list[str]:
 
 @lru_cache
 def get_settings() -> Settings:
-    thinking_env = os.getenv("GEMINI_THINKING_BUDGET")
-    thinking_budget: int | None = int(thinking_env) if thinking_env else None
     return Settings(
-        gcp_project=os.getenv("GOOGLE_CLOUD_PROJECT", ""),
-        gcp_location=os.getenv("GOOGLE_CLOUD_LOCATION") or _field_default("gcp_location"),
         optimization_model=os.getenv("OPTIMIZATION_MODEL") or _field_default("optimization_model"),
         name_extractor_model=os.getenv("NAME_EXTRACTOR_MODEL") or _field_default("name_extractor_model"),
         coach_model=os.getenv("COACH_MODEL") or _field_default("coach_model"),
-        gemini_thinking_budget=thinking_budget,
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),
         optimizer_version=os.getenv("OPTIMIZER_VERSION") or _field_default("optimizer_version"),
         max_iterations=int(os.getenv("MAX_ITERATIONS") or _field_default("max_iterations")),
@@ -173,6 +166,7 @@ def get_settings() -> Settings:
         sentence_transformer_model=os.getenv("SENTENCE_TRANSFORMER_MODEL") or _field_default("sentence_transformer_model"),
         # LLM call guards
         model_call_timeout=float(os.getenv("MODEL_CALL_TIMEOUT") or _field_default("model_call_timeout")),
+        model_provider_timeout=float(os.getenv("MODEL_PROVIDER_TIMEOUT") or _field_default("model_provider_timeout")),
         model_max_concurrency=int(os.getenv("MODEL_MAX_CONCURRENCY") or _field_default("model_max_concurrency")),
         # Agent limits
         agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS") or _field_default("agent_name_extractor_chars")),
@@ -200,13 +194,6 @@ def get_settings() -> Settings:
     )
 
 
-def get_model_settings() -> dict[str, Any] | None:
-    """Get GoogleModelSettings with thinking config if budget is set."""
-    settings = get_settings()
-    if settings.gemini_thinking_budget is not None:
-        return {
-            "google_thinking_config": {
-                "thinking_budget": settings.gemini_thinking_budget
-            }
-        }
-    return None
+def get_model_settings() -> dict[str, Any]:
+    """Per-request model settings applied to every provider in a chain."""
+    return {"timeout": get_settings().model_provider_timeout}
