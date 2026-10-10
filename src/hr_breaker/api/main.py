@@ -1,8 +1,5 @@
 """FastAPI application entry point."""
 
-import json
-import os
-import tempfile
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -23,30 +20,15 @@ from hr_breaker.api.routes import (
 )
 from hr_breaker.api.schemas import HealthResponse
 from hr_breaker.config import get_settings
+from hr_breaker.llm import validate_llm_config
 
 settings = get_settings()
-
-_gcp_key_file = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _gcp_key_file
-    creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-    if creds_json and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-        _gcp_key_file = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        )
-        json.dump(json.loads(creds_json), _gcp_key_file)
-        _gcp_key_file.flush()
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _gcp_key_file.name
-
-    import vertexai
-    vertexai.init(project=settings.gcp_project, location=settings.gcp_location)
-
+    validate_llm_config()
     yield
-    if _gcp_key_file:
-        os.unlink(_gcp_key_file.name)
 
 
 app = FastAPI(

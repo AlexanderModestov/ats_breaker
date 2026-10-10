@@ -116,3 +116,34 @@ def test_agents_use_build_model_not_vertex_strings():
         assert "google-vertex" not in text, path.name
         if "Agent(" in text and path.name != "__init__.py":
             assert "build_model(" in text, f"{path.name} builds an Agent without build_model"
+
+
+async def test_api_lifespan_fails_fast_on_bad_llm_config(monkeypatch):
+    from hr_breaker.api.main import app, lifespan
+    from hr_breaker.config import get_settings
+
+    monkeypatch.setenv("OPTIMIZATION_MODEL", "gemini-2.5-flash")  # legacy, unprefixed
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(ValueError, match="OPTIMIZATION_MODEL"):
+            async with lifespan(app):
+                pass
+    finally:
+        get_settings.cache_clear()
+
+
+def test_cli_optimize_reports_bad_llm_config(monkeypatch, tmp_path):
+    from click.testing import CliRunner
+    from hr_breaker.cli import cli
+    from hr_breaker.config import get_settings
+
+    monkeypatch.setenv("COACH_MODEL", "google-vertex:gemini-2.5-pro")
+    get_settings.cache_clear()
+    resume = tmp_path / "r.md"
+    resume.write_text("x")
+    try:
+        result = CliRunner().invoke(cli, ["optimize", str(resume), "some job text"])
+    finally:
+        get_settings.cache_clear()
+    assert result.exit_code != 0
+    assert "unsupported provider" in result.output

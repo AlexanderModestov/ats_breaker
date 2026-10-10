@@ -8,7 +8,7 @@ import click
 
 from hr_breaker.agents import extract_name, parse_job_posting, COMPANY_NOT_SPECIFIED
 from hr_breaker.analytics import capture, shutdown
-from hr_breaker.config import get_settings
+from hr_breaker.llm import validate_llm_config
 from hr_breaker.models import GeneratedPDF, ResumeSource
 from hr_breaker.orchestration import optimize_for_job
 from hr_breaker.services import PDFStorage, scrape_job_posting, ScrapingError, CloudflareBlockedError, ScrapedJob
@@ -43,9 +43,10 @@ def optimize(
     RESUME_PATH: Path to resume file (any text format: .tex, .md, .txt, etc.)
     JOB_INPUT: URL or path to file with job description
     """
-    settings = get_settings()
-    if not settings.gcp_project:
-        raise click.ClickException("GOOGLE_CLOUD_PROJECT not set in environment")
+    try:
+        validate_llm_config()
+    except ValueError as e:
+        raise click.ClickException(str(e))
 
     resume_content = resume_path.read_text()
 
