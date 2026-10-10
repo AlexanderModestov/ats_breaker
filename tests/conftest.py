@@ -31,3 +31,17 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture(autouse=True)
+def _dummy_llm_keys(request, monkeypatch):
+    """Agent construction needs provider keys; unit tests never make real calls.
+
+    Benchmark tests (real LLM calls) are left untouched so a missing real key
+    makes them skip instead of failing with 401s.
+    """
+    if "benchmark" in request.keywords:
+        return
+    for var in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+        if not os.getenv(var):
+            monkeypatch.setenv(var, "test-key")
