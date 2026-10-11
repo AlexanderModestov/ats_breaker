@@ -125,6 +125,7 @@ def validate_llm_config() -> None:
     settings = get_settings()
     for env_var, value in (
         ("OPTIMIZATION_MODEL", settings.optimization_model),
+        ("OPTIMIZER_MODEL", settings.optimizer_model),
         ("COACH_MODEL", settings.coach_model),
         ("NAME_EXTRACTOR_MODEL", settings.name_extractor_model),
     ):

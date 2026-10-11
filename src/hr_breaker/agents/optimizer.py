@@ -126,7 +126,7 @@ def get_optimizer_agent(job: JobPosting, source: ResumeSource) -> Agent:
     resume_guide = _load_resume_guide()
     system_prompt = OPTIMIZER_PROMPT.format(resume_guide=resume_guide)
     agent = Agent(
-        build_model(settings.optimization_model, env_var="OPTIMIZATION_MODEL"),
+        build_model(settings.optimizer_model, env_var="OPTIMIZER_MODEL"),
         output_type=OptimizerResult,
         system_prompt=system_prompt,
         model_settings=get_model_settings(),

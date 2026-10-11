@@ -3,9 +3,8 @@ from datetime import date
 from pathlib import Path
 
 from pydantic import BaseModel
-from pydantic_ai import Agent, BinaryContent
+from pydantic_ai import Agent
 
-from hr_breaker.agents.combined_reviewer import pdf_to_image
 from hr_breaker.config import get_model_settings, get_settings
 from hr_breaker.llm import build_model
 from hr_breaker.filters.data_validator import validate_html
@@ -23,6 +22,11 @@ from hr_breaker.utils import extract_text_from_html
 from hr_breaker.utils.retry import with_model_retry
 
 logger = logging.getLogger(__name__)
+
+# Each check_content_length call makes the model re-send the whole resume HTML and renders a
+# PDF, so unbounded checking dominates optimizer time. The pipeline's ContentLengthChecker
+# validates length after the optimizer returns, so a few real checks are enough.
+MAX_LENGTH_CHECKS = 3
 
 TEMPLATE_DIR = Path(__file__).parent.parent.parent.parent / "templates"
 
@@ -56,7 +60,7 @@ STRICT RULES — NEVER VIOLATE:
 
 CONTENT BUDGET:
 - Target: ~500 words, ~4000 characters (rough estimates; page_count is authoritative)
-- Do not return until check_content_length confirms fits_one_page=true
+- Aim for one page; check_content_length confirms fits_one_page (at most 3 checks, so make real trims between calls)
 
 8-DIMENSION OPTIMIZATION — apply each dimension in order:
 
@@ -111,9 +115,8 @@ CONTENT BUDGET:
    - Dates: consistent format throughout
 
 TOOLS:
-- check_content_length(html) — REQUIRED before returning; must confirm fits_one_page=true
+- check_content_length(html) — confirms fits_one_page; at most 3 checks. Once its budget is used up, return your best version (the pipeline checks length after you return)
 - check_keywords_tool(html) — use to verify keyword coverage
-- preview_resume(html) — use only if you suspect layout problems
 - validate_structure(html) — use after major structural changes
 
 AUDIT:
@@ -151,7 +154,7 @@ def get_optimizer_v2_agent(job: JobPosting, source: ResumeSource) -> Agent:
     resume_guide = _load_resume_guide()
     system_prompt = OPTIMIZER_V2_PROMPT.format(resume_guide=resume_guide)
     agent = Agent(
-        build_model(settings.optimization_model, env_var="OPTIMIZATION_MODEL"),
+        build_model(settings.optimizer_model, env_var="OPTIMIZER_MODEL"),
         output_type=OptimizerV2Result,
         system_prompt=system_prompt,
         model_settings=get_model_settings(),
@@ -162,14 +165,24 @@ def get_optimizer_v2_agent(job: JobPosting, source: ResumeSource) -> Agent:
         return f"Today's date: {date.today().strftime('%B %Y')}"
 
     _length_cache: dict[str, dict] = {}
+    length_checks = 0
 
     @agent.tool_plain
     def check_content_length(html: str) -> dict:
         """Check if HTML content fits one page by rendering PDF."""
+        nonlocal length_checks
         cached = _length_cache.get(html)
         if cached is not None:
             logger.debug("check_content_length cache hit")
             return cached
+        if length_checks >= MAX_LENGTH_CHECKS:
+            return {
+                "error": (
+                    f"Length-check budget used up ({MAX_LENGTH_CHECKS} checks). Stop checking and "
+                    "return your best version now; the pipeline validates length after you return."
+                )
+            }
+        length_checks += 1
 
         est = estimate_content_length(html)
         try:
@@ -204,15 +217,6 @@ def get_optimizer_v2_agent(job: JobPosting, source: ResumeSource) -> Agent:
             result["suggestion"] = f"Content spans {page_count} pages. Remove ~{est.overflow_words} words (estimate)"
         _length_cache[html] = result
         return result
-
-    @agent.tool_plain
-    def preview_resume(html: str) -> BinaryContent:
-        """Render HTML to PDF and return preview image. Use to visually check layout."""
-        logger.debug("preview_resume called")
-        renderer = get_renderer()
-        result = renderer.render(html)
-        image_bytes, _ = pdf_to_image(result.pdf_bytes)
-        return BinaryContent(data=image_bytes, media_type="image/png")
 
     @agent.tool_plain
     def check_keywords_tool(html: str) -> dict:

@@ -41,6 +41,7 @@ class Settings(BaseModel):
     """Application settings."""
 
     optimization_model: str = "google-gla:gemini-2.5-flash"
+    optimizer_model: str = "google-gla:gemini-2.5-flash"  # optimizer agents; falls back to optimization_model
     name_extractor_model: str = "google-gla:gemini-2.5-flash-lite"
     coach_model: str = "google-gla:gemini-2.5-pro"
     cache_dir: Path = Path(".cache/resumes")
@@ -135,8 +136,10 @@ def _parse_unlimited_users(value: str) -> list[str]:
 
 @lru_cache
 def get_settings() -> Settings:
+    optimization_model = os.getenv("OPTIMIZATION_MODEL") or _field_default("optimization_model")
     return Settings(
-        optimization_model=os.getenv("OPTIMIZATION_MODEL") or _field_default("optimization_model"),
+        optimization_model=optimization_model,
+        optimizer_model=os.getenv("OPTIMIZER_MODEL") or optimization_model,
         name_extractor_model=os.getenv("NAME_EXTRACTOR_MODEL") or _field_default("name_extractor_model"),
         coach_model=os.getenv("COACH_MODEL") or _field_default("coach_model"),
         fast_mode=os.getenv("HR_BREAKER_FAST_MODE", "true").lower() in ("true", "1", "yes"),

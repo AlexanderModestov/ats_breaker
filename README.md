@@ -114,7 +114,8 @@ Copy `.env.example` to `.env` and configure:
 | `GEMINI_API_KEY` | Yes* | Google Gemini API key (`GOOGLE_API_KEY` is accepted as a fallback) |
 | `ANTHROPIC_API_KEY` | Yes* | Anthropic API key |
 | `OPENAI_API_KEY` | Yes* | OpenAI API key |
-| `OPTIMIZATION_MODEL` | No | Model chain for optimizer, reviewer, parser, filters, auditor (default: `google-gla:gemini-2.5-flash`) |
+| `OPTIMIZATION_MODEL` | No | Model chain for reviewer, parser, filters, auditor, and the optimizer unless `OPTIMIZER_MODEL` is set (default: `google-gla:gemini-2.5-flash`) |
+| `OPTIMIZER_MODEL` | No | Model chain for the resume optimizer only; falls back to `OPTIMIZATION_MODEL`. A fast model here shortens runs |
 | `COACH_MODEL` | No | Model chain for the career coach (default: `google-gla:gemini-2.5-pro`) |
 | `NAME_EXTRACTOR_MODEL` | No | Model chain for name extraction (default: `google-gla:gemini-2.5-flash-lite`) |
 | `MODEL_PROVIDER_TIMEOUT` | No | Per-provider request timeout in seconds (default: 150; long generations may need more) |
