@@ -285,3 +285,88 @@ def test_get_model_settings_has_only_timeout():
     from hr_breaker.config import get_model_settings
 
     assert set(get_model_settings()) == {"timeout"}
+
+
+# --- Anthropic structured output must not force tool_choice (claude-sonnet-5-5 returns 400) ---
+
+import asyncio
+import json
+
+from pydantic import BaseModel
+
+
+class _Person(BaseModel):
+    name: str
+
+
+_ANTHROPIC_REPLY = json.dumps({
+    "id": "msg_1", "type": "message", "role": "assistant", "model": "claude-sonnet-5-5",
+    "content": [{"type": "text", "text": '{"name": "Ada"}'}],
+    "stop_reason": "end_turn", "stop_sequence": None,
+    "usage": {"input_tokens": 1, "output_tokens": 1},
+}).encode()
+
+
+async def _fake_anthropic(bodies: list[dict]):
+    """Local server that records each request body and answers with a canned message."""
+    async def handle(reader, writer):
+        head = await reader.readuntil(b"\r\n\r\n")
+        length = next(int(h.split(b":")[1]) for h in head.split(b"\r\n") if h.lower().startswith(b"content-length"))
+        bodies.append(json.loads(await reader.readexactly(length)))
+        writer.write(
+            b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n"
+            b"Content-Length: " + str(len(_ANTHROPIC_REPLY)).encode() + b"\r\n\r\n" + _ANTHROPIC_REPLY
+        )
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(handle, "127.0.0.1", 0)
+    return server, server.sockets[0].getsockname()[1]
+
+
+def _forces_tool(body: dict) -> bool:
+    return body.get("tool_choice", {}).get("type") in ("any", "tool")
+
+
+async def test_anthropic_structured_output_does_not_force_tool_choice(monkeypatch):
+    bodies: list[dict] = []
+    server, port = await _fake_anthropic(bodies)
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", f"http://127.0.0.1:{port}")
+    try:
+        result = await Agent(build_model("anthropic:claude-sonnet-5-5"), output_type=_Person).run("who?")
+    finally:
+        server.close()
+        await server.wait_closed()
+    assert result.output == _Person(name="Ada")
+    assert not _forces_tool(bodies[0])
+
+
+async def test_anthropic_structured_output_with_function_tools_does_not_force_tool_choice(monkeypatch):
+    bodies: list[dict] = []
+    server, port = await _fake_anthropic(bodies)
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", f"http://127.0.0.1:{port}")
+    agent = Agent(build_model("anthropic:claude-sonnet-5-5"), output_type=_Person)
+
+    @agent.tool_plain
+    def ping() -> str:
+        return "pong"
+
+    try:
+        result = await agent.run("who?")
+    finally:
+        server.close()
+        await server.wait_closed()
+    assert result.output == _Person(name="Ada")
+    assert bodies[0]["tools"], "function tool should still be sent"
+    assert not _forces_tool(bodies[0])
+
+
+def test_anthropic_profile_is_prompted_but_keeps_provider_profile():
+    profile = build_model("anthropic:claude-sonnet-5-5").profile
+    assert profile.default_structured_output_mode == "prompted"
+    assert profile.thinking_tags == ("<thinking>", "</thinking>")  # provider's own profile kept
+
+
+def test_other_providers_keep_default_structured_output_mode():
+    for entry in ("openai:gpt-5", "google-gla:gemini-2.5-flash"):
+        assert build_model(entry).profile.default_structured_output_mode != "prompted"

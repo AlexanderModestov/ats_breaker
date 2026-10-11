@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 from pydantic_ai.models import Model, infer_model
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.fallback import FallbackModel
+from pydantic_ai.profiles import ModelProfile
 from pydantic_ai.providers import Provider, infer_provider
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.google import GoogleProvider
@@ -88,10 +89,19 @@ def _provider_factory(name: str) -> Provider:
 def _build_one(entry: str) -> Model:
     provider, _, name = entry.partition(":")
     if provider == "anthropic":
+        anthropic_provider = _provider_factory(provider)
+        # pydantic-ai gets structured output from Anthropic by forcing a tool call
+        # (tool_choice any/tool), which newer Claude models reject with a 400. Prompted
+        # output (JSON schema in the instructions, parsed from text) works on every model.
+        # A custom profile replaces the provider's, so extend it instead of overriding it.
+        prompted = ModelProfile(default_structured_output_mode="prompted")
         # Model-level setting (merged with agent-level timeout); only Anthropic needs it.
         return AnthropicModel(
             name,
-            provider=_provider_factory(provider),
+            provider=anthropic_provider,
+            profile=lambda model_name: (
+                anthropic_provider.model_profile(model_name) or ModelProfile()
+            ).update(prompted),
             settings={"max_tokens": get_settings().anthropic_max_tokens},
         )
     return infer_model(entry, provider_factory=_provider_factory)
