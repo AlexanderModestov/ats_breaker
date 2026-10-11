@@ -106,7 +106,8 @@ class Settings(BaseModel):
 
     # LLM call guards: per-attempt timeout and process-wide concurrency cap
     model_call_timeout: float = 300.0  # outer cap around a whole call (all fallbacks)
-    model_provider_timeout: float = 120.0  # per-provider request; lets a hung primary fall through
+    model_provider_timeout: float = 150.0  # per-provider request; lets a hung primary fall through
+    anthropic_max_tokens: int = 16384  # output cap for Anthropic models (pydantic-ai default is 4096)
     model_max_concurrency: int = 8
 
     # Agent limits
@@ -167,6 +168,7 @@ def get_settings() -> Settings:
         # LLM call guards
         model_call_timeout=float(os.getenv("MODEL_CALL_TIMEOUT") or _field_default("model_call_timeout")),
         model_provider_timeout=float(os.getenv("MODEL_PROVIDER_TIMEOUT") or _field_default("model_provider_timeout")),
+        anthropic_max_tokens=int(os.getenv("ANTHROPIC_MAX_TOKENS") or _field_default("anthropic_max_tokens")),
         model_max_concurrency=int(os.getenv("MODEL_MAX_CONCURRENCY") or _field_default("model_max_concurrency")),
         # Agent limits
         agent_name_extractor_chars=int(os.getenv("AGENT_NAME_EXTRACTOR_CHARS") or _field_default("agent_name_extractor_chars")),

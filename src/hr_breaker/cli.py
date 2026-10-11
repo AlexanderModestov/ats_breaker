@@ -46,7 +46,7 @@ def optimize(
     try:
         validate_llm_config()
     except ValueError as e:
-        raise click.ClickException(str(e))
+        raise click.ClickException(str(e)) from e
 
     resume_content = resume_path.read_text()
 

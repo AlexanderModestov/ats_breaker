@@ -34,7 +34,7 @@ Resume optimization tool that transforms any resume into a job-specific, ATS-fri
 - Node.js 18+ (for frontend)
 - [uv](https://github.com/astral-sh/uv) package manager
 - Supabase project (for web UI)
-- Google Gemini API key
+- An LLM provider API key (Google Gemini by default; Anthropic and OpenAI also supported)
 
 ### Installation
 
@@ -111,12 +111,24 @@ Copy `.env.example` to `.env` and configure:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GOOGLE_API_KEY` | Yes | Google Gemini API key |
+| `GEMINI_API_KEY` | Yes* | Google Gemini API key (`GOOGLE_API_KEY` is accepted as a fallback) |
+| `ANTHROPIC_API_KEY` | Yes* | Anthropic API key |
+| `OPENAI_API_KEY` | Yes* | OpenAI API key |
+| `OPTIMIZATION_MODEL` | No | Model chain for optimizer, reviewer, parser, filters, auditor (default: `google-gla:gemini-2.5-flash`) |
+| `COACH_MODEL` | No | Model chain for the career coach (default: `google-gla:gemini-2.5-pro`) |
+| `NAME_EXTRACTOR_MODEL` | No | Model chain for name extraction (default: `google-gla:gemini-2.5-flash-lite`) |
+| `MODEL_PROVIDER_TIMEOUT` | No | Per-provider request timeout in seconds (default: 150; long generations may need more) |
+| `MODEL_CALL_TIMEOUT` | No | Outer timeout around a whole call including fallbacks (default: 300; keep >= provider timeout x chain length) |
+| `ANTHROPIC_MAX_TOKENS` | No | Output token cap for Anthropic models (default: 16384) |
 | `SUPABASE_URL` | Yes (web) | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Yes (web) | Supabase anonymous key |
 | `SUPABASE_SERVICE_KEY` | Yes (web) | Supabase service role key |
 | `SUPABASE_JWT_SECRET` | Yes (web) | Supabase JWT secret |
 | `API_CORS_ORIGINS` | No | Allowed CORS origins (default: http://localhost:3000) |
+
+\* Set the key for every provider used in your model chains (at least one is required).
+
+Model chains are comma-separated `provider:model` entries (providers: `google-gla`, `anthropic`, `openai`). The first is the primary; the rest are fallbacks used on transient errors (429 / 5xx / connection / timeout). Example: `OPTIMIZATION_MODEL=google-gla:gemini-2.5-flash,anthropic:claude-sonnet-5-5`.
 
 For the frontend, copy `frontend/.env.example` to `frontend/.env.local`:
 

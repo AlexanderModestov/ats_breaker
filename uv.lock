@@ -872,7 +872,7 @@ requires-dist = [
     { name = "playwright", specifier = ">=1.40" },
     { name = "posthog", specifier = ">=7.12.0" },
     { name = "pydantic", specifier = ">=2.0" },
-    { name = "pydantic-ai-slim", extras = ["anthropic", "openai", "google"] },
+    { name = "pydantic-ai-slim", extras = ["anthropic", "openai", "google"], specifier = ">=1.48" },
     { name = "pymupdf", specifier = ">=1.24" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'" },

@@ -189,3 +189,54 @@ async def test_does_not_retry_fallback_group_with_non_transient_member():
         with pytest.raises(FallbackExceptionGroup):
             await with_model_retry(op)
     assert calls == 1
+
+
+import httpx
+
+
+def test_raw_httpx_transport_errors_are_transient():
+    assert is_transient_error(httpx.ReadTimeout("slow")) is True
+    assert is_transient_error(httpx.ConnectTimeout("slow")) is True
+    assert is_transient_error(httpx.ConnectError("refused")) is True
+    assert is_transient_error(httpx.RemoteProtocolError("reset")) is True
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [httpx.ReadTimeout("slow"), httpx.ConnectError("refused"),
+     ModelAPIError(model_name="m", message="connection reset")],
+)
+async def test_retries_raw_transport_and_non_http_api_errors(exc):
+    calls = 0
+
+    async def op():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise exc
+        return "ok"
+
+    with patch("hr_breaker.utils.retry.asyncio.sleep", new=AsyncMock()):
+        assert await with_model_retry(op, base_delay=0.01) == "ok"
+    assert calls == 2
+
+
+async def test_retry_warning_includes_status_code(caplog):
+    calls = 0
+
+    async def op():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise _err(503)
+        return "ok"
+
+    from hr_breaker.config import logger
+
+    logger.addHandler(caplog.handler)
+    try:
+        with patch("hr_breaker.utils.retry.asyncio.sleep", new=AsyncMock()):
+            await with_model_retry(op)
+    finally:
+        logger.removeHandler(caplog.handler)
+    assert any("503" in r.getMessage() for r in caplog.records)

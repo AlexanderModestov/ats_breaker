@@ -162,3 +162,126 @@ def test_no_vertex_or_gcp_references_in_source():
         text = (root / name).read_text()
         for word in banned + ("google-cloud-aiplatform",):
             assert word not in text, f"{word} in {name}"
+
+
+# --- C1: raw httpx transport errors from the Google SDK must fall through ---
+
+import contextlib
+import socket
+
+
+@pytest.fixture
+def hung_server():
+    """Local socket that accepts connections and never answers."""
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(8)
+    conns = []
+    import threading
+
+    def accept():
+        while True:
+            try:
+                conns.append(srv.accept()[0])
+            except OSError:
+                return
+
+    threading.Thread(target=accept, daemon=True).start()
+    yield srv.getsockname()[1]
+    srv.close()
+    for c in conns:
+        with contextlib.suppress(OSError):
+            c.close()
+
+
+@pytest.fixture
+def closed_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+def _google_model(port: int):
+    from pydantic_ai.models.google import GoogleModel
+    from pydantic_ai.providers.google import GoogleProvider
+
+    return GoogleModel(
+        "gemini-2.5-flash",
+        provider=GoogleProvider(api_key="x", base_url=f"http://127.0.0.1:{port}"),
+    )
+
+
+async def test_hung_google_primary_falls_through_to_secondary(hung_server):
+    model = llm._fallback([_google_model(hung_server), _answering("from-secondary")])
+    result = await Agent(model, model_settings={"timeout": 1}).run("hi")
+    assert result.output == "from-secondary"
+
+
+async def test_unreachable_google_primary_falls_through_to_secondary(closed_port):
+    model = llm._fallback([_google_model(closed_port), _answering("from-secondary")])
+    result = await Agent(model, model_settings={"timeout": 1}).run("hi")
+    assert result.output == "from-secondary"
+
+
+# --- I1: Google key precedence ---
+
+def test_validate_chain_accepts_google_api_key_fallback(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("GOOGLE_API_KEY", "g-key")
+    validate_chain(["google-gla:gemini-2.5-flash"])
+
+
+def test_validate_chain_google_missing_both_names_gemini_key(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="GEMINI_API_KEY"):
+        validate_chain(["google-gla:gemini-2.5-flash"])
+
+
+def test_gemini_key_wins_over_google_key(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-key")
+    monkeypatch.setenv("GOOGLE_API_KEY", "google-key")
+    model = build_model("google-gla:gemini-2.5-flash")
+    assert model.client._api_client.api_key == "gemini-key"
+
+
+def test_google_key_used_when_gemini_key_absent(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("GOOGLE_API_KEY", "google-key")
+    model = build_model("google-gla:gemini-2.5-flash")
+    assert model.client._api_client.api_key == "google-key"
+
+
+# --- I2: SDK-internal retries disabled ---
+
+def test_anthropic_and_openai_clients_have_no_sdk_retries():
+    assert build_model("anthropic:claude-sonnet-5-5").client.max_retries == 0
+    assert build_model("openai:gpt-5").client.max_retries == 0
+
+
+# --- I3: Anthropic max_tokens only on anthropic models ---
+
+def test_anthropic_model_carries_max_tokens_default():
+    assert build_model("anthropic:claude-sonnet-5-5").settings["max_tokens"] == 16384
+
+
+def test_anthropic_max_tokens_configurable(monkeypatch):
+    from hr_breaker.config import get_settings
+
+    monkeypatch.setenv("ANTHROPIC_MAX_TOKENS", "2048")
+    get_settings.cache_clear()
+    assert build_model("anthropic:claude-sonnet-5-5").settings["max_tokens"] == 2048
+
+
+def test_other_providers_get_no_max_tokens():
+    for entry in ("google-gla:gemini-2.5-flash", "openai:gpt-5"):
+        settings = build_model(entry).settings or {}
+        assert "max_tokens" not in settings
+
+
+def test_get_model_settings_has_only_timeout():
+    from hr_breaker.config import get_model_settings
+
+    assert set(get_model_settings()) == {"timeout"}

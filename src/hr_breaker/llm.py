@@ -3,8 +3,15 @@
 import os
 from collections.abc import Sequence
 
+from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 from pydantic_ai.models import Model, infer_model
+from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.fallback import FallbackModel
+from pydantic_ai.providers import Provider, infer_provider
+from pydantic_ai.providers.anthropic import AnthropicProvider
+from pydantic_ai.providers.google import GoogleProvider
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from hr_breaker.config import get_settings, logger
 from hr_breaker.utils.retry import is_transient_error
@@ -15,6 +22,14 @@ PROVIDER_KEY_ENV = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
 }
+
+
+def _provider_key(provider: str) -> str | None:
+    """API key for a provider. GEMINI_API_KEY is documented and wins; GOOGLE_API_KEY
+    is accepted as a fallback (pydantic-ai alone would read GOOGLE_API_KEY first)."""
+    if provider == "google-gla":
+        return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    return os.getenv(PROVIDER_KEY_ENV[provider])
 
 
 def parse_chain(value: str, *, env_var: str = "model") -> list[str]:
@@ -42,7 +57,7 @@ def validate_chain(chain: Sequence[str], *, env_var: str = "model") -> None:
                 f"{env_var}: unsupported provider {provider!r} in {entry!r}; "
                 f"supported: {', '.join(PROVIDER_KEY_ENV)}"
             )
-        if not os.getenv(key_var):
+        if not _provider_key(provider):
             raise ValueError(f"{env_var}: {key_var} is not set (needed for {entry!r})")
 
 
@@ -57,6 +72,31 @@ def _fallback(models: Sequence[Model | str]) -> FallbackModel:
     return FallbackModel(*models, fallback_on=_fallback_condition)
 
 
+def _provider_factory(name: str) -> Provider:
+    """Build providers explicitly. Our own retry + fallback own all retrying, so the
+    Anthropic/OpenAI SDK clients get max_retries=0 (their default of 2 would stretch
+    a hung provider to ~3x the timeout and starve the fallback)."""
+    if name == "google-gla":
+        return GoogleProvider(api_key=_provider_key(name))
+    if name == "anthropic":
+        return AnthropicProvider(anthropic_client=AsyncAnthropic(api_key=_provider_key(name), max_retries=0))
+    if name == "openai":
+        return OpenAIProvider(openai_client=AsyncOpenAI(api_key=_provider_key(name), max_retries=0))
+    return infer_provider(name)
+
+
+def _build_one(entry: str) -> Model:
+    provider, _, name = entry.partition(":")
+    if provider == "anthropic":
+        # Model-level setting (merged with agent-level timeout); only Anthropic needs it.
+        return AnthropicModel(
+            name,
+            provider=_provider_factory(provider),
+            settings={"max_tokens": get_settings().anthropic_max_tokens},
+        )
+    return infer_model(entry, provider_factory=_provider_factory)
+
+
 def build_model(value: str, *, env_var: str = "model") -> Model:
     """Build a pydantic-ai model from a chain string.
 
@@ -66,8 +106,8 @@ def build_model(value: str, *, env_var: str = "model") -> Model:
     chain = parse_chain(value, env_var=env_var)
     validate_chain(chain, env_var=env_var)
     if len(chain) == 1:
-        return infer_model(chain[0])
-    return _fallback(chain)
+        return _build_one(chain[0])
+    return _fallback([_build_one(e) for e in chain])
 
 
 def validate_llm_config() -> None:

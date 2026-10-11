@@ -5,6 +5,7 @@ import random
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
+import httpx
 from pydantic_ai.exceptions import FallbackExceptionGroup, ModelAPIError, ModelHTTPError
 
 from hr_breaker.config import get_settings, logger
@@ -37,7 +38,9 @@ def is_transient_error(exc: BaseException) -> bool:
         return exc.status_code in _RETRYABLE_STATUS
     if isinstance(exc, ModelAPIError):  # non-HTTP: connection reset, DNS, etc.
         return True
-    return isinstance(exc, TimeoutError)
+    # google-genai surfaces transport failures as raw httpx errors that pydantic-ai's
+    # GoogleModel does not wrap (it only wraps google.genai.errors.APIError).
+    return isinstance(exc, (TimeoutError, httpx.TimeoutException, httpx.TransportError))
 
 
 async def with_model_retry(
@@ -63,20 +66,21 @@ async def with_model_retry(
         try:
             async with _get_semaphore():
                 return await asyncio.wait_for(operation(), timeout=timeout)
-        except TimeoutError:
+        except (TimeoutError, httpx.TimeoutException):
             if attempt == max_attempts:
                 raise
             logger.warning(
                 f"{label}: timed out after {timeout:.0f}s "
                 f"(attempt {attempt}/{max_attempts}); retrying"
             )
-        except (ModelAPIError, FallbackExceptionGroup) as e:
+        except (ModelAPIError, FallbackExceptionGroup, httpx.TransportError) as e:
             if not is_transient_error(e) or attempt == max_attempts:
                 raise
             cap = min(base_delay * 2 ** (attempt - 1), max_delay)
             delay = random.uniform(0, cap)
             logger.warning(
                 f"{label}: transient error {type(e).__name__} "
+                f"(status {getattr(e, 'status_code', None)}) "
                 f"(attempt {attempt}/{max_attempts}); retrying in {delay:.1f}s"
             )
             await asyncio.sleep(delay)

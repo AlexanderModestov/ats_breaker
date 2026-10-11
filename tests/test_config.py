@@ -79,3 +79,10 @@ def test_model_settings_carry_provider_timeout():
     with patch.dict("os.environ", {"MODEL_PROVIDER_TIMEOUT": "42"}):
         assert get_model_settings() == {"timeout": 42.0}
     get_settings.cache_clear()
+
+
+def test_provider_timeout_default_is_150_and_anthropic_max_tokens_default():
+    from hr_breaker.config import Settings
+
+    assert Settings.model_fields["model_provider_timeout"].default == 150.0
+    assert Settings.model_fields["anthropic_max_tokens"].default == 16384

@@ -43,11 +43,14 @@ def _dummy_llm_keys(request, monkeypatch):
     if "benchmark" in request.keywords:
         return
     for var in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
-        if not os.getenv(var):
-            monkeypatch.setenv(var, "test-key")
+        monkeypatch.setenv(var, "test-key")
+    # google-genai / pydantic-ai read GOOGLE_API_KEY first; a stale real one must not leak in.
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     # Keep tests hermetic: ignore a developer's .env model overrides so config defaults apply.
     for var in ("OPTIMIZATION_MODEL", "COACH_MODEL", "NAME_EXTRACTOR_MODEL"):
         monkeypatch.delenv(var, raising=False)
     from hr_breaker.config import get_settings
 
+    get_settings.cache_clear()
+    yield
     get_settings.cache_clear()
