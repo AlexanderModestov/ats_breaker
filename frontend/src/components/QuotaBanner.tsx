@@ -14,7 +14,7 @@ export function QuotaBanner() {
   const { data: sub } = useSubscription();
   const { open } = usePricingModal();
 
-  if (!sub) return null;
+  if (!sub || sub.is_unlimited) return null;
 
   const { remaining, renews_at } = sub.optimizations;
   if (remaining > 1) return null;

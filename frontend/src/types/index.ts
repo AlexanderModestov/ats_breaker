@@ -136,6 +136,7 @@ export interface SubscriptionStatus {
   optimizations: { used: number; limit: number; remaining: number; renews_at: string | null };
   coach: { chats_used: number; chats_limit: number; msgs_per_chat: number };
   current_period_end: string | null;
+  is_unlimited: boolean;
 }
 
 export interface CheckoutResponse {

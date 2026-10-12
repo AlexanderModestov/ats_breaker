@@ -36,7 +36,7 @@ class TestSubscriptionStatusShape:
         assert body["tier"] == "free"
         assert body["optimizations"] == {"used": 1, "limit": 3, "remaining": 2, "renews_at": None}
         assert body["coach"] == {"chats_used": 0, "chats_limit": 1, "msgs_per_chat": 15}
-        assert "is_unlimited" not in body
+        assert body["is_unlimited"] is False
         assert "weekly_reset_at" not in body
 
     def test_offer_mode_response(self, client, fake_supabase):
@@ -48,6 +48,18 @@ class TestSubscriptionStatusShape:
         body = client.get("/api/subscription").json()
         assert body["optimizations"] == {"used": 12, "limit": 40, "remaining": 28, "renews_at": end}
         assert body["coach"] == {"chats_used": 3, "chats_limit": 10, "msgs_per_chat": 20}
+
+
+class TestUnlimitedUser:
+    def test_unlimited_email_flagged_even_when_quota_used_up(self, client, fake_supabase):
+        fake_supabase.get_profile.return_value = {
+            "subscription_tier": "free", "subscription_status": "none",
+            "current_period_end": None, "period_request_count": 3, "coach_chats_used": 0,
+        }
+        with patch("hr_breaker.api.routes.subscription._is_unlimited", return_value=True) as m:
+            body = client.get("/api/subscription").json()
+        m.assert_called_once_with(EMAIL)
+        assert body["is_unlimited"] is True
 
 
 class TestUpgrade:

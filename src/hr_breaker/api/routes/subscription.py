@@ -11,6 +11,7 @@ from hr_breaker.api.deps import (
     get_profile_or_404,
 )
 from hr_breaker.config import logger
+from hr_breaker.services.access_control import _is_unlimited
 from hr_breaker.services.stripe_service import StripeService, StripeError
 from hr_breaker.services.tiers import effective_tier, limits_for
 
@@ -59,6 +60,7 @@ class SubscriptionStatusResponse(BaseModel):
     optimizations: OptimizationsBlock
     coach: CoachBlock
     current_period_end: str | None
+    is_unlimited: bool
 
 
 @router.get("", response_model=SubscriptionStatusResponse)
@@ -67,7 +69,7 @@ async def get_subscription_status(
     supabase: SupabaseServiceDep,
 ) -> SubscriptionStatusResponse:
     """Return the current user's tier, status, and metered quota."""
-    user_id, _ = user
+    user_id, email = user
     profile = get_profile_or_404(supabase, user_id)
     limits = limits_for(profile)
     tier = effective_tier(profile)
@@ -86,6 +88,7 @@ async def get_subscription_status(
             msgs_per_chat=limits["coach_msgs"],
         ),
         current_period_end=profile.get("current_period_end"),
+        is_unlimited=_is_unlimited(email or ""),
     )
 
 
